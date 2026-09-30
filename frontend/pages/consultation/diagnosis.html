@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnosis Master - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/patient.css">
+</head>
+<body class="cms-root">
+  <div class="cms-layout">
+    <main class="cms-main-container">
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <a href="../../index.html" class="cms-btn-ghost cms-btn-icon" style="text-decoration: none;">🏠</a>
+          <h1 class="cms-topbar-title">Clinical Diagnoses &amp; Symptoms</h1>
+        </div>
+      </header>
+      <section class="cms-content-area" id="page-diagnosis-container">
+        <div class="cms-card">
+          <div class="cms-card-header"><div class="cms-card-title">Diagnosis &amp; Pathology Insights</div></div>
+          <div style="padding: 20px;" id="diag-list-box">Loading...</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { apiFetch } from '../../js/api.js';
+    async function loadDiag() {
+      const res = await apiFetch('/diagnoses/analytics');
+      const box = document.getElementById('diag-list-box');
+      if (res && res.data && res.data.length > 0) {
+        box.innerHTML = res.data.map(d => `<div style="padding: 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between;"><b>${d.name}</b> <span>${d.count} Cases</span></div>`).join('');
+      } else {
+        box.innerHTML = '<div style="color: var(--text-muted);">No diagnosis analytics available.</div>';
+      }
+    }
+    loadDiag();
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+/* =========================================================
+   DASHBOARD STYLING
+   ========================================================= */
+
+.cms-dash-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cms-dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--surface);
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.cms-dash-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cms-dash-date-input {
+  width: 160px;
+  padding: 7px 12px;
+  font-size: 13.5px;
+}
+
+.cms-dash-main-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .cms-dash-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cms-due-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.cms-due-item:hover {
+  background: var(--surface-hover);
+  transform: translateX(4px);
+}

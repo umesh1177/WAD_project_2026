@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing & Invoices - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body class="cms-root">
+  <div class="cms-layout">
+    <main class="cms-main-container">
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <a href="../../index.html" class="cms-btn-ghost cms-btn-icon" style="text-decoration: none;">🏠</a>
+          <h1 class="cms-topbar-title">Patient Invoices &amp; Billing Ledger</h1>
+        </div>
+      </header>
+      <section class="cms-content-area" id="page-bills-container"></section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderBillingView } from '../../js/billing.js';
+    renderBillingView(document.getElementById('page-bills-container'));
+  </script>
+</body>
+</html>

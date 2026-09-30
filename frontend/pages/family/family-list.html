@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Family Directory - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/patient.css">
+</head>
+<body class="cms-root">
+  <div class="cms-layout">
+    <main class="cms-main-container">
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <a href="../../index.html" class="cms-btn-ghost cms-btn-icon" style="text-decoration: none;">🏠</a>
+          <h1 class="cms-topbar-title">Family Registration &amp; Directory</h1>
+        </div>
+        <div class="cms-topbar-right">
+          <a href="family-add.html" class="cms-btn cms-btn-primary">+ Register New Family</a>
+        </div>
+      </header>
+      <section class="cms-content-area" id="page-family-container"></section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderFamilyRegistration } from '../../js/family.js';
+    renderFamilyRegistration(document.getElementById('page-family-container'), (famId, patId) => {
+      window.location.href = `../../index.html?fam=${famId}&pat=${patId}`;
+    });
+  </script>
+</body>
+</html>
