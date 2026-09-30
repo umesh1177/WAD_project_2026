@@ -1,0 +1,28 @@
+# Logs and Databases
+*.log
+*.sql
+*.sqlite
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+
+# Environments and Secrets
+.env
+.env.local
+.env.*.local
+
+# Dependency Directories
+node_modules/
+bower_components/
+jspm_packages/
+
+# Build and Output Directories
+dist/
+build/
+out/
+bin/
+obj/
