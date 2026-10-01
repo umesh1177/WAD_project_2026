@@ -38,6 +38,24 @@ const login = async (req, res) => {
       });
     }
 
+    // Receptionist Demo Check Fallback
+    if (username.trim().toLowerCase() === 'receptionist' && password === 'password123') {
+      const receptionistPayload = {
+        id: 'receptionist-demo',
+        username: 'receptionist',
+        role: 'receptionist',
+        name: 'Front Desk Receptionist',
+        clinics: [{ id: 'demo', name: 'Dhyey Clinic & Nursing Home' }],
+        activeClinicId: 'demo',
+      };
+      const token = generateToken(receptionistPayload);
+      return res.json({
+        success: true,
+        token,
+        user: receptionistPayload,
+      });
+    }
+
     // Doctor Demo Check Fallback
     if (username.trim().toLowerCase() === 'dhyey' && password === '123') {
       const demoDoctor = {

@@ -40,7 +40,7 @@ const seedDemoData = async () => {
       $or: [
         { famId: { $in: ['0001', '0002'] } },
         { famId: { $regex: '-' } },
-        { famId: { $exists: true, $where: 'this.famId && this.famId.length < 12' } }
+        { famId: { $regex: /^[0-9]{1,11}$/ } }
       ]
     });
     await Patient.deleteMany({
@@ -48,9 +48,10 @@ const seedDemoData = async () => {
       $or: [
         { familyId: { $in: ['0001', '0002'] } },
         { familyId: { $regex: '-' } },
+        { familyId: { $regex: /^[0-9]{1,11}$/ } },
         { patId: { $in: ['0001', '0002'] } },
         { patId: { $regex: '-' } },
-        { patId: { $exists: true, $where: 'this.patId && this.patId.length < 12' } }
+        { patId: { $regex: /^[0-9]{1,11}$/ } }
       ]
     });
     await Consultation.deleteMany({
@@ -58,8 +59,10 @@ const seedDemoData = async () => {
       $or: [
         { familyId: { $in: ['0001', '0002'] } },
         { familyId: { $regex: '-' } },
+        { familyId: { $regex: /^[0-9]{1,11}$/ } },
         { patientId: { $in: ['0001', '0002'] } },
-        { patientId: { $regex: '-' } }
+        { patientId: { $regex: '-' } },
+        { patientId: { $regex: /^[0-9]{1,11}$/ } }
       ]
     });
 

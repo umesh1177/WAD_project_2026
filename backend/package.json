@@ -1,8 +1,4 @@
 {
-<<<<<<< HEAD
-  "dependencies": {
-    "express": "^5.2.1"
-=======
   "name": "wad-clinic-backend",
   "version": "1.0.0",
   "description": "Clinic and Hospital Management System Backend - WAD Project",
@@ -22,6 +18,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
->>>>>>> 75c9e855c1d0c3d8d5cb50a01d149f69e4c1b5a4
   }
 }
