@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Receptionist & Doctor Unified Stylesheet -->
+  <!-- Unified Stylesheet -->
   <link rel="stylesheet" href="../css/receptionist.css">
 </head>
 <body>
@@ -20,43 +20,43 @@
     <aside class="sidebar">
       <div>
         <div class="sidebar-header">
-          <div class="brand-logo" style="background: #0284c7;">
+          <div class="brand-logo" style="background: var(--primary-teal);">
             <i class="fa-solid fa-user-doctor"></i>
           </div>
           <div>
-            <span class="brand-title" style="color: #0284c7;">Dhyey Clinical</span>
-            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Dr. Shah · OPD 04</div>
+            <span class="brand-title" style="color: var(--primary-teal);">Dhyey Clinical</span>
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Dr. Shah · OPD Room #04</div>
           </div>
         </div>
 
         <nav class="sidebar-nav">
-          <a class="nav-item active" style="background: #0284c7; color:#fff;" id="nav-active-consult" onclick="switchDocTab('consultation')">
+          <a class="nav-item active" id="nav-active-consult" href="javascript:void(0)" onclick="switchDocTab('consultation')">
             <div class="nav-item-left">
               <i class="fa-solid fa-stethoscope nav-icon"></i>
               <span>Active Consultation</span>
             </div>
-            <span class="badge-key" style="background:rgba(255,255,255,0.25); color:#fff;" id="sidebarTokenBadge">T-01</span>
+            <span class="badge-key" id="sidebarTokenBadge" style="background: rgba(255,255,255,0.22); color:#fff;">T-01</span>
           </a>
 
-          <a class="nav-item" id="nav-queue-tab" onclick="switchDocTab('queue')">
+          <a class="nav-item" id="nav-queue-tab" href="javascript:void(0)" onclick="switchDocTab('queue')">
             <div class="nav-item-left">
               <i class="fa-solid fa-users nav-icon"></i>
               <span>Waiting Queue (<span id="docQueueCount">2</span>)</span>
             </div>
+            <span class="badge-key" id="sidebarQueueBadge">2</span>
           </a>
 
-          <a class="nav-item" onclick="openSoloWalkinModal()">
+          <a class="nav-item" id="nav-rx-tab" href="javascript:void(0)" onclick="switchDocTab('prescriptions')">
             <div class="nav-item-left">
-              <i class="fa-solid fa-user-plus nav-icon"></i>
-              <span>Quick Walk-in (Solo)</span>
+              <i class="fa-solid fa-file-medical nav-icon"></i>
+              <span>Prescription Logs</span>
             </div>
-            <span class="badge-key" style="background:#fef3c7; color:#b45309;">+ Add</span>
           </a>
 
-          <a class="nav-item" href="../receptionist/dashboard.html" title="Open Receptionist Desk">
+          <a class="nav-item" id="nav-lab-tab" href="javascript:void(0)" onclick="switchDocTab('lab')">
             <div class="nav-item-left">
-              <i class="fa-solid fa-clipboard-user nav-icon"></i>
-              <span>Receptionist Desk</span>
+              <i class="fa-solid fa-flask nav-icon"></i>
+              <span>Lab & Reports</span>
             </div>
           </a>
         </nav>
@@ -64,9 +64,9 @@
 
       <div class="sidebar-footer-guide">
         <h6>Doctor Quick Keys:</h6>
-        <div><kbd class="badge-key">F1</kbd> Save Rx</div>
+        <div><kbd class="badge-key">F1</kbd> Complete & Next</div>
         <div><kbd class="badge-key">F2</kbd> Call Next Patient</div>
-        <div><kbd class="badge-key">F3</kbd> Queue</div>
+        <div><kbd class="badge-key">F3</kbd> Queue View</div>
       </div>
     </aside>
 
@@ -79,7 +79,7 @@
             <i class="fa-solid fa-bars"></i>
           </button>
           <div class="page-title-group">
-            <h1 class="page-header-title" style="color: #0284c7;">
+            <h1 class="page-header-title" style="color: var(--primary-teal);">
               <i class="fa-solid fa-user-doctor"></i> Dr. Shah (General Medicine)
             </h1>
             <span class="page-header-date" id="docDateText">OPD Room #04 · 01/10/2026</span>
@@ -88,14 +88,14 @@
 
         <div class="top-navbar-right">
           <!-- Next Patient Call CTA -->
-          <button class="btn-primary" style="background:#0284c7;" onclick="callNextPatient()">
+          <button class="btn-primary" onclick="callNextPatient()">
             <i class="fa-solid fa-user-plus"></i> <span id="callNextBtnText">Call Next Patient</span>
           </button>
 
-          <!-- Receptionist Desk Shortcut -->
-          <a href="../receptionist/dashboard.html" class="btn-secondary" style="font-size:12px; padding: 7px 12px; text-decoration:none;" title="Open Receptionist Desk">
-            <i class="fa-solid fa-clipboard-user"></i> Reception Desk
-          </a>
+          <!-- Theme Toggle -->
+          <button class="btn-icon" type="button" title="Toggle theme" onclick="toggleTheme();">
+            <i class="fa-regular fa-moon"></i>
+          </button>
 
           <!-- Logout -->
           <a href="../login.html" class="btn-icon" title="Logout" style="color:var(--danger-text); text-decoration:none;">
@@ -107,139 +107,190 @@
       <!-- Content Body -->
       <div class="content-body">
         
-        <!-- Active Patient Header Banner (Automatically populated from Reception Arrival) -->
-        <div id="activePatientBanner" class="card" style="border-left: 5px solid #0284c7; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 18px 22px; margin-bottom: 16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-            <div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="badge-key" style="background:#0284c7; color:#fff; font-size:12px;" id="bannerToken">Token #T-01</span>
-                <span class="badge-key" style="background:#dcfce7; color:#15803d; font-size:11px;" id="bannerStatus">In Consultation</span>
-                <span style="font-size:12px; color:#0369a1; font-weight:600;" id="bannerArrivedTime"><i class="fa-solid fa-clock"></i> Arrived: 10:05 AM</span>
+        <!-- Tab: Active Consultation -->
+        <div id="docConsultationView" style="display:block;">
+          <!-- Active Patient Header Banner (Automatically populated from Reception Arrival) -->
+          <div id="activePatientBanner" class="card" style="border-left: 5px solid var(--primary-teal); background: linear-gradient(135deg, var(--primary-teal-soft) 0%, #ffffff 100%); padding: 18px 22px; margin-bottom: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="badge-key" style="background:var(--primary-teal); color:#fff; font-size:12px;" id="bannerToken">Token #T-01</span>
+                  <span class="badge-key" style="background:#dcfce7; color:#15803d; font-size:11px;" id="bannerStatus">In Consultation</span>
+                  <span style="font-size:12px; color:var(--primary-teal); font-weight:600;" id="bannerArrivedTime"><i class="fa-solid fa-clock"></i> Arrived: 10:05 AM</span>
+                </div>
+                <h2 style="font-size:20px; font-weight:900; color:var(--text-main); margin:6px 0 2px;" id="bannerPatientName">MEHTA SANJAYBHAI NATVERLAL</h2>
+                <div style="font-size:12.5px; color:var(--text-muted); font-weight:600;" id="bannerPatientDetails">
+                  Age: 62 Y · Male · Blood Group: A+ · Phone: 9654321098 · Family: MEHTA VIKRAMBHAI (THALTEJ)
+                </div>
               </div>
-              <h2 style="font-size:20px; font-weight:900; color:#0369a1; margin:6px 0 2px;" id="bannerPatientName">MEHTA SANJAYBHAI NATVERLAL</h2>
-              <div style="font-size:12.5px; color:#0284c7; font-weight:600;" id="bannerPatientDetails">
-                Age: 62 Y · Male · Blood Group: A+ · Phone: 9654321098 · Family: MEHTA VIKRAMBHAI (THALTEJ)
+
+              <!-- Vitals Summary Pill Badges -->
+              <div style="display:flex; gap:10px; flex-wrap:wrap;" id="vitalsBadgesContainer">
+                <div style="background:#fff; border:1px solid var(--border-color); padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
+                  <div style="font-size:10px; color:var(--primary-teal); font-weight:700;">BP</div>
+                  <div style="font-size:14px; font-weight:800; color:var(--primary-teal);" id="vitalBP">130/85</div>
+                </div>
+                <div style="background:#fff; border:1px solid var(--border-color); padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
+                  <div style="font-size:10px; color:var(--primary-teal); font-weight:700;">PULSE</div>
+                  <div style="font-size:14px; font-weight:800; color:var(--primary-teal);" id="vitalPulse">72 bpm</div>
+                </div>
+                <div style="background:#fff; border:1px solid var(--border-color); padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
+                  <div style="font-size:10px; color:var(--primary-teal); font-weight:700;">TEMP</div>
+                  <div style="font-size:14px; font-weight:800; color:var(--primary-teal);" id="vitalTemp">98.6 °F</div>
+                </div>
+                <div style="background:#fff; border:1px solid var(--border-color); padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
+                  <div style="font-size:10px; color:var(--primary-teal); font-weight:700;">WEIGHT</div>
+                  <div style="font-size:14px; font-weight:800; color:var(--primary-teal);" id="vitalWeight">68 kg</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clinical Workspace Grid -->
+          <div class="grid-split-2" style="grid-template-columns: 1fr 1.3fr; gap:18px;">
+            <!-- Left: Clinical Notes & Diagnosis -->
+            <div class="card">
+              <h3 class="card-title"><i class="fa-solid fa-notes-medical" style="color:var(--primary-teal);"></i> Chief Complaints & Diagnosis</h3>
+              
+              <div class="form-group" style="margin-top:14px;">
+                <label class="form-label">CHIEF COMPLAINTS & SYMPTOMS</label>
+                <textarea id="clinicalComplaints" class="form-textarea" rows="3" placeholder="Symptoms presented by patient...">Patient complains of intermittent headache, fatigue, and mild body aches for 2 days.</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">CLINICAL DIAGNOSIS</label>
+                <input id="clinicalDiagnosis" type="text" class="form-input" value="Viral Pyrexia / Mild Hypertension">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">RECOMMENDED LAB TESTS</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12.5px; margin-top:6px;">
+                  <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" checked style="accent-color:var(--primary-teal);"> CBC (Complete Blood)</label>
+                  <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:var(--primary-teal);"> Lipid Profile</label>
+                  <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:var(--primary-teal);"> Fasting Blood Sugar</label>
+                  <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:var(--primary-teal);"> Urine Routine</label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">DIETARY / LIFESTYLE ADVICE</label>
+                <textarea id="clinicalAdvice" class="form-textarea" rows="2" placeholder="Dietary suggestions, rest...">Plenty of oral fluids, 8 hours rest, low sodium diet for 5 days.</textarea>
               </div>
             </div>
 
-            <!-- Vitals Summary Pill Badges -->
-            <div style="display:flex; gap:10px; flex-wrap:wrap;" id="vitalsBadgesContainer">
-              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
-                <div style="font-size:10px; color:#0369a1; font-weight:700;">BP</div>
-                <div style="font-size:14px; font-weight:800; color:#0284c7;" id="vitalBP">130/85</div>
+            <!-- Right: E-Prescription Builder & Waiting Queue -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <h3 class="card-title"><i class="fa-solid fa-file-prescription" style="color:var(--primary-teal);"></i> Rx · Prescribed Medicines</h3>
+                  <button class="btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="addMedicineRow()">
+                    <i class="fa-solid fa-plus"></i> Add Medicine
+                  </button>
+                </div>
+
+                <table style="width:100%; border-collapse:collapse;" id="medicineRxTable">
+                  <thead>
+                    <tr style="background:var(--primary-teal-soft); font-size:11px; color:var(--primary-teal); text-align:left;">
+                      <th style="padding:8px 6px;">Medicine Name</th>
+                      <th style="padding:8px 6px;">Dose</th>
+                      <th style="padding:8px 6px;">Freq</th>
+                      <th style="padding:8px 6px;">Days</th>
+                      <th style="padding:8px 6px;">Instruction</th>
+                      <th style="padding:8px 6px; width:30px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
+                      <td style="padding:6px;"><input type="text" class="form-input rx-name" style="padding:4px 8px; font-size:12px;" value="Tab. Paracetamol 650mg"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-dose" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-freq" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-days" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-inst" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+                      <td style="padding:6px;"><button class="btn-icon-danger" onclick="this.closest('tr').remove()">&times;</button></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
+                      <td style="padding:6px;"><input type="text" class="form-input rx-name" style="padding:4px 8px; font-size:12px;" value="Cap. Amoxicillin 500mg"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-dose" style="padding:4px 8px; font-size:12px; width:60px;" value="1 cap"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-freq" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-days" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
+                      <td style="padding:6px;"><input type="text" class="form-input rx-inst" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+                      <td style="padding:6px;"><button class="btn-icon-danger" onclick="this.closest('tr').remove()">&times;</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+                  <div>
+                    <label class="form-label">FOLLOW UP DATE</label>
+                    <input type="date" id="followUpDate" class="form-input" style="padding:6px 10px;">
+                  </div>
+                  <div style="display:flex; gap:10px;">
+                    <button class="btn-primary" style="padding:10px 18px;" onclick="completeAndNextConsultation()">
+                      <i class="fa-solid fa-check"></i> Complete & Next Patient
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
-                <div style="font-size:10px; color:#0369a1; font-weight:700;">PULSE</div>
-                <div style="font-size:14px; font-weight:800; color:#0284c7;" id="vitalPulse">72 bpm</div>
-              </div>
-              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
-                <div style="font-size:10px; color:#0369a1; font-weight:700;">TEMP</div>
-                <div style="font-size:14px; font-weight:800; color:#0284c7;" id="vitalTemp">98.6 °F</div>
-              </div>
-              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 14px; border-radius:10px; text-align:center; min-width:65px;">
-                <div style="font-size:10px; color:#0369a1; font-weight:700;">WEIGHT</div>
-                <div style="font-size:14px; font-weight:800; color:#0284c7;" id="vitalWeight">68 kg</div>
+
+              <!-- Waiting Queue Quick List -->
+              <div class="card" style="padding:14px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <h4 style="margin:0; font-size:13px; font-weight:800; color:var(--text-main);">
+                    <i class="fa-solid fa-users" style="color:var(--primary-teal);"></i> Today's Arrived Waiting List (<span id="waitingCountText">1</span>)
+                  </h4>
+                  <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="switchDocTab('queue')">View All</button>
+                </div>
+
+                <div id="doctorWaitingQueueList" style="display:flex; flex-direction:column; gap:8px; max-height:160px; overflow-y:auto;"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Clinical Workspace Grid -->
-        <div class="grid-split-2" style="grid-template-columns: 1fr 1.3fr; gap:18px;">
-          <!-- Left: Clinical Notes & Diagnosis -->
+        <!-- Tab: Full Queue View -->
+        <div id="docQueueView" style="display:none;">
           <div class="card">
-            <h3 class="card-title" style="color:#0369a1;"><i class="fa-solid fa-notes-medical" style="color:#0284c7;"></i> Chief Complaints & Diagnosis</h3>
-            
-            <div class="form-group" style="margin-top:14px;">
-              <label class="form-label">CHIEF COMPLAINTS & SYMPTOMS</label>
-              <textarea id="clinicalComplaints" class="form-textarea" rows="3" placeholder="Symptoms presented by patient...">Patient complains of intermittent headache, fatigue, and mild body aches for 2 days.</textarea>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">CLINICAL DIAGNOSIS</label>
-              <input id="clinicalDiagnosis" type="text" class="form-input" value="Viral Pyrexia / Mild Hypertension">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">RECOMMENDED LAB TESTS</label>
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12.5px; margin-top:6px;">
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" checked style="accent-color:#0284c7;"> CBC (Complete Blood)</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Lipid Profile</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Fasting Blood Sugar</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Urine Routine</label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+              <div>
+                <h3 class="card-title"><i class="fa-solid fa-users" style="color:var(--primary-teal);"></i> Complete Arrived OPD Queue</h3>
+                <p class="card-subtitle">Patients queued by receptionist waiting for consultation</p>
               </div>
+              <button class="btn-primary" onclick="switchDocTab('consultation')">
+                <i class="fa-solid fa-stethoscope"></i> Back to Clinical Desk
+              </button>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">DIETARY / LIFESTYLE ADVICE</label>
-              <textarea class="form-textarea" rows="2" placeholder="Dietary suggestions, rest...">Plenty of oral fluids, 8 hours rest, low sodium diet for 5 days.</textarea>
-            </div>
+            <div id="docFullQueueList" style="display:flex; flex-direction:column; gap:12px;"></div>
           </div>
+        </div>
 
-          <!-- Right: E-Prescription Builder & Queue Strip -->
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <h3 class="card-title" style="color:#0369a1;"><i class="fa-solid fa-file-prescription" style="color:#0284c7;"></i> Rx · Prescribed Medicines</h3>
-                <button class="btn-secondary" style="padding:4px 10px; font-size:11px; border-color:#0284c7; color:#0284c7;" onclick="addMedicineRow()">
-                  <i class="fa-solid fa-plus"></i> Add Medicine
-                </button>
+        <!-- Tab: Prescription Logs -->
+        <div id="docRxLogsView" style="display:none;">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+              <div>
+                <h3 class="card-title"><i class="fa-solid fa-file-medical" style="color:var(--primary-teal);"></i> Completed Consultations & Rx History</h3>
+                <p class="card-subtitle">Log of patients consulted today</p>
               </div>
+              <button class="btn-primary" onclick="switchDocTab('consultation')">
+                <i class="fa-solid fa-stethoscope"></i> Back to Consultation
+              </button>
+            </div>
+            <div id="docRxLogsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+        </div>
 
-              <table style="width:100%; border-collapse:collapse;" id="medicineRxTable">
-                <thead>
-                  <tr style="background:#f0f9ff; font-size:11px; color:#0369a1; text-align:left;">
-                    <th style="padding:8px 6px;">Medicine Name</th>
-                    <th style="padding:8px 6px;">Dose</th>
-                    <th style="padding:8px 6px;">Freq</th>
-                    <th style="padding:8px 6px;">Days</th>
-                    <th style="padding:8px 6px;">Instruction</th>
-                    <th style="padding:8px 6px; width:30px;"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="Tab. Paracetamol 650mg"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
-                    <td style="padding:6px;"><button class="btn-icon-danger" onclick="this.closest('tr').remove()">&times;</button></td>
-                  </tr>
-                  <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="Cap. Amoxicillin 500mg"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 cap"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
-                    <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
-                    <td style="padding:6px;"><button class="btn-icon-danger" onclick="this.closest('tr').remove()">&times;</button></td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
-                <div>
-                  <label class="form-label">FOLLOW UP DATE</label>
-                  <input type="date" id="followUpDate" class="form-input" style="padding:6px 10px;">
-                </div>
-                <div style="display:flex; gap:10px;">
-                  <button class="btn-primary" style="background:#0284c7; padding:10px 18px;" onclick="completeAndNextConsultation()">
-                    <i class="fa-solid fa-check"></i> Complete & Next Patient
-                  </button>
-                </div>
+        <!-- Tab: Lab & Reports -->
+        <div id="docLabView" style="display:none;">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+              <div>
+                <h3 class="card-title"><i class="fa-solid fa-flask" style="color:var(--primary-teal);"></i> Diagnostic Lab & Pathology Reports</h3>
+                <p class="card-subtitle">Pending and verified patient reports</p>
               </div>
             </div>
-
-            <!-- Waiting Queue Quick List -->
-            <div class="card" style="padding:14px 18px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h4 style="margin:0; font-size:13px; font-weight:800; color:#0369a1;">
-                  <i class="fa-solid fa-users"></i> Today's Arrived Waiting List (<span id="waitingCountText">1</span>)
-                </h4>
-                <button class="btn-secondary" style="font-size:11px; padding:4px 8px;" onclick="openSoloWalkinModal()">+ Quick Add</button>
-              </div>
-
-              <div id="doctorWaitingQueueList" style="display:flex; flex-direction:column; gap:8px; max-height:160px; overflow-y:auto;"></div>
+            <div style="padding:24px; text-align:center; color:var(--text-muted);">
+              <i class="fa-solid fa-microscope" style="font-size:36px; opacity:0.3; margin-bottom:10px;"></i>
+              <p>Diagnostic laboratory integration active. 4 routine investigations completed today.</p>
             </div>
           </div>
         </div>
@@ -247,64 +298,16 @@
       </div>
 
       <!-- Bottom Ticker -->
-      <footer class="bottom-ticker-bar" style="background:#0c4a6e;">
-        <div>Dhyey Clinic · Doctor OPD Portal | F1 Complete Rx | F2 Next Patient | Live Auto-Sync Active</div>
-        <div id="docClock">10:00:00 AM</div>
+      <footer class="bottom-ticker-bar">
+        <div class="ticker-shortcuts">
+          <span class="ticker-item"><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> Dhyey Clinic · Doctor OPD Portal</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F1</kbd> Complete Rx</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F2</kbd> Call Next Patient</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F3</kbd> Queue</span>
+        </div>
+        <div id="docClock" class="ticker-clock">10:00:00 AM</div>
       </footer>
     </main>
-  </div>
-
-  <!-- Modal: Solo Doctor Quick Walk-in -->
-  <div id="soloDocModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3 class="modal-title" style="color:#0284c7;"><i class="fa-solid fa-bolt"></i> Quick Walk-in Registration (Solo Doctor)</h3>
-        <button class="modal-close-btn" onclick="closeSoloWalkinModal()">&times;</button>
-      </div>
-
-      <form onsubmit="handleDoctorDirectWalkin(event)">
-        <div class="form-group">
-          <label class="form-label">Patient Full Name <span class="req">*</span></label>
-          <input id="docWalkinName" class="form-input" type="text" placeholder="e.g. PATEL HITESHBHAI" required>
-        </div>
-
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">Age <span class="req">*</span></label>
-            <input id="docWalkinAge" class="form-input" type="number" value="35" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <select id="docWalkinGender" class="form-select">
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Blood</label>
-            <select id="docWalkinBlood" class="form-select">
-              <option value="B+">B+</option>
-              <option value="A+">A+</option>
-              <option value="O+">O+</option>
-              <option value="AB+">AB+</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Presenting Symptoms / Complaint</label>
-          <textarea id="docWalkinComplaint" class="form-textarea" rows="2" placeholder="e.g. Fever, body pain for 1 day"></textarea>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
-          <button type="button" class="btn-secondary" onclick="closeSoloWalkinModal()">Cancel</button>
-          <button type="submit" class="btn-primary" style="background:#0284c7;">
-            <i class="fa-solid fa-stethoscope"></i> Consult Patient Now
-          </button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <div id="toastContainer" class="toast-container"></div>
@@ -315,13 +318,13 @@
       PATIENTS: 'clinic_patients_data',
       QUEUE: 'clinic_consultation_queue',
       ACTIVE_PATIENT: 'clinic_active_patient',
-      TOKEN_COUNTER: 'clinic_token_counter'
+      TOKEN_COUNTER: 'clinic_token_counter',
+      CONSULT_HISTORY: 'clinic_consultation_history'
     };
 
     let activeConsultationPatient = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Set follow up date to 5 days from now
       const d = new Date();
       d.setDate(d.getDate() + 5);
       document.getElementById('followUpDate').value = d.toISOString().split('T')[0];
@@ -349,6 +352,9 @@
         } else if (e.key === 'F2') {
           e.preventDefault();
           callNextPatient();
+        } else if (e.key === 'F3') {
+          e.preventDefault();
+          switchDocTab('queue');
         }
       });
     });
@@ -362,6 +368,16 @@
     function saveQueue(queue) {
       localStorage.setItem(STORAGE_KEYS.QUEUE, JSON.stringify(queue));
       window.dispatchEvent(new CustomEvent('clinic-data-sync'));
+    }
+
+    function getConsultHistory() {
+      const data = localStorage.getItem(STORAGE_KEYS.CONSULT_HISTORY);
+      if (!data) return [];
+      try { return JSON.parse(data); } catch (e) { return []; }
+    }
+
+    function saveConsultHistory(history) {
+      localStorage.setItem(STORAGE_KEYS.CONSULT_HISTORY, JSON.stringify(history));
     }
 
     function loadActivePatientAndQueue() {
@@ -379,6 +395,8 @@
       activeConsultationPatient = active;
       renderActivePatient(active);
       renderWaitingQueue(queue, active);
+      renderFullQueue(queue);
+      renderConsultationLogs();
     }
 
     function renderActivePatient(patient) {
@@ -417,9 +435,12 @@
     function renderWaitingQueue(queue, currentActive) {
       const listEl = document.getElementById('doctorWaitingQueueList');
       const countEl = document.getElementById('docQueueCount');
+      const sideBadge = document.getElementById('sidebarQueueBadge');
       const waitingText = document.getElementById('waitingCountText');
 
       if (countEl) countEl.textContent = String(queue.length);
+      if (sideBadge) sideBadge.textContent = String(queue.length);
+
       const waitingList = queue.filter(q => !currentActive || q.token !== currentActive.token);
       if (waitingText) waitingText.textContent = String(waitingList.length);
 
@@ -431,15 +452,72 @@
       }
 
       listEl.innerHTML = waitingList.map(q => `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; cursor:pointer;" onclick="selectPatientForConsultation('${q.token}')">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; cursor:pointer;" onclick="selectPatientForConsultation('${q.token}')">
           <div>
-            <span class="badge-key" style="background:#0284c7; color:#fff; font-size:10px;">${q.token}</span>
-            <strong style="font-size:12.5px; color:#1e293b; margin-left:6px;">${q.name}</strong>
-            <span style="font-size:11px; color:#64748b;">(${q.age}Y · ${q.gender})</span>
+            <span class="badge-key" style="background:var(--primary-teal); color:#fff; font-size:10px;">${q.token}</span>
+            <strong style="font-size:13px; color:var(--text-main); margin-left:6px;">${q.name}</strong>
+            <span style="font-size:11px; color:var(--text-muted);">(${q.age}Y · ${q.gender})</span>
           </div>
-          <button class="btn-secondary" style="padding:3px 8px; font-size:11px; color:#0284c7; border-color:#0284c7;">
+          <button class="btn-secondary" style="padding:3px 8px; font-size:11px;">
             Load Patient
           </button>
+        </div>
+      `).join('');
+    }
+
+    function renderFullQueue(queue) {
+      const container = document.getElementById('docFullQueueList');
+      if (!container) return;
+
+      if (queue.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:32px; color:var(--text-muted);">No patients currently waiting in queue.</div>`;
+        return;
+      }
+
+      container.innerHTML = queue.map(q => `
+        <div class="patient-directory-card">
+          <div class="patient-card-left">
+            <span class="badge-key" style="background:var(--primary-teal); color:#fff; font-size:13px; padding:6px 12px;">${q.token}</span>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <h4 style="margin:0; font-size:15px; font-weight:800; color:var(--text-main);">${q.name}</h4>
+                <span class="badge-key" style="background:${q.status === 'In Consultation' ? '#dcfce7' : '#e8f7f4'}; color:${q.status === 'In Consultation' ? '#15803d' : 'var(--primary-teal)'};">${q.status}</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+                Age: ${q.age} (${q.gender}) · Blood: ${q.bloodGroup} · Arrived: ${q.arrivedAt} · Complaint: ${q.complaint || 'N/A'}
+              </div>
+            </div>
+          </div>
+          <button class="btn-primary" style="padding:6px 14px; font-size:12px;" onclick="selectPatientForConsultation('${q.token}'); switchDocTab('consultation');">
+            <i class="fa-solid fa-stethoscope"></i> Consult Now
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function renderConsultationLogs() {
+      const container = document.getElementById('docRxLogsContainer');
+      if (!container) return;
+
+      const history = getConsultHistory();
+      if (history.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:32px; color:var(--text-muted);">No completed consultations recorded yet today.</div>`;
+        return;
+      }
+
+      container.innerHTML = history.map(item => `
+        <div class="patient-directory-card">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h4 style="margin:0; font-size:14px; font-weight:800; color:var(--text-main);">${item.patientName}</h4>
+              <span class="badge-key" style="background:#dcfce7; color:#15803d;">Completed</span>
+              <span style="font-size:11px; color:var(--text-muted);">${item.completedAt}</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:3px;">
+              <strong>Diagnosis:</strong> ${item.diagnosis} · <strong>Rx:</strong> ${item.medicinesCount} medicine(s)
+            </div>
+          </div>
+          <span class="badge-key" style="background:var(--primary-teal); color:#fff;">Token ${item.token}</span>
         </div>
       `).join('');
     }
@@ -465,7 +543,6 @@
         return;
       }
 
-      // Find first waiting patient or next
       const next = queue.find(q => q.status === 'Waiting') || queue[0];
       if (next) {
         selectPatientForConsultation(next.token);
@@ -480,12 +557,25 @@
 
       const finishedToken = activeConsultationPatient.token;
       const finishedName = activeConsultationPatient.name;
+      const diagnosis = document.getElementById('clinicalDiagnosis').value.trim() || 'General Consultation';
+      const medRows = document.querySelectorAll('#medicineRxTable tbody tr').length;
+
+      // Save to consultation history
+      const history = getConsultHistory();
+      history.unshift({
+        token: finishedToken,
+        patientName: finishedName,
+        diagnosis: diagnosis,
+        medicinesCount: medRows,
+        completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      saveConsultHistory(history);
 
       let queue = getQueue();
       queue = queue.filter(q => q.token !== finishedToken);
       saveQueue(queue);
 
-      showToast(`Consultation completed for ${finishedName} (${finishedToken}). Prescription saved!`, 'success');
+      showToast(`Consultation completed for ${finishedName} (${finishedToken}). Prescription recorded!`, 'success');
 
       if (queue.length > 0) {
         queue[0].status = 'In Consultation';
@@ -504,69 +594,40 @@
       row.style.borderBottom = '1px solid #e2e8f0';
       row.style.fontSize = '12.5px';
       row.innerHTML = `
-        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" placeholder="Medicine name"></td>
-        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
-        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
-        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="3"></td>
-        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+        <td style="padding:6px;"><input type="text" class="form-input rx-name" style="padding:4px 8px; font-size:12px;" placeholder="Medicine name"></td>
+        <td style="padding:6px;"><input type="text" class="form-input rx-dose" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
+        <td style="padding:6px;"><input type="text" class="form-input rx-freq" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+        <td style="padding:6px;"><input type="text" class="form-input rx-days" style="padding:4px 8px; font-size:12px; width:50px;" value="3"></td>
+        <td style="padding:6px;"><input type="text" class="form-input rx-inst" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
         <td style="padding:6px;"><button class="btn-icon-danger" onclick="this.closest('tr').remove()">&times;</button></td>
       `;
       tbody.appendChild(row);
     }
 
-    // Solo Doctor Walk-in Modal Handlers
-    function openSoloWalkinModal() {
-      document.getElementById('soloDocModal').classList.add('active');
-      document.getElementById('docWalkinName').focus();
-    }
+    function switchDocTab(tab) {
+      document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
 
-    function closeSoloWalkinModal() {
-      document.getElementById('soloDocModal').classList.remove('active');
-    }
+      const views = ['docConsultationView', 'docQueueView', 'docRxLogsView', 'docLabView'];
+      views.forEach(v => {
+        const el = document.getElementById(v);
+        if (el) el.style.display = 'none';
+      });
 
-    function handleDoctorDirectWalkin(event) {
-      event.preventDefault();
-
-      const name = document.getElementById('docWalkinName').value.trim().toUpperCase();
-      const age = parseInt(document.getElementById('docWalkinAge').value || '35', 10);
-      const gender = document.getElementById('docWalkinGender').value;
-      const blood = document.getElementById('docWalkinBlood').value;
-      const complaint = document.getElementById('docWalkinComplaint').value.trim() || 'General Consultation';
-
-      let count = parseInt(localStorage.getItem(STORAGE_KEYS.TOKEN_COUNTER) || '2', 10) + 1;
-      localStorage.setItem(STORAGE_KEYS.TOKEN_COUNTER, String(count));
-      const token = `T-${String(count).padStart(2, '0')}`;
-
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      const newPatient = {
-        token: token,
-        patientId: `PAT-${String(Date.now()).slice(-4)}`,
-        name: name,
-        familyId: `FAM-${String(Date.now()).slice(-4)}`,
-        familyHead: name,
-        age: age,
-        gender: gender,
-        bloodGroup: blood,
-        phone: 'Walk-in',
-        area: 'Walk-in',
-        arrivedAt: timeStr,
-        doctor: 'Dr. Shah (General Medicine)',
-        vitals: { bp: '120/80', pulse: '72 bpm', temp: '98.6 °F', spo2: '99%', weight: '65 kg' },
-        complaint: complaint,
-        status: 'In Consultation',
-        priority: 'Normal'
-      };
-
-      const queue = getQueue();
-      queue.unshift(newPatient);
-      saveQueue(queue);
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_PATIENT, JSON.stringify(newPatient));
-
-      closeSoloWalkinModal();
-      loadActivePatientAndQueue();
-      showToast(`Walk-in patient ${name} registered & loaded!`, 'success');
+      if (tab === 'consultation') {
+        document.getElementById('docConsultationView').style.display = 'block';
+        document.getElementById('nav-active-consult')?.classList.add('active');
+      } else if (tab === 'queue') {
+        document.getElementById('docQueueView').style.display = 'block';
+        document.getElementById('nav-queue-tab')?.classList.add('active');
+        renderFullQueue(getQueue());
+      } else if (tab === 'prescriptions') {
+        document.getElementById('docRxLogsView').style.display = 'block';
+        document.getElementById('nav-rx-tab')?.classList.add('active');
+        renderConsultationLogs();
+      } else if (tab === 'lab') {
+        document.getElementById('docLabView').style.display = 'block';
+        document.getElementById('nav-lab-tab')?.classList.add('active');
+      }
     }
 
     function setupDoctorClock() {
@@ -580,14 +641,19 @@
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+      toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> <span>${message}</span>`;
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3200);
     }
 
-    function switchDocTab(tab) {
-      if (tab === 'queue') {
-        showToast('Viewing active queue list', 'success');
+    function toggleTheme() {
+      const body = document.body;
+      if (body.getAttribute('data-theme') === 'dark') {
+        body.removeAttribute('data-theme');
+        showToast('Switched to Light Theme');
+      } else {
+        body.setAttribute('data-theme', 'dark');
+        showToast('Switched to Dark Theme');
       }
     }
   </script>
