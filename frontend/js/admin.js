@@ -101,9 +101,44 @@ function exportVisibleTable() {
   showToast('Analysis CSV downloaded.');
 }
 function navigate(view = location.hash.slice(1) || 'overview') { document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === view)); document.querySelectorAll('.admin-subnav-link').forEach(item => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); else if (view === 'clinics') renderClinics(); else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', '')); else renderStaff(); }
-document.addEventListener('click', event => { const viewLink = event.target.closest('[data-view]'); if (viewLink) { event.preventDefault(); location.hash = viewLink.dataset.view; navigate(viewLink.dataset.view); } const action = event.target.closest('[data-action]')?.dataset.action; if (action === 'add-clinic') openClinicModal(); if (action === 'close-modal') closeModal(); if (action === 'toast') showToast('Staff invitations will be available soon.'); if (action === 'export') exportVisibleTable(); });
-document.getElementById('themeToggle').addEventListener('click', () => { document.body.dataset.theme = document.body.dataset.theme === 'dark' ? '' : 'dark'; });
+document.addEventListener('click', event => {
+  const viewLink = event.target.closest('[data-view]');
+  if (viewLink) { event.preventDefault(); location.hash = viewLink.dataset.view; navigate(viewLink.dataset.view); }
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  if (action === 'add-clinic') openClinicModal();
+  if (action === 'close-modal') closeModal();
+  if (action === 'toast') showToast('Staff invitations will be available soon.');
+  if (action === 'export') exportVisibleTable();
+  if (action === 'account-info') showToast('Administrator account · Full system access');
+  if (action === 'logout') { sessionStorage.clear(); window.location.href = '../login.html'; }
+  if (!event.target.closest('.admin-account')) closeAccountMenu();
+});
+function closeAccountMenu() {
+  const menu = document.getElementById('accountMenu');
+  menu.hidden = true;
+  document.getElementById('accountToggle').setAttribute('aria-expanded', 'false');
+}
+document.getElementById('accountToggle').addEventListener('click', event => {
+  event.stopPropagation();
+  const menu = document.getElementById('accountMenu');
+  menu.hidden = !menu.hidden;
+  event.currentTarget.setAttribute('aria-expanded', String(!menu.hidden));
+});
+const savedTheme = localStorage.getItem('dhyey-admin-theme');
+if (savedTheme === 'dark') document.body.dataset.theme = 'dark';
+document.getElementById('themeToggle').addEventListener('click', event => {
+  const dark = document.body.dataset.theme !== 'dark';
+  document.body.dataset.theme = dark ? 'dark' : '';
+  localStorage.setItem('dhyey-admin-theme', dark ? 'dark' : 'light');
+  event.currentTarget.innerHTML = `<i class="fa-solid fa-${dark ? 'sun' : 'moon'}"></i>`;
+});
 document.getElementById('menuToggle').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('is-open'));
+document.addEventListener('keydown', event => {
+  if (event.key === 'F1') { event.preventDefault(); location.hash = 'overview'; navigate('overview'); }
+  if (event.key === 'F2') { event.preventDefault(); location.hash = 'clinics'; navigate('clinics'); }
+  if (event.key === 'F3') { event.preventDefault(); location.hash = 'analysis-clinic'; navigate('analysis-clinic'); }
+  if (event.key === 'Escape') { closeModal(); closeAccountMenu(); }
+});
 document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date());
 function updateDoctorClock() {
   const now = new Date();
@@ -112,4 +147,5 @@ function updateDoctorClock() {
 updateDoctorClock();
 setInterval(updateDoctorClock, 1000);
 window.addEventListener('hashchange', () => navigate());
+document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
 navigate();

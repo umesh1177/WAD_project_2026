@@ -19,15 +19,15 @@
         <nav class="sidebar-nav" aria-label="Admin navigation">
           <a class="nav-item active" href="#overview" data-view="overview">
             <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>Overview</span>
-            <span class="badge-key">1</span>
+            <span class="badge-key">F1</span>
           </a>
           <a class="nav-item" href="#clinics" data-view="clinics">
             <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-hospital"></i></span>Clinics</span>
-            <span class="badge-key">2</span>
+            <span class="badge-key">F2</span>
           </a>
           <a class="nav-item" href="#analysis-clinic" data-view="analysis-clinic">
             <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></span>Analysis</span>
-            <span class="badge-key">3</span>
+            <span class="badge-key">F3</span>
           </a>
           <div class="admin-subnav" aria-label="Analysis views">
             <a href="#analysis-clinic" data-view="analysis-clinic" class="admin-subnav-link active">Clinic wise</a>
@@ -55,14 +55,21 @@
           </div>
         </div>
         <div class="top-navbar-right">
-          <div class="admin-user-chip"><span class="admin-avatar">A</span><span>Administrator</span><i class="fa-solid fa-chevron-down"></i></div>
+          <div class="admin-account">
+            <button class="admin-user-chip" id="accountToggle" aria-expanded="false" aria-controls="accountMenu"><span class="admin-avatar">A</span><span>Administrator</span><i class="fa-solid fa-chevron-down"></i></button>
+            <div class="account-menu" id="accountMenu" hidden>
+              <div class="account-menu-heading"><strong>Administrator</strong><small>System administrator</small></div>
+              <button type="button" data-action="account-info"><i class="fa-regular fa-id-card"></i> Account information</button>
+              <button type="button" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+            </div>
+          </div>
           <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
         </div>
       </header>
 
       <section class="content-body" id="adminContent" aria-live="polite"></section>
       <footer class="bottom-ticker-bar">
-        <div>Dhyey Clinic · Admin Portal | 1 Overview | 2 Clinics | 3 Analysis</div>
+        <div>Dhyey Clinic · Admin Portal | F1 Overview | F2 Clinics | F3 Analysis</div>
         <div class="ticker-time" id="docClock"></div>
       </footer>
     </main>
