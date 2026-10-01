@@ -760,16 +760,48 @@ html, body {
 }
 
 /* Scrollbar Customization */
+.cms-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(37, 99, 235, 0.45) rgba(0, 0, 0, 0.04) !important;
+}
 .cms-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 6px !important;
+  height: 6px !important;
+}
+.cms-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-radius: 4px !important;
 }
 .cms-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: var(--radius-full);
+  background: rgba(37, 99, 235, 0.4) !important;
+  border-radius: 4px !important;
 }
 .cms-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
+  background: var(--primary) !important;
+}
+
+/* Family Directory & Member List Item Styles */
+.cms-family-block {
+  flex-shrink: 0 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cms-family-members-viewport {
+  max-height: 110px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.cms-member-item {
+  flex-shrink: 0 !important;
+  transition: all 0.15s ease;
+}
+.cms-member-item:hover {
+  border-color: var(--primary) !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+  transform: translateX(2px);
 }
 
 /* Hide on Print */

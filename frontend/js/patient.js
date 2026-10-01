@@ -2,16 +2,15 @@
  * =========================================================
  * PATIENT & FAMILY MEMBER MANAGEMENT
  * Interactive Family Head Search, Auto-fill Area/Society,
- * Auto-Learning Datalists with Doctor Notifications
+ * Member Registration, Member Details Update & Auto-Learning Datalists
  * =========================================================
  */
 
 import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix } from './api.js';
 
-export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null) {
+export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const clinicCode = getClinicPrefix(clinicId);
   const db = getLocalDB(clinicId);
 
   // Initialize custom datalists if missing
@@ -25,18 +24,29 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
     ? (db.families?.[selectedFamId] || Object.values(db.families || {}).find(f => f.famId === selectedFamId || f.id === selectedFamId))
     : null;
 
+  // Check if editing an existing patient
+  let editingPatient = (editPatientId && targetFamily?.patients)
+    ? (targetFamily.patients[editPatientId] || Object.values(targetFamily.patients).find(p => p.id === editPatientId || p.patId === editPatientId))
+    : null;
+
   function renderView() {
     container.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 16px; max-width: 900px; margin: 0 auto; width: 100%;">
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 14px; box-sizing: border-box;">
+        <div class="cms-card" style="display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; border-top: 3px solid ${editingPatient ? 'var(--warning)' : 'var(--primary)'};">
           
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
             <div class="font-display" style="font-weight: 800; font-size: 16px;">
-              ${targetFamily ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`) : 'Add Family Member'}
+              ${
+                editingPatient
+                  ? `✏️ Edit Patient Details &middot; ${editingPatient.name}`
+                  : targetFamily
+                  ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`)
+                  : 'Add Family Member'
+              }
             </div>
-            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(37,99,235,0.1); color: var(--primary); font-weight: 700;">
-              <i class="fa-solid fa-user-plus"></i> Member Registration
+            <span class="cms-pill font-mono" style="font-size: 11px; background: ${editingPatient ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.1)'}; color: ${editingPatient ? 'var(--warning-dark, #b45309)' : 'var(--primary)'}; font-weight: 700;">
+              <i class="fa-solid ${editingPatient ? 'fa-pen-to-square' : 'fa-user-plus'}"></i> ${editingPatient ? 'Editing Mode' : 'Member Registration'}
             </span>
           </div>
 
@@ -65,7 +75,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="cms-pill cms-badge-paid font-mono" style="font-size: 12px; font-weight: 800;">FAM ${selectedFamId}</span>
                 ${
-                  !isRedirectFromHeadReg
+                  !isRedirectFromHeadReg && !editingPatient
                     ? `
                   <button type="button" id="btn-change-family" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 4px 10px; font-size: 11.5px; border: 1px solid var(--border);" title="Select a different family">
                     <i class="fa-solid fa-arrows-rotate"></i> Change Family
@@ -102,12 +112,12 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Member Full Name *</label>
-                  <input type="text" id="member-name-input" class="cms-input" required placeholder="(SURNAME NAME FATHER/HUSBAND'S NAME)" autofocus style="padding: 7px 10px;" />
+                  <input type="text" id="member-name-input" class="cms-input" required placeholder="(SURNAME NAME FATHER/HUSBAND'S NAME)" value="${editingPatient?.name || ''}" autofocus style="padding: 7px 10px;" />
                 </div>
 
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Relation to Head *</label>
-                  <input type="text" id="member-rel-input" class="cms-input" list="dl-relation-list" required placeholder="e.g. Wife, Son, Mother" style="padding: 7px 10px;" />
+                  <input type="text" id="member-rel-input" class="cms-input" list="dl-relation-list" required placeholder="e.g. Wife, Son, Mother" value="${editingPatient?.relation || ''}" style="padding: 7px 10px;" />
                 </div>
               </div>
 
@@ -115,28 +125,28 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div style="display: grid; grid-template-columns: 0.8fr 1fr 1.2fr; gap: 8px;">
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Age</label>
-                  <input type="text" id="member-age-input" class="cms-input" placeholder="e.g. 35, 6M" style="padding: 7px 10px;" />
+                  <input type="text" id="member-age-input" class="cms-input" placeholder="e.g. 35, 6M" value="${editingPatient?.age || ''}" style="padding: 7px 10px;" />
                 </div>
 
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Blood Group</label>
                   <select id="member-blood-input" class="cms-select cms-input" style="padding: 7px 10px;">
                     <option value="">-- Select --</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                    <option value="Unknown">Unknown</option>
+                    <option value="A+" ${editingPatient?.bloodGroup === 'A+' ? 'selected' : ''}>A+</option>
+                    <option value="A-" ${editingPatient?.bloodGroup === 'A-' ? 'selected' : ''}>A-</option>
+                    <option value="B+" ${editingPatient?.bloodGroup === 'B+' ? 'selected' : ''}>B+</option>
+                    <option value="B-" ${editingPatient?.bloodGroup === 'B-' ? 'selected' : ''}>B-</option>
+                    <option value="AB+" ${editingPatient?.bloodGroup === 'AB+' ? 'selected' : ''}>AB+</option>
+                    <option value="AB-" ${editingPatient?.bloodGroup === 'AB-' ? 'selected' : ''}>AB-</option>
+                    <option value="O+" ${editingPatient?.bloodGroup === 'O+' ? 'selected' : ''}>O+</option>
+                    <option value="O-" ${editingPatient?.bloodGroup === 'O-' ? 'selected' : ''}>O-</option>
+                    <option value="Unknown" ${editingPatient?.bloodGroup === 'Unknown' ? 'selected' : ''}>Unknown</option>
                   </select>
                 </div>
 
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Known Allergies</label>
-                  <input type="text" id="member-allergy-input" class="cms-input" list="dl-member-allergy-list" placeholder="e.g. Penicillin, None" style="padding: 7px 10px;" />
+                  <input type="text" id="member-allergy-input" class="cms-input" list="dl-member-allergy-list" value="${editingPatient?.allergy || ''}" placeholder="e.g. Penicillin, None" style="padding: 7px 10px;" />
                 </div>
               </div>
 
@@ -146,28 +156,37 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">
                     Society / Flat <span style="font-size: 10.5px; color: var(--text-muted); font-weight: normal;">(Auto-filled, editable)</span>
                   </label>
-                  <input type="text" id="member-society-input" class="cms-input" list="dl-member-society-list" value="${targetFamily.society || ''}" placeholder="e.g. Shanti Niketan Apt" style="padding: 7px 10px;" />
+                  <input type="text" id="member-society-input" class="cms-input" list="dl-member-society-list" value="${editingPatient?.society || targetFamily.society || ''}" placeholder="e.g. Shanti Niketan Apt" style="padding: 7px 10px;" />
                 </div>
 
                 <div class="cms-form-group" style="margin-bottom: 0;">
                   <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">
                     Area / Location <span style="font-size: 10.5px; color: var(--text-muted); font-weight: normal;">(Auto-filled, editable)</span>
                   </label>
-                  <input type="text" id="member-area-input" class="cms-input" list="dl-member-area-list" value="${targetFamily.area || ''}" placeholder="e.g. Vastrapur, Satellite" style="padding: 7px 10px;" />
+                  <input type="text" id="member-area-input" class="cms-input" list="dl-member-area-list" value="${editingPatient?.area || targetFamily.area || ''}" placeholder="e.g. Vastrapur, Satellite" style="padding: 7px 10px;" />
                 </div>
               </div>
 
               <!-- Mobile Phone (Optional) -->
               <div class="cms-form-group" style="margin-bottom: 0;">
                 <label class="cms-label" style="font-size: 12px; margin-bottom: 3px;">Contact Phone (Optional)</label>
-                <input type="tel" id="member-phone-input" class="cms-input" value="${targetFamily.phone || ''}" placeholder="10-digit mobile" style="padding: 7px 10px;" />
+                <input type="tel" id="member-phone-input" class="cms-input" value="${editingPatient?.phone || targetFamily.phone || ''}" placeholder="10-digit mobile" style="padding: 7px 10px;" />
               </div>
 
-              <!-- Action Button -->
-              <div style="margin-top: 4px; padding-top: 4px;">
-                <button type="submit" id="btn-submit-member" class="cms-btn cms-btn-primary" style="width: 100%; padding: 10px 16px;">
-                  <span><i class="fa-solid fa-user-plus"></i></span>
-                  <span>Save Member &amp; Open Patient Record</span>
+              <!-- Action Buttons -->
+              <div style="display: flex; gap: 8px; margin-top: 4px; padding-top: 4px;">
+                ${
+                  editingPatient
+                    ? `
+                  <button type="button" id="btn-cancel-edit-member" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border); padding: 10px 16px; font-weight: 700;">
+                    <i class="fa-solid fa-xmark"></i> Cancel
+                  </button>
+                `
+                    : ''
+                }
+                <button type="submit" id="btn-submit-member" class="cms-btn ${editingPatient ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2; padding: 10px 16px;">
+                  <span><i class="fa-solid ${editingPatient ? 'fa-floppy-disk' : 'fa-user-plus'}"></i></span>
+                  <span>${editingPatient ? 'Update Member & Return to Patient Record' : 'Save Member & Open Patient Record'}</span>
                   <span class="cms-kbd">Enter</span>
                 </button>
               </div>
@@ -189,12 +208,23 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
     // Render Datalists
     renderMemberDatalists(db);
 
+    // Cancel Edit Button
+    const btnCancelEdit = container.querySelector('#btn-cancel-edit-member');
+    if (btnCancelEdit) {
+      btnCancelEdit.addEventListener('click', () => {
+        if (onSelectPatient) {
+          onSelectPatient(selectedFamId, editPatientId);
+        }
+      });
+    }
+
     // Wire Change Family Button
     const btnChangeFam = container.querySelector('#btn-change-family');
     if (btnChangeFam) {
       btnChangeFam.addEventListener('click', () => {
         selectedFamId = null;
         targetFamily = null;
+        editingPatient = null;
         isRedirectFromHeadReg = false;
         renderView();
       });
@@ -208,7 +238,6 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       function updateSearchResults() {
         const query = searchInput.value.trim().toLowerCase();
         if (!query) {
-          // Show recent registered families as default suggestions
           const allFams = Object.values(db.families || {}).slice(0, 5);
           if (allFams.length === 0) {
             suggestionsContainer.innerHTML = `
@@ -298,7 +327,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
         } else {
           suggestionsContainer.innerHTML = `
             <div style="font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; margin-bottom: 2px;">
-              Found ${matches.length} Matching Family Head(s) &middot; Click to Select:
+              Matching Families (${matches.length}):
             </div>
             ${matches
               .map((f) => {
@@ -337,7 +366,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       updateSearchResults();
     }
 
-    // Wire Member Form Submission
+    // Wire Form Submission
     const memberForm = container.querySelector('#form-add-member');
     if (memberForm) {
       const nameInput = container.querySelector('#member-name-input');
@@ -408,9 +437,38 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           }
         }
 
-        const curYr = new Date().getFullYear();
-        let createdPatId = null;
+        if (editingPatient) {
+          // Editing existing patient
+          editingPatient.name = name;
+          editingPatient.relation = relation;
+          editingPatient.age = age;
+          editingPatient.bloodGroup = bloodGroup;
+          editingPatient.allergy = allergy;
+          editingPatient.society = society;
+          editingPatient.area = area;
+          editingPatient.phone = phone;
 
+          // If this patient is Head, also keep family meta synced
+          if (editingPatient.relation === 'Head' || relation === 'Head') {
+            if (targetFamily) {
+              targetFamily.headName = name;
+              targetFamily.society = society;
+              targetFamily.area = area;
+              targetFamily.phone = phone;
+            }
+          }
+
+          saveLocalDB(db, clinicId);
+          showToast(`✨ Details for "${name}" updated successfully!`);
+
+          if (onSelectPatient) {
+            onSelectPatient(famId, editingPatient.id || editingPatient.patId);
+          }
+          return;
+        }
+
+        // New member addition
+        let createdPatId = null;
         try {
           const res = await apiFetch('/patients/member', {
             method: 'POST',
@@ -433,7 +491,9 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           console.warn('Backend API member create error, continuing with local DB', err);
         }
 
-        const finalPatId = createdPatId || `${clinicCode}${curYr}${pad((db.counters?.patient || 0) + 1, 4)}`;
+        const famSeqCode = (famId || '').slice(-4) || '0001';
+        const nextMemberSeq = pad((db.families[famId]?.patients ? Object.keys(db.families[famId].patients).length : 0) + 1, 4);
+        const finalPatId = createdPatId || `${famSeqCode}${nextMemberSeq}`;
 
         const pat = {
           id: finalPatId,
@@ -481,110 +541,71 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
   function getKnownSocieties(db) {
     const defaultSocieties = ['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest'];
     const socs = new Set(defaultSocieties);
-    Object.values(db.families || {}).forEach((f) => {
-      if (f.society) socs.add(f.society.trim());
-    });
     (db.customSocieties || []).forEach(s => socs.add(s.trim()));
+    (db.masterSocieties || []).forEach(s => socs.add(s.name.trim()));
     const normalized = new Set();
     socs.forEach(s => normalized.add(s.toLowerCase()));
     return normalized;
   }
 
   function getKnownAreas(db) {
-    const defaultAreas = ['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Amroli', 'Varachha', 'Gota', 'Maninagar', 'Paldi'];
+    const defaultAreas = ['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Gota', 'Maninagar', 'Paldi', 'Science City', 'Varachha'];
     const areas = new Set(defaultAreas);
-    Object.values(db.families || {}).forEach((f) => {
-      if (f.area) areas.add(f.area.trim());
-    });
     (db.customAreas || []).forEach(a => areas.add(a.trim()));
+    (db.masterAreas || []).forEach(a => areas.add(a.name.trim()));
     const normalized = new Set();
     areas.forEach(a => normalized.add(a.toLowerCase()));
     return normalized;
   }
 
   function getKnownAllergies(db) {
-    const defaultAllergies = ['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', 'Ibuprofen'];
-    const allergies = new Set(defaultAllergies);
-    Object.values(db.families || {}).forEach((f) => {
-      Object.values(f.patients || {}).forEach(p => {
-        if (p.allergy) allergies.add(p.allergy.trim());
-      });
-    });
-    (db.customAllergies || []).forEach(a => allergies.add(a.trim()));
+    const defaultAllergies = ['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin'];
+    const als = new Set(defaultAllergies);
+    (db.customAllergies || []).forEach(a => als.add(a.trim()));
+    (db.masterAllergies || []).forEach(a => als.add(a.name.trim()));
     const normalized = new Set();
-    allergies.forEach(a => normalized.add(a.toLowerCase()));
+    als.forEach(a => normalized.add(a.toLowerCase()));
     return normalized;
   }
 
   function renderMemberDatalists(db) {
-    // Relations Datalist
     let dlRel = document.getElementById('dl-relation-list');
-    if (dlRel) dlRel.remove();
-    dlRel = document.createElement('datalist');
-    dlRel.id = 'dl-relation-list';
-    const rels = new Set(['Wife', 'Husband', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Other']);
-    (db.customRelations || []).forEach(r => rels.add(r.trim()));
-    rels.forEach((r) => {
-      const opt = document.createElement('option');
-      opt.value = r;
-      dlRel.appendChild(opt);
-    });
-    document.body.appendChild(dlRel);
+    if (!dlRel) {
+      dlRel = document.createElement('datalist');
+      dlRel.id = 'dl-relation-list';
+      document.body.appendChild(dlRel);
+    }
+    const allRels = ['Wife', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Husband', 'Grandfather', 'Grandmother', 'Daughter-in-Law', 'Son-in-Law', 'Other', ...(db.customRelations || [])];
+    dlRel.innerHTML = Array.from(new Set(allRels)).map(r => `<option value="${r}"></option>`).join('');
 
-    // Member Societies Datalist
     let dlSoc = document.getElementById('dl-member-society-list');
-    if (dlSoc) dlSoc.remove();
-    dlSoc = document.createElement('datalist');
-    dlSoc.id = 'dl-member-society-list';
-    const societies = new Set(['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest']);
-    Object.values(db.families || {}).forEach((f) => {
-      if (f.society) societies.add(f.society.trim());
-    });
-    (db.customSocieties || []).forEach(s => societies.add(s.trim()));
-    societies.forEach((s) => {
-      const opt = document.createElement('option');
-      opt.value = s;
-      dlSoc.appendChild(opt);
-    });
-    document.body.appendChild(dlSoc);
+    if (!dlSoc) {
+      dlSoc = document.createElement('datalist');
+      dlSoc.id = 'dl-member-society-list';
+      document.body.appendChild(dlSoc);
+    }
+    const allSocs = ['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest', ...(db.customSocieties || []), ...(db.masterSocieties || []).map(s => s.name)];
+    dlSoc.innerHTML = Array.from(new Set(allSocs)).map(s => `<option value="${s}"></option>`).join('');
 
-    // Member Areas Datalist
     let dlArea = document.getElementById('dl-member-area-list');
-    if (dlArea) dlArea.remove();
-    dlArea = document.createElement('datalist');
-    dlArea.id = 'dl-member-area-list';
-    const areas = new Set(['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Amroli', 'Varachha', 'Gota', 'Maninagar', 'Paldi']);
-    Object.values(db.families || {}).forEach((f) => {
-      if (f.area) areas.add(f.area.trim());
-    });
-    (db.customAreas || []).forEach(a => areas.add(a.trim()));
-    areas.forEach((a) => {
-      const opt = document.createElement('option');
-      opt.value = a;
-      dlArea.appendChild(opt);
-    });
-    document.body.appendChild(dlArea);
+    if (!dlArea) {
+      dlArea = document.createElement('datalist');
+      dlArea.id = 'dl-member-area-list';
+      document.body.appendChild(dlArea);
+    }
+    const allAreas = ['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Gota', 'Maninagar', 'Paldi', 'Science City', 'Varachha', ...(db.customAreas || []), ...(db.masterAreas || []).map(a => a.name)];
+    dlArea.innerHTML = Array.from(new Set(allAreas)).map(a => `<option value="${a}"></option>`).join('');
 
-    // Member Allergies Datalist
     let dlAllergy = document.getElementById('dl-member-allergy-list');
-    if (dlAllergy) dlAllergy.remove();
-    dlAllergy = document.createElement('datalist');
-    dlAllergy.id = 'dl-member-allergy-list';
-    const allergies = new Set(['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', 'Ibuprofen']);
-    Object.values(db.families || {}).forEach((f) => {
-      Object.values(f.patients || {}).forEach(p => {
-        if (p.allergy) allergies.add(p.allergy.trim());
-      });
-    });
-    (db.customAllergies || []).forEach(a => allergies.add(a.trim()));
-    allergies.forEach((alg) => {
-      const opt = document.createElement('option');
-      opt.value = alg;
-      dlAllergy.appendChild(opt);
-    });
-    document.body.appendChild(dlAllergy);
+    if (!dlAllergy) {
+      dlAllergy = document.createElement('datalist');
+      dlAllergy.id = 'dl-member-allergy-list';
+      document.body.appendChild(dlAllergy);
+    }
+    const allAllergies = ['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', ...(db.customAllergies || []), ...(db.masterAllergies || []).map(a => a.name)];
+    dlAllergy.innerHTML = Array.from(new Set(allAllergies)).map(a => `<option value="${a}"></option>`).join('');
   }
 
-  // Initial Render
+  // Initial render
   renderView();
 }

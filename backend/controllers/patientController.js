@@ -80,11 +80,9 @@ const createPatientMember = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Family not found' });
     }
 
-    const currentYear = new Date().getFullYear();
-    const cleanClinicCode = (clinicId === 'demo' ? '0001' : (String(clinicId).replace(/\D/g, '') || String(clinicId).toUpperCase().replace(/[^A-Z0-9]/g, '')).padStart(4, '0').slice(-4)) || '0001';
-
-    const countPat = await Patient.countDocuments({ clinicId });
-    const nextPatId = `${cleanClinicCode}${currentYear}${pad(countPat + 1, 4)}`;
+    const famSeqCode = (familyId || '').slice(-4) || pad(family.sequence || 1, 4);
+    const memberCount = await Patient.countDocuments({ familyId, clinicId });
+    const nextPatId = `${famSeqCode}${pad(memberCount + 1, 4)}`;
 
     const newPatient = new Patient({
       patId: nextPatId,

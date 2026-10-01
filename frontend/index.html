@@ -1,1049 +1,824 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dhyey Clinic · Family-Based Personal Clinic Management System</title>
-  <meta name="description"
-    content="Dhyey Clinic - Smart, offline-capable family clinic management system for doctors. Manage patient records, prescriptions, billing, and family health ledgers." />
-
-  <!-- Bootstrap 5 CSS CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-
-  <!-- Google Fonts & Remix Icon CDN -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-
-  <link rel="stylesheet" href="pages/css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dhyey Clinic & Hospital - Clinical Management System</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/patient.css">
+  <link rel="stylesheet" href="css/print.css">
 </head>
+<body class="cms-root">
 
-<body>
+  <!-- =========================================================
+       LOGIN SCREEN VIEW (Shown if not authenticated)
+       ========================================================= -->
+  <div id="view-login" class="cms-login-page" style="display: none;">
+    <div class="cms-login-backdrop"></div>
+    <div class="cms-login-card">
+      <div class="cms-login-avatar"><i class="fa-solid fa-hospital"></i></div>
+      <h1 class="cms-login-title">Dhyey Clinic Portal</h1>
+      <p class="cms-login-desc">Sign in to manage patient records, clinical visits, pharmacy, and billing seamlessly.</p>
 
-  <!-- ============================
-       NAVIGATION BAR
-       ============================ -->
-  <nav class="navbar navbar-expand-lg sticky-top custom-navbar">
-    <div class="container">
-      <a href="#" class="navbar-brand brand-logo">
-        <div class="logo-icon">
-          <i class="ri-heart-pulse-fill"></i>
-        </div>
-        <span class="brand-name">Dhyey Clinic</span>
-      </a>
-
-      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navContent">
-        <ul class="navbar-nav mx-auto mb-2 mb-lg-0 nav-links">
-          <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-          <li class="nav-item"><a class="nav-link" href="#modules">Modules</a></li>
-          <li class="nav-item"><a class="nav-link" href="#testimonials">Reviews</a></li>
-          <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
-          <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-        </ul>
-        <div class="nav-actions">
-          <a href="pages/login.html" class="btn btn-primary-custom">
-            <i class="ri-login-box-line"></i> Sign In
-          </a>
-        </div>
-      </div>
-    </div>
-  </nav>
-
-  <!-- ============================
-       HERO SECTION
-       ============================ -->
-  <header class="hero-section">
-    <div class="container">
-      <div class="row align-items-center gy-5">
-        <div class="col-lg-5 hero-content">
-          <div class="pill-badge">
-            <span class="badge-dot"></span> Family-Based Personal Clinic Platform
-          </div>
-
-          <h1 class="hero-title">
-            Smart Clinic Management, <span class="highlight">Centered Around Families.</span>
-          </h1>
-
-          <p class="hero-subtitle">
-            Dhyey Clinic digitizes patient treatment history, standardized prescriptions, family ID grouping, and
-            pending dues tracking into a single <strong>100% offline-capable</strong> platform for modern clinics.
-          </p>
-
-          <div class="hero-feature-pills">
-            <span class="h-pill"><i class="ri-wifi-off-line"></i> Offline First</span>
-            <span class="h-pill"><i class="ri-parent-line"></i> Family Grouping</span>
-            <span class="h-pill"><i class="ri-shield-check-line"></i> Secure & Private</span>
-          </div>
-
-          <div class="hero-cta-group mt-4">
-            <a href="pages/login.html" class="btn btn-primary-custom btn-lg">
-              Sign In to App <i class="ri-arrow-right-line"></i>
-            </a>
-            <a href="#modules" class="btn btn-outline-custom btn-lg">
-              <i class="ri-play-circle-line"></i> Explore Modules
-            </a>
-          </div>
-
-          <!-- Trust Badges -->
-          <div class="trust-row mt-4">
-            <div class="trust-item"><i class="ri-star-fill"></i> 4.9/5 Rated</div>
-            <div class="trust-divider">·</div>
-            <div class="trust-item"><i class="ri-hospital-line"></i> 10+ Clinics</div>
-            <div class="trust-divider">·</div>
-            <div class="trust-item"><i class="ri-user-heart-line"></i> 2500+ Patients</div>
-          </div>
-        </div>
-
-        <!-- Hero Browser Mockup Carousel -->
-        <div class="col-lg-7 mt-4 mt-lg-0">
-          <div class="hero-browser-frame">
-            <!-- Browser Chrome Header Bar -->
-            <div class="browser-chrome-bar">
-              <div class="browser-dots">
-                <span class="dot dot-red"></span>
-                <span class="dot dot-yellow"></span>
-                <span class="dot dot-green"></span>
-              </div>
-              <div class="browser-address-bar">
-                <i class="ri-lock-line lock-icon"></i>
-                <span class="url-text">https://dhyeyclinic.com/receptionist/dashboard</span>
-              </div>
-              <div class="browser-actions">
-                <i class="ri-refresh-line"></i>
-                <i class="ri-more-2-fill"></i>
-              </div>
-            </div>
-
-            <!-- Carousel Component -->
-            <div id="heroImgCarousel" class="carousel slide hero-app-carousel" data-bs-ride="carousel"
-              data-bs-interval="3500">
-              <div class="carousel-indicators">
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="0" class="active"
-                  aria-current="true" aria-label="Dashboard"></button>
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="1"
-                  aria-label="Registration"></button>
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="2"
-                  aria-label="Patient Search"></button>
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="3"
-                  aria-label="Appointments"></button>
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="4"
-                  aria-label="Billing & Dues"></button>
-                <button type="button" data-bs-target="#heroImgCarousel" data-bs-slide-to="5"
-                  aria-label="Family Records"></button>
-              </div>
-
-              <div class="carousel-inner">
-                <!-- Slide 1: Dashboard -->
-                <div class="carousel-item active">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_dashboard.png" alt="Receptionist Dashboard UI"
-                      class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-dashboard-3-line"></i> Receptionist Portal</span>
-                    <h5>Live Queue & Clinic Overview</h5>
-                    <p>Track today's footfall, active doctor queues, pending payments & quick patient check-in.</p>
-                  </div>
-                </div>
-
-                <!-- Slide 2: Patient Registration -->
-                <div class="carousel-item">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_registration.png" alt="Patient & Family Registration UI"
-                      class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-user-add-line"></i> Registration Module</span>
-                    <h5>Smart Registration & Family ID</h5>
-                    <p>Register new patients under a single Family ID with auto-fill demographics & zero duplicates.</p>
-                  </div>
-                </div>
-
-                <!-- Slide 3: Search Directory -->
-                <div class="carousel-item">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_search.png" alt="Patient Search & Directory UI"
-                      class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-search-2-line"></i> Search Directory</span>
-                    <h5>Instant Patient Lookup</h5>
-                    <p>Find patient profiles in milliseconds by Mobile #, Family ID, UHID, or Name.</p>
-                  </div>
-                </div>
-
-                <!-- Slide 4: Appointments -->
-                <div class="carousel-item">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_appointments.png" alt="Appointment Queue UI" class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-calendar-check-line"></i> Queue Management</span>
-                    <h5>Token & Appointment Scheduling</h5>
-                    <p>Assign live token numbers, slot times, and queue status across multiple doctors.</p>
-                  </div>
-                </div>
-
-                <!-- Slide 5: Payments -->
-                <div class="carousel-item">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_payments.png" alt="Billing & Dues Management UI"
-                      class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-money-dollar-circle-line"></i> Billing & Dues</span>
-                    <h5>Automated Invoicing & Collections</h5>
-                    <p>Generate consultation bills, collect payments, track dues, and print thermal receipts.</p>
-                  </div>
-                </div>
-
-                <!-- Slide 6: Family Health Records -->
-                <div class="carousel-item">
-                  <div class="slide-img-box">
-                    <img src="pages/assets/screen_patient_record.png" alt="Family Medical Records UI"
-                      class="d-block w-100" />
-                  </div>
-                  <div class="carousel-caption">
-                    <span class="caption-badge"><i class="ri-file-list-3-line"></i> Medical History</span>
-                    <h5>Unified Family Health Records</h5>
-                    <p>Access complete medical history, previous prescriptions, and visit logs for all family members.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Controls -->
-              <button class="carousel-control-prev" type="button" data-bs-target="#heroImgCarousel"
-                data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
-              </button>
-              <button class="carousel-control-next" type="button" data-bs-target="#heroImgCarousel"
-                data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-
-  <!-- ============================
-       STATISTICS COUNTER BANNER
-       ============================ -->
-  <section class="stats-banner-section">
-    <div class="container">
-      <div class="row text-center align-items-center g-4">
-        <div class="col-6 col-md-2 stat-col">
-          <div class="stat-counter" data-target="10">0+</div>
-          <div class="stat-counter-label">CLINICS</div>
-        </div>
-        <div class="col-6 col-md-3 stat-col">
-          <div class="stat-counter" data-target="2500">0+</div>
-          <div class="stat-counter-label">REGISTERED PATIENTS</div>
-        </div>
-        <div class="col-6 col-md-2 stat-col">
-          <div class="stat-counter" data-target="1000">0+</div>
-          <div class="stat-counter-label">FAMILIES</div>
-        </div>
-        <div class="col-6 col-md-2 stat-col">
-          <div class="stat-counter" data-target="15">0+</div>
-          <div class="stat-counter-label">DOCTORS</div>
-        </div>
-        <div class="col-12 col-md-3 stat-col">
-          <div class="stat-counter" data-target="25000">0+</div>
-          <div class="stat-counter-label">PRESCRIPTIONS GENERATED</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================
-       CORE FEATURES SECTION
-       ============================ -->
-  <section class="features-section" id="features">
-    <div class="container">
-      <div class="section-header text-center mb-5">
-        <span class="section-subtitle">CORE CAPABILITIES</span>
-        <h2 class="section-title">Built for Modern Family Clinics</h2>
-        <p class="section-desc mt-3">Everything your clinic needs — streamlined, secure, and blazing fast.</p>
+      <div id="login-error-msg" class="cms-login-alert" style="display: none;">
+        <span><i class="fa-solid fa-triangle-exclamation"></i></span>
+        <span id="login-error-text">Invalid username or password</span>
       </div>
 
-      <div class="row g-4">
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-wifi-off-line"></i></div>
-            <h3>100% Offline Capability</h3>
-            <p>Operates flawlessly without internet. All family records, billing, and prescription data remain instantly
-              accessible even in remote areas.</p>
-            <div class="feature-tag">No internet needed</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-parent-line"></i></div>
-            <h3>Family ID Grouping</h3>
-            <p>Links all household members under a single Family Head ID, preventing duplicate registrations and
-              providing a full family health ledger.</p>
-            <div class="feature-tag">Unique FAM IDs</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-file-list-3-line"></i></div>
-            <h3>Digital Prescriptions</h3>
-            <p>Generates clear, patient-friendly digital prescriptions with precise dosage, frequency, and attached
-              disease-wise dietary charts.</p>
-            <div class="feature-tag">E-Prescription</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-search-eye-line"></i></div>
-            <h3>Instant Record Search</h3>
-            <p>Search patient records by name, family head, or mobile number in seconds. Displays active allergy
-              profiles and pending balances instantly.</p>
-            <div class="feature-tag">Lightning fast</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-wallet-3-line"></i></div>
-            <h3>Payment & Dues Tracking</h3>
-            <p>Tracks consultation charges, partial payments, and outstanding balances with automated payment receipt
-              generation and due alerts.</p>
-            <div class="feature-tag">Auto receipts</div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card feature-card h-100">
-            <div class="card-icon primary"><i class="ri-pie-chart-2-line"></i></div>
-            <h3>Area-Wise Analytics</h3>
-            <p>Analyzes clinic growth by area (Navrangpura, Vastrapur, Satellite, Thaltej, Bopal), doctor-wise
-              consultations, and daily revenue trends.</p>
-            <div class="feature-tag">Smart reporting</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================
-       HOW IT WORKS SECTION
-       ============================ -->
-  <section class="how-section">
-    <div class="container">
-      <div class="text-center mb-5">
-        <span class="section-subtitle">HOW IT WORKS</span>
-        <h2 class="section-title">From Sign-In to Prescription in 3 Steps</h2>
-      </div>
-      <div class="row g-4 justify-content-center">
-        <div class="col-md-4">
-          <div class="step-card">
-            <div class="step-number">01</div>
-            <div class="step-icon"><i class="ri-user-add-line"></i></div>
-            <h4>Register Family Head</h4>
-            <p>Receptionist enters the head's name, area, and phone. A unique numeric Family ID is generated instantly
-              for the household.</p>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="step-card">
-            <div class="step-number">02</div>
-            <div class="step-icon"><i class="ri-stethoscope-line"></i></div>
-            <h4>Doctor Consultation</h4>
-            <p>Doctor views complete family history, logs vitals, diagnosis, and builds a digital Rx prescription — all
-              in one workspace.</p>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="step-card">
-            <div class="step-number">03</div>
-            <div class="step-icon"><i class="ri-printer-line"></i></div>
-            <h4>Print & Bill</h4>
-            <p>Receptionist collects payment, prints the prescription and receipt, and logs the visit — dues tracked
-              automatically.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================
-       MODULES CAROUSEL SECTION
-       ============================ -->
-  <section class="carousel-showcase-section" id="modules">
-    <div class="container">
-      <div class="text-center mb-5">
-        <span class="section-subtitle">APPLICATION WALKTHROUGH</span>
-        <h2 class="section-title">Explore Key Modules</h2>
-        <p class="section-desc mt-3">An interactive tour of the actual application screens and workflows.</p>
-      </div>
-
-      <div id="dhyeyModulesCarousel" class="carousel slide custom-carousel shadow-lg" data-bs-ride="carousel"
-        data-bs-interval="5000">
-        <div class="carousel-indicators">
-          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="0" class="active"></button>
-          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="1"></button>
-          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="2"></button>
-          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="3"></button>
+      <form id="cms-login-form" class="cms-login-form">
+        <div class="cms-login-input-group">
+          <i><i class="fa-solid fa-user"></i></i>
+          <input type="text" id="login-username" class="cms-login-input" placeholder="Username (e.g. dhyey or admin)" required autofocus />
         </div>
 
-        <div class="carousel-inner p-4 p-md-5">
-
-          <!-- Slide 1: Dashboard Overview -->
-          <div class="carousel-item active">
-            <div class="row align-items-center gy-4">
-              <div class="col-lg-5">
-                <div class="module-badge">Dashboard</div>
-                <h3 class="module-title">Dashboard Overview</h3>
-                <p class="module-desc">Central command center displaying live clinic metrics: registered families,
-                  patient count, date collection, pending queue, and outstanding dues — all in one view.</p>
-                <ul class="module-bullets">
-                  <li><i class="ri-checkbox-circle-fill"></i> Real-time date filtering</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Outstanding dues alert panel</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Registered family directory</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Daily collection tracking</li>
-                </ul>
-                <a href="pages/login.html" class="btn btn-primary-custom mt-3">Open Dashboard <i
-                    class="ri-arrow-right-line"></i></a>
-              </div>
-              <div class="col-lg-7">
-                <div class="screen-preview-card">
-                  <div class="preview-card-header">
-                    <span><i class="ri-dashboard-line"></i> Dashboard · All Registered Families</span>
-                    <span>01-10-2026</span>
-                  </div>
-                  <div class="preview-card-body">
-                    <div class="d-flex justify-content-between mb-3 gap-2">
-                      <div class="m-stat"><strong>6</strong><small>Families</small></div>
-                      <div class="m-stat"><strong>12</strong><small>Patients</small></div>
-                      <div class="m-stat"><strong>3</strong><small>Today's Visits</small></div>
-                      <div class="m-stat danger"><strong>₹900</strong><small>Total Dues</small></div>
-                    </div>
-                    <div class="mini-table">
-                      <div class="mt-head"><span>FAM ID</span><span>HEAD NAME</span><span>AREA</span></div>
-                      <div class="mt-row"><span>0006</span><span>PATEL PANKAJBHAI</span><span>Valsad</span></div>
-                      <div class="mt-row"><span>0001</span><span>PATEL RAMESHBHAI</span><span>VASTRAPUR</span></div>
-                      <div class="mt-row"><span>0002</span><span>SHARMA AMITBHAI</span><span>NAVRANGPURA</span></div>
-                      <div class="mt-row"><span>0005</span><span>MEHTA VIKRAMBHAI</span><span>THALTEJ</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 2: Family / Patient Registration -->
-          <div class="carousel-item">
-            <div class="row align-items-center gy-4">
-              <div class="col-lg-5">
-                <div class="module-badge">Registration</div>
-                <h3 class="module-title">Family / Patient Registration</h3>
-                <p class="module-desc">Step-by-step registration for Family Heads with instant numeric Family ID
-                  generation, followed by adding all household members under the same ID — no duplicates.</p>
-                <ul class="module-bullets">
-                  <li><i class="ri-checkbox-circle-fill"></i> Instant numeric Family ID</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Phone & Area association</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Blood group & allergy logging</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Member count tracking</li>
-                </ul>
-                <a href="pages/login.html" class="btn btn-primary-custom mt-3">Try Registration <i
-                    class="ri-arrow-right-line"></i></a>
-              </div>
-              <div class="col-lg-7">
-                <div class="screen-preview-card">
-                  <div class="preview-card-header">
-                    <span><i class="ri-user-add-line"></i> Step 1 · Register Family Head</span>
-                    <span>Registered Families & Patients</span>
-                  </div>
-                  <div class="preview-card-body">
-                    <p class="mb-3" style="font-size:0.82rem; color:#64748b;"><strong>FORM:</strong> (SURNAME NAME
-                      FATHER'S NAME) + AREA + PHONE → Generate Family ID</p>
-                    <div class="mini-fam-list">
-                      <div class="f-row"><span>PATEL PANKAJBHAI BALLUBHAI</span><small>FAM 0006 · valsad · 2
-                          members</small></div>
-                      <div class="f-row"><span>PATEL RAMESHBHAI GOVINDBHAI</span><small>FAM 0001 · VASTRAPUR · 2
-                          members</small></div>
-                      <div class="f-row"><span>SHARMA AMITBHAI DINESHBHAI</span><small>FAM 0002 · NAVRANGPURA · 3
-                          members</small></div>
-                      <div class="f-row"><span>SHAH RAHULBHAI RAJENDRABHAI</span><small>FAM 0003 · SATELLITE · 2
-                          members</small></div>
-                      <div class="f-row"><span>MEHTA VIKRAMBHAI SANJAYBHAI</span><small>FAM 0005 · THALTEJ · 2
-                          members</small></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 3: Patient Record Search -->
-          <div class="carousel-item">
-            <div class="row align-items-center gy-4">
-              <div class="col-lg-5">
-                <div class="module-badge">Search</div>
-                <h3 class="module-title">Patient Record Search</h3>
-                <p class="module-desc">Instant patient lookup by name, family ID, or mobile number. Displays allergy
-                  warnings (e.g. DUST, PENICILLIN) and outstanding due badges — in milliseconds.</p>
-                <ul class="module-bullets">
-                  <li><i class="ri-checkbox-circle-fill"></i> Search by name, ID, or phone</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Visual DUE warning badges</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Allergy alert tags</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Full visit history per patient</li>
-                </ul>
-                <a href="pages/login.html" class="btn btn-primary-custom mt-3">Search Patients <i
-                    class="ri-arrow-right-line"></i></a>
-              </div>
-              <div class="col-lg-7">
-                <div class="screen-preview-card">
-                  <div class="preview-card-header">
-                    <span><i class="ri-search-line"></i> FIND PATIENT BY NAME OR PATIENT ID</span>
-                    <span>Search: patel</span>
-                  </div>
-                  <div class="preview-card-body">
-                    <div class="p-search-item">
-                      <div>
-                        <strong>PATEL RAMESHBHAI GOVINDBHAI</strong>
-                        <small class="d-block" style="color:#64748b;">Family: PATEL RAMESHBHAI · VASTRAPUR · Father ·
-                          Age 48</small>
-                      </div>
-                      <span class="badge-danger">DUE: ₹300</span>
-                    </div>
-                    <div class="p-search-item">
-                      <div>
-                        <strong>PATEL SHARDABEN RAMESHBHAI</strong>
-                        <small class="d-block" style="color:#64748b;">Family: PATEL RAMESHBHAI · VASTRAPUR · Spouse ·
-                          Age 44</small>
-                      </div>
-                      <span class="badge-warning">ALLERGY: DUST</span>
-                    </div>
-                    <div class="p-search-item">
-                      <div>
-                        <strong>PATEL PANKAJBHAI BALLUBHAI</strong>
-                        <small class="d-block" style="color:#64748b;">Family: PATEL PANKAJBHAI · Valsad · Head · Age
-                          52</small>
-                      </div>
-                      <span class="badge-neutral">No Alerts</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Slide 4: Reports & Analysis -->
-          <div class="carousel-item">
-            <div class="row align-items-center gy-4">
-              <div class="col-lg-5">
-                <div class="module-badge">Analytics</div>
-                <h3 class="module-title">Reports & Analysis</h3>
-                <p class="module-desc">Comprehensive analytical reports: area-wise breakdown, daily income, monthly
-                  revenue, patient dues, diagnosis-wise summaries, and medical certificate history.</p>
-                <ul class="module-bullets">
-                  <li><i class="ri-checkbox-circle-fill"></i> Area-wise patient density</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Diagnosis & Doctor-wise summaries</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Daily & monthly revenue export</li>
-                  <li><i class="ri-checkbox-circle-fill"></i> Payment & Due export tools</li>
-                </ul>
-                <a href="pages/login.html" class="btn btn-primary-custom mt-3">View Reports <i
-                    class="ri-arrow-right-line"></i></a>
-              </div>
-              <div class="col-lg-7">
-                <div class="screen-preview-card">
-                  <div class="preview-card-header">
-                    <span><i class="ri-bar-chart-box-line"></i> Reports · Area-wise Breakdown</span>
-                    <span>Filter: Area-wise</span>
-                  </div>
-                  <div class="preview-card-body">
-                    <div class="area-report-table">
-                      <div class="area-head">
-                        <span>AREA</span><span>FAMILIES</span><span>PATIENTS</span><span>VISITS</span>
-                      </div>
-                      <div class="area-row"><span>NAVRANGPURA</span><span>1</span><span>3</span><span>4</span></div>
-                      <div class="area-row"><span>VASTRAPUR</span><span>1</span><span>2</span><span>3</span></div>
-                      <div class="area-row"><span>SATELLITE</span><span>1</span><span>2</span><span>2</span></div>
-                      <div class="area-row"><span>THALTEJ</span><span>1</span><span>2</span><span>3</span></div>
-                      <div class="area-row"><span>Valsad</span><span>1</span><span>2</span><span>1</span></div>
-                      <div class="area-row"><span>BOPAL</span><span>1</span><span>1</span><span>0</span></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div class="cms-login-input-group">
+          <i><i class="fa-solid fa-lock"></i></i>
+          <input type="password" id="login-password" class="cms-login-input" placeholder="Password (e.g. 123 or admin)" required />
         </div>
 
-        <button class="carousel-control-prev" type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide="prev">
-          <span class="carousel-control-prev-icon"></span>
+        <button type="submit" class="cms-login-submit">
+          <span>Sign In</span>
+          <span><i class="fa-solid fa-arrow-right"></i></span>
         </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide="next">
-          <span class="carousel-control-next-icon"></span>
-        </button>
-      </div>
+      </form>
 
+      <div class="cms-login-footer-hints">
+        <b>Demo Doctor:</b> <code>dhyey</code> / <code>123</code> &middot; <b>Admin:</b> <code>admin</code> / <code>admin</code>
+      </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================
-       DOCTOR TESTIMONIALS CAROUSEL
-       ============================ -->
-  <section class="testimonials-section" id="testimonials">
-    <div class="container">
-      <div class="text-center mb-5">
-        <span class="section-subtitle">DOCTOR REVIEWS</span>
-        <h2 class="section-title">Trusted by Clinic Practitioners</h2>
-        <p class="section-desc mt-3">Real feedback from doctors and clinic staff using Dhyey Clinic daily.</p>
+  <!-- =========================================================
+       ADMIN DASHBOARD VIEW (Shown for Admin Role)
+       ========================================================= -->
+  <div id="view-admin" style="display: none; height: 100vh; flex-direction: column; background: var(--bg);">
+    <div style="background: var(--surface); padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 24px; color: var(--primary);"><i class="fa-solid fa-shield-halved"></i></span>
+        <h1 class="font-display" style="font-size: 18px; font-weight: 800;">Admin Control Panel</h1>
       </div>
-
-      <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
-        <div class="carousel-inner">
-
-          <div class="carousel-item active">
-            <div class="row g-4 justify-content-center">
-              <div class="col-md-6 col-lg-4">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">The Family ID system completely eliminated duplicate patient
-                    registrations. Our receptionist now registers a new family in under 30 seconds.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">DS</div>
-                    <div class="reviewer-details">
-                      <h5>Dr. D. Shah</h5>
-                      <p>General Practitioner, Ahmedabad</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 col-lg-4">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">The offline capability is a game changer. Even when our internet went
-                    down, clinic operations continued without a single disruption.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">MP</div>
-                    <div class="reviewer-details">
-                      <h5>Dr. M. Patel</h5>
-                      <p>Pediatrician, Surat</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 col-lg-4 d-none d-lg-block">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">The digital prescription module and dietary library saved us significant
-                    time. Patients love the clear, printed prescriptions they receive.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">RJ</div>
-                    <div class="reviewer-details">
-                      <h5>Dr. R. Joshi</h5>
-                      <p>Family Physician, Vadodara</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="carousel-item">
-            <div class="row g-4 justify-content-center">
-              <div class="col-md-6 col-lg-4">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">Dues tracking used to be a nightmare. Now with Dhyey Clinic's automatic
-                    due alerts, our payment collection improved by 40% in the first month.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">NM</div>
-                    <div class="reviewer-details">
-                      <h5>Dr. N. Modi</h5>
-                      <p>Orthopedic Surgeon, Rajkot</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 col-lg-4">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">The area-wise reporting is phenomenal. I can instantly see which
-                    neighborhoods have the most patients and plan our health camps accordingly.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">AT</div>
-                    <div class="reviewer-details">
-                      <h5>Dr. A. Trivedi</h5>
-                      <p>Community Health, Gandhinagar</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6 col-lg-4 d-none d-lg-block">
-                <div class="testimonial-card">
-                  <div class="quote-icon">"</div>
-                  <p class="testimonial-text">F-key shortcuts (F1–F9) make our receptionist incredibly efficient. They
-                    can switch between registration, records, and billing instantly.</p>
-                  <div class="reviewer-info">
-                    <div class="reviewer-avatar">BK</div>
-                    <div class="reviewer-details">
-                      <h5>B. Kaur</h5>
-                      <p>Head Receptionist, Anand</p>
-                      <div class="star-rating">★★★★★</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
+      <button type="button" id="admin-logout-btn" class="cms-btn cms-btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 24px; max-width: 1000px; margin: 0 auto; width: 100%;">
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;">
+        <div class="cms-card">
+          <div class="cms-card-header"><div class="cms-card-title">Registered Doctor Clinics</div></div>
+          <div id="admin-doctors-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
-
-        <div class="testimonial-nav text-center mt-4">
-          <button class="carousel-ctrl-btn" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="prev">
-            <i class="ri-arrow-left-line"></i>
-          </button>
-          <button class="carousel-ctrl-btn" type="button" data-bs-target="#testimonialCarousel" data-bs-slide="next">
-            <i class="ri-arrow-right-line"></i>
-          </button>
+        <div class="cms-card">
+          <div class="cms-card-header"><div class="cms-card-title">Add New Doctor Account</div></div>
+          <form id="admin-add-doc-form" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="cms-form-group">
+              <label class="cms-label">Clinic Name</label>
+              <input type="text" id="new-doc-clinic" class="cms-input" placeholder="e.g. City Care Clinic" required />
+            </div>
+            <div class="cms-form-group">
+              <label class="cms-label">Doctor Full Name</label>
+              <input type="text" id="new-doc-name" class="cms-input" placeholder="e.g. Dr. Ramesh Patel" required />
+            </div>
+            <div class="cms-form-group">
+              <label class="cms-label">Username</label>
+              <input type="text" id="new-doc-user" class="cms-input" placeholder="doctor username" required />
+            </div>
+            <div class="cms-form-group">
+              <label class="cms-label">Password</label>
+              <input type="password" id="new-doc-pass" class="cms-input" placeholder="doctor password" required />
+            </div>
+            <button type="submit" class="cms-btn cms-btn-primary" style="margin-top: 6px;">Create Doctor Account</button>
+          </form>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ============================
-       FAQ ACCORDION SECTION
-       ============================ -->
-  <section class="faq-section" id="faq">
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-lg-8">
-          <div class="text-center mb-5">
-            <span class="section-subtitle">FREQUENTLY ASKED</span>
-            <h2 class="section-title">Common Questions</h2>
-          </div>
-
-          <div class="accordion" id="faqAccordion">
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-                  Does Dhyey Clinic work without an internet connection?
-                </button>
-              </h2>
-              <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  Yes! Dhyey Clinic is designed with an <strong>offline-first architecture</strong>. All patient
-                  records, prescriptions, billing, and family data are stored locally on your clinic's computer.
-                  Internet is optional and only needed for cloud sync if configured.
-                </div>
-              </div>
-            </div>
-
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#faq2">
-                  What is a Family ID and how does it work?
-                </button>
-              </h2>
-              <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  A <strong>Family ID (FAM XXXX)</strong> is a unique numeric ID assigned to a household at
-                  registration. All family members are linked under this ID, eliminating duplicate records and providing
-                  a complete family health ledger. You can add, edit, or remove members at any time.
-                </div>
-              </div>
-            </div>
-
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#faq3">
-                  Can multiple doctors use the system simultaneously?
-                </button>
-              </h2>
-              <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  Yes. Dhyey Clinic supports <strong>role-based access</strong> for Receptionist, Doctor, Admin, and
-                  Pharmacy roles. Multiple staff can log in simultaneously with different access levels, ensuring data
-                  security and workflow efficiency.
-                </div>
-              </div>
-            </div>
-
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#faq4">
-                  How are prescriptions generated and printed?
-                </button>
-              </h2>
-              <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  Doctors build prescriptions directly in the system using the e-Prescription builder — entering
-                  medicine name, dosage, frequency, and instructions. Once saved, it prints a <strong>standardized,
-                    patient-friendly prescription slip</strong> with clinic letterhead and dietary recommendations.
-                </div>
-              </div>
-            </div>
-
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#faq5">
-                  How does payment and dues tracking work?
-                </button>
-              </h2>
-              <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  Every visit automatically records the consultation fee and payment received. If payment is partial,
-                  the system marks an outstanding due on the patient's profile with a <strong>visual DUE badge</strong>
-                  that appears on search results. Receipts are generated and printed per visit.
-                </div>
-              </div>
-            </div>
-
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                  data-bs-target="#faq6">
-                  What keyboard shortcuts are available?
-                </button>
-              </h2>
-              <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-                  Dhyey Clinic is built for speed with full keyboard control: <strong>F1</strong> Family Reg ·
-                  <strong>F2</strong> Add Member · <strong>F3</strong> Patient Record · <strong>F4</strong> Dashboard ·
-                  <strong>F5</strong> Reports · <strong>F6</strong> New Visit · <strong>F7</strong> Billing ·
-                  <strong>F8</strong> Appointments · <strong>F9</strong> Global Search · <strong>/</strong> Focus Search
-                  · <strong>Esc</strong> Close dialogs.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================
-       CONTACT US SECTION
-       ============================ -->
-  <section class="contact-section" id="contact">
-    <div class="container">
-      <div class="section-header text-center mb-5">
-        <span class="section-subtitle">CONNECT WITH US</span>
-        <h2 class="section-title">Contact Our Team</h2>
-        <p class="section-desc mt-3">Interested in setting up Dhyey Clinic for your practice? We'd love to help.</p>
-      </div>
-
-      <div class="contact-card-box">
-        <div class="row align-items-center gy-4">
-          <div class="col-lg-5">
-            <div class="c-item">
-              <i class="ri-mail-line"></i>
-              <div>
-                <strong>Email Us</strong>
-                <p class="mb-0 text-muted">support@dhyeyclinic.com</p>
-              </div>
-            </div>
-            <div class="c-item">
-              <i class="ri-phone-line"></i>
-              <div>
-                <strong>Call Us</strong>
-                <p class="mb-0 text-muted">+91 98765 43210</p>
-              </div>
-            </div>
-            <div class="c-item">
-              <i class="ri-map-pin-line"></i>
-              <div>
-                <strong>Location</strong>
-                <p class="mb-0 text-muted">Gujarat, India</p>
-              </div>
-            </div>
-            <div class="c-item">
-              <i class="ri-time-line"></i>
-              <div>
-                <strong>Support Hours</strong>
-                <p class="mb-0 text-muted">Mon–Sat · 9:00 AM – 7:00 PM IST</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-7">
-            <form class="contact-form" id="contactForm" onsubmit="handleContactSubmit(event)">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">DOCTOR / CLINIC NAME *</label>
-                  <input type="text" placeholder="Dr. Sharma / City Health Clinic" required class="form-control" />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">MOBILE NUMBER *</label>
-                  <input type="tel" placeholder="+91 98765 43210" required class="form-control" />
-                </div>
-                <div class="col-12">
-                  <label class="form-label">EMAIL ADDRESS *</label>
-                  <input type="email" placeholder="doctor@clinic.com" required class="form-control" />
-                </div>
-                <div class="col-12">
-                  <label class="form-label">MESSAGE</label>
-                  <textarea placeholder="Tell us about your clinic size, location, and what you need..." rows="4"
-                    class="form-control"></textarea>
-                </div>
-              </div>
-              <button type="submit" class="btn btn-primary-custom w-100 mt-4" style="padding: 14px;">
-                <i class="ri-send-plane-line"></i> Send Message
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================
-       DARK FOOTER
-       ============================ -->
-  <footer class="custom-footer">
-    <div class="container">
-      <div class="row footer-columns g-4">
-        <!-- Brand Column -->
-        <div class="col-lg-5 col-md-12 brand-col">
-          <div class="footer-logo">
-            <i class="ri-heart-pulse-fill"></i>
-            <span>Dhyey Clinic</span>
-          </div>
-          <p class="footer-desc">
-            The Family-Based Personal Clinic Management System designed for independent doctors and small clinics to
-            digitize treatment history, digital prescriptions, billing, and family health ledgers.
-          </p>
-          <div class="footer-social mt-4">
-            <a href="#" class="social-btn"><i class="ri-mail-line"></i></a>
-            <a href="#" class="social-btn"><i class="ri-phone-line"></i></a>
-            <a href="#" class="social-btn"><i class="ri-github-line"></i></a>
-          </div>
-        </div>
-
-        <!-- Platform Links -->
-        <div class="col-lg-2 col-md-4 footer-col">
-          <h4>PLATFORM</h4>
-          <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#modules">Modules</a></li>
-            <li><a href="#testimonials">Reviews</a></li>
-          </ul>
-        </div>
-
-        <!-- Legal & Contact -->
-        <div class="col-lg-2 col-md-4 footer-col">
-          <h4>LEGAL</h4>
-          <ul>
-            <li><a href="#contact">Contact Us</a></li>
-            <li><a href="#faq">FAQs</a></li>
-            <li><a href="#terms">Terms & Conditions</a></li>
-            <li><a href="#privacy">Privacy Policy</a></li>
-          </ul>
-        </div>
-
-        <!-- Clinic App -->
-        <div class="col-lg-3 col-md-4 footer-col">
-          <h4>CLINIC APP</h4>
-          <ul>
-            <li><a href="pages/login.html" class="highlight-link">Sign In →</a></li>
-            <li><a href="#contact">Request Demo</a></li>
-          </ul>
-          <div class="mt-4 p-3"
-            style="background:rgba(255,255,255,0.07); border-radius:12px; font-size:0.82rem; color:#b8e0d7;">
-            <strong style="color:#6ee7b7;">Version 2.0</strong><br>
-            Offline Ready · Multi-Role · F-Key Navigation
-          </div>
+  <!-- =========================================================
+       MAIN APP APPLICATION SHELL (Doctor & Staff Workflow)
+       ========================================================= -->
+  <div id="view-app" class="cms-layout" style="display: none;">
+    
+    <!-- Sidebar -->
+    <aside class="cms-sidebar" id="cms-sidebar">
+      <div class="cms-brand">
+        <div class="cms-brand-icon"><i class="fa-solid fa-stethoscope"></i></div>
+        <div>
+          <div class="cms-brand-text">Dhyey Clinic</div>
+          <div class="cms-brand-subtitle">Clinical Care System</div>
         </div>
       </div>
 
-      <div class="footer-bottom text-center mt-5">
-        <p class="mb-1">&copy; 2026 Dhyey Clinic Management System. All rights reserved.</p>
-        <p class="mb-0"><a href="#terms" style="color:#6ee7b7; text-decoration:underline;">Terms & Conditions</a> · <a
-            href="#privacy" style="color:#6ee7b7; text-decoration:underline;">Privacy Policy</a></p>
+      <nav style="display: flex; flex-direction: column; gap: 4px;">
+        <a class="cms-nav-item active" data-view="dashboard">
+          <span class="cms-nav-left"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></span>
+          <span class="cms-kbd">F4</span>
+        </a>
+        <a class="cms-nav-item" data-view="family">
+          <span class="cms-nav-left"><i class="fa-solid fa-people-roof"></i><span>Family Head Reg.</span></span>
+          <span class="cms-kbd">F1</span>
+        </a>
+        <a class="cms-nav-item" data-view="patient">
+          <span class="cms-nav-left"><i class="fa-solid fa-user-plus"></i><span>Add Member</span></span>
+          <span class="cms-kbd">F2</span>
+        </a>
+        <a class="cms-nav-item" data-view="case">
+          <span class="cms-nav-left"><i class="fa-solid fa-clipboard-user"></i><span>Patient Record</span></span>
+          <span class="cms-kbd">F3</span>
+        </a>
+        <a class="cms-nav-item" data-view="masters">
+          <span class="cms-nav-left"><i class="fa-solid fa-layer-group"></i><span>Master Data</span></span>
+          <span class="cms-kbd">F7</span>
+        </a>
+        <a class="cms-nav-item" data-view="certificates">
+          <span class="cms-nav-left"><i class="fa-solid fa-certificate"></i><span>Medical Certificate</span></span>
+          <span class="cms-kbd">F6</span>
+        </a>
+        <a class="cms-nav-item" data-view="reports">
+          <span class="cms-nav-left"><i class="fa-solid fa-chart-line"></i><span>Reports</span></span>
+          <span class="cms-kbd">F5</span>
+        </a>
+      </nav>
+
+      <div class="cms-sidebar-footer">
+        <b>Keyboard Shortcuts:</b><br>
+        F1 Family &middot; F2 Member &middot; F3 Case<br>
+        F4 Dash &middot; F5 Reports &middot; F6 Cert<br>
+        F7 Masters &middot; / Search &middot; Esc Close
       </div>
-    </div>
-  </footer>
+    </aside>
 
-  <!-- Bootstrap 5 JS Bundle CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Main Content Container -->
+    <main class="cms-main-container">
+      <!-- TopBar -->
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <button type="button" id="btn-toggle-sidebar" class="cms-btn-ghost cms-btn-icon" title="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+          <div>
+            <div class="cms-topbar-title" id="topbar-clinic-title">Dhyey Clinic &amp; Nursing Home</div>
+            <div class="cms-topbar-date" id="topbar-date-display">Today</div>
+          </div>
+        </div>
 
-  <script>
-    // Animated counter for stats banner
-    function animateCounter(el, target) {
-      const duration = 1800;
-      const step = target / (duration / 16);
-      let current = 0;
-      const timer = setInterval(() => {
-        current += step;
-        if (current >= target) {
-          current = target;
-          clearInterval(timer);
-        }
-        if (target >= 1000) {
-          el.textContent = (current >= 1000 ? (current / 1000).toFixed(1) + 'K' : Math.floor(current)) + '+';
+        <div class="cms-topbar-right">
+          <!-- Global Search -->
+          <form id="cms-global-search-form" class="cms-search-box">
+            <span class="cms-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" id="cms-top-search" class="cms-search-input" placeholder="Search patient name, ID, family..." />
+            <span class="cms-kbd cms-search-shortcut">/</span>
+          </form>
+
+          <!-- Theme Switcher -->
+          <button type="button" id="btn-theme-toggle" class="cms-btn-ghost cms-btn-icon" title="Toggle Dark/Light Mode"><i class="fa-solid fa-moon"></i></button>
+
+          <!-- Doctor Profile Dropdown Trigger -->
+          <div style="position: relative;">
+            <button type="button" id="btn-doc-profile" class="cms-btn cms-btn-ghost" style="padding: 6px 12px; gap: 6px;">
+              <span id="topbar-doc-name">Dr. Chirag Paghdal</span>
+              <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
+            </button>
+
+            <!-- Profile Menu -->
+            <div id="doc-profile-dropdown" class="cms-card" style="position: absolute; right: 0; top: calc(100% + 8px); width: 280px; padding: 12px; display: none; z-index: 500; box-shadow: var(--shadow-lg);">
+              <div style="padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px;">
+                <div style="font-weight: 700; font-size: 14px;" id="dropdown-doc-fullname">Dr. Chirag Paghdal</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Manage Clinics &amp; Branches</div>
+              </div>
+              <div id="dropdown-clinics-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; margin-bottom: 8px;"></div>
+              <button type="button" id="btn-add-clinic-action" class="cms-btn cms-btn-ghost" style="width: 100%; justify-content: flex-start; padding: 7px 10px; font-size: 12px;"><i class="fa-solid fa-plus"></i> Add New Clinic</button>
+              <button type="button" id="btn-doc-logout" class="cms-btn-danger" style="width: 100%; justify-content: center; margin-top: 8px; padding: 8px;"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dynamic Page View Container -->
+      <section class="cms-content-area" id="cms-view-container">
+        <!-- Rendered dynamically -->
+      </section>
+
+      <!-- Status Bar -->
+      <footer class="cms-statusbar">
+        <span><b>Dhyey Clinic &amp; Hospital</b></span>
+        <span>F1 Family Reg</span>
+        <span>F2 Add Member</span>
+        <span>F3 Record</span>
+        <span>F4 Dashboard</span>
+        <span>F5 Reports</span>
+        <span>F6 Certificate</span>
+        <span>F7 Master Data</span>
+        <span id="statusbar-clock" class="font-mono" style="margin-left: auto;">--:--</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Global Modal Mount Point -->
+  <div id="modal-root"></div>
+
+  <!-- Application Logic Modules -->
+  <script type="module">
+    import { apiFetch, todayISO, nowTime, fmtDate, showToast, getLocalDB } from './js/api.js';
+    import { initAuth, loginUser, logoutUser, switchDoctorClinic, addDoctorClinic } from './js/auth.js';
+    import { renderDashboard } from './js/dashboard.js';
+    import { renderFamilyRegistration } from './js/family.js';
+    import { renderPatientRegistration } from './js/patient.js';
+    import { renderConsultationView } from './js/consultation.js';
+    import { openPrescriptionModal } from './js/prescription.js';
+    import { openLabReportModal } from './js/history.js';
+    import { renderCertificateView } from './js/certificate.js';
+    import { renderAppointmentsView } from './js/appointment.js';
+    import { renderBillingView } from './js/billing.js';
+    import { renderPaymentView } from './js/payment.js';
+    import { renderMedicineList } from './js/medicine.js';
+    import { renderInventoryView } from './js/inventory.js';
+    import { renderFollowUpsView } from './js/followUp.js';
+    import { renderReportsView } from './js/reports.js';
+    import { renderMastersView } from './js/masters.js';
+
+    // Global State
+    let currentView = 'dashboard';
+    let currentSelection = { familyId: null, patientId: null };
+    let currentTheme = localStorage.getItem('clinic_theme') || 'light';
+
+    // Apply Theme
+    if (currentTheme === 'dark') document.body.classList.add('dark');
+
+    // Theme Toggle Handler
+    document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      currentTheme = document.body.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('clinic_theme', currentTheme);
+      document.getElementById('btn-theme-toggle').innerHTML = currentTheme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    });
+
+    // Real-time Clock
+    const clockEl = document.getElementById('statusbar-clock');
+    setInterval(() => { clockEl.textContent = nowTime(); }, 1000);
+    clockEl.textContent = nowTime();
+    document.getElementById('topbar-date-display').textContent = fmtDate(todayISO());
+
+    // Initialize Auth Session
+    const session = initAuth();
+    if (!session) {
+      showLoginScreen();
+    } else if (session.role === 'admin') {
+      showAdminScreen();
+    } else {
+      showAppScreen(session);
+    }
+
+    /* ---- Screen Switchers ---- */
+    function showLoginScreen() {
+      document.getElementById('view-login').style.display = 'flex';
+      document.getElementById('view-admin').style.display = 'none';
+      document.getElementById('view-app').style.display = 'none';
+    }
+
+    function showAdminScreen() {
+      document.getElementById('view-login').style.display = 'none';
+      document.getElementById('view-admin').style.display = 'flex';
+      document.getElementById('view-app').style.display = 'none';
+      renderAdminDashboard();
+    }
+
+    function showAppScreen(session) {
+      document.getElementById('view-login').style.display = 'none';
+      document.getElementById('view-admin').style.display = 'none';
+      document.getElementById('view-app').style.display = 'flex';
+
+      const docName = session.profile?.name || session.profile?.username || 'Doctor';
+      document.getElementById('topbar-doc-name').textContent = `Dr. ${docName}`;
+      document.getElementById('dropdown-doc-fullname').textContent = `Dr. ${docName}`;
+
+      const activeClinic = (session.profile?.clinics || []).find(c => c.id === session.profile?.activeClinicId);
+      document.getElementById('topbar-clinic-title').textContent = activeClinic ? activeClinic.name : 'Dhyey Clinic';
+
+      renderActiveView();
+    }
+
+    /* ---- Login Form Handler ---- */
+    document.getElementById('cms-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value;
+      const p = document.getElementById('login-password').value;
+
+      try {
+        const sessionData = await loginUser(u, p);
+        if (sessionData.role === 'admin') {
+          showAdminScreen();
         } else {
-          el.textContent = Math.floor(current) + '+';
+          showAppScreen(sessionData);
         }
-      }, 16);
-    }
-
-    const countersStarted = { value: false };
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && !countersStarted.value) {
-          countersStarted.value = true;
-          document.querySelectorAll('.stat-counter[data-target]').forEach(el => {
-            animateCounter(el, parseInt(el.dataset.target));
-          });
-        }
-      });
-    }, { threshold: 0.3 });
-
-    const statsBanner = document.querySelector('.stats-banner-section');
-    if (statsBanner) observer.observe(statsBanner);
-
-    // Contact form submission
-    function handleContactSubmit(event) {
-      event.preventDefault();
-      const btn = event.target.querySelector('button[type="submit"]');
-      btn.innerHTML = '<i class="ri-check-line"></i> Message Sent! We\'ll be in touch.';
-      btn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
-      setTimeout(() => {
-        btn.innerHTML = '<i class="ri-send-plane-line"></i> Send Message';
-        btn.style.background = '';
-        event.target.reset();
-      }, 4000);
-    }
-
-    // Navbar scroll effect
-    window.addEventListener('scroll', () => {
-      const navbar = document.querySelector('.custom-navbar');
-      if (window.scrollY > 50) {
-        navbar.style.boxShadow = '0 4px 20px rgba(9,92,84,0.1)';
-      } else {
-        navbar.style.boxShadow = 'none';
+      } catch (err) {
+        const alertBox = document.getElementById('login-error-msg');
+        document.getElementById('login-error-text').textContent = err.message || 'Invalid credentials';
+        alertBox.style.display = 'flex';
       }
     });
+
+    /* ---- Logout Handlers ---- */
+    document.getElementById('btn-doc-logout').addEventListener('click', logoutUser);
+    document.getElementById('admin-logout-btn').addEventListener('click', logoutUser);
+
+    /* ---- Sidebar Toggle ---- */
+    const sidebar = document.getElementById('cms-sidebar');
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+    });
+
+    /* ---- Doctor Profile Dropdown ---- */
+    const profileBtn = document.getElementById('btn-doc-profile');
+    const profileDropdown = document.getElementById('doc-profile-dropdown');
+    profileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileDropdown.style.display = profileDropdown.style.display === 'none' ? 'block' : 'none';
+      renderClinicsList();
+    });
+
+    document.addEventListener('click', () => {
+      profileDropdown.style.display = 'none';
+    });
+
+    function renderClinicsList() {
+      const curSession = initAuth();
+      const clinicsList = document.getElementById('dropdown-clinics-list');
+      const clinics = curSession?.profile?.clinics || [{ id: 'demo', name: 'Dhyey Clinic' }];
+
+      clinicsList.innerHTML = clinics.map(c => `
+        <button type="button" class="cms-btn cms-btn-ghost clinic-switch-btn" data-id="${c.id}" style="width: 100%; justify-content: flex-start; padding: 6px 10px; font-size: 12.5px; ${c.id === curSession?.profile?.activeClinicId ? 'background: var(--primary-soft); color: var(--primary-dark); font-weight: 700;' : ''}">
+          <span><i class="fa-solid fa-hospital"></i> ${c.name}</span>
+          ${c.id === curSession?.profile?.activeClinicId ? '<span class="cms-pill cms-badge-paid" style="margin-left: auto; font-size: 9px;">Active</span>' : ''}
+        </button>
+      `).join('');
+
+      clinicsList.querySelectorAll('.clinic-switch-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchDoctorClinic(btn.dataset.id);
+        });
+      });
+    }
+
+    document.getElementById('btn-add-clinic-action').addEventListener('click', () => {
+      const name = prompt('Enter new clinic / hospital branch name:');
+      if (name && name.trim()) {
+        addDoctorClinic(name.trim());
+      }
+    });
+
+    /* ---- Navigation Handler ---- */
+    document.querySelectorAll('.cms-nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.cms-nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        currentView = item.getAttribute('data-view');
+        if (currentView === 'case') {
+          currentSelection = { familyId: null, patientId: null };
+        } else {
+          currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
+        }
+        renderActiveView();
+      });
+    });
+
+    /* ---- Navigation Router ---- */
+    function navigateTo(viewName, selection = null) {
+      if (selection) {
+        currentSelection = selection;
+      } else if (viewName === 'case') {
+        currentSelection = { familyId: null, patientId: null };
+      } else {
+        currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
+      }
+      currentView = viewName;
+      document.querySelectorAll('.cms-nav-item').forEach(i => {
+        i.classList.toggle('active', i.getAttribute('data-view') === viewName);
+      });
+      renderActiveView();
+    }
+
+    function renderActiveView() {
+      const container = document.getElementById('cms-view-container');
+      container.innerHTML = '';
+
+      if (currentView === 'dashboard') {
+        renderDashboard(container, (famId, patId) => {
+          navigateTo('case', { familyId: famId, patientId: patId });
+        });
+      } else if (currentView === 'family') {
+        renderFamilyRegistration(container, (famId, patId) => {
+          // Self selected -> Redirect to Patient Record tab
+          navigateTo('case', { familyId: famId, patientId: patId });
+        }, (famId, patId) => {
+          // Family Member selected -> Redirect to Add Member tab with pinned Family Head
+          navigateTo('patient', { familyId: famId, patientId: patId, isRedirectFromHeadReg: true });
+        });
+      } else if (currentView === 'patient') {
+        renderPatientRegistration(
+          container,
+          currentSelection.familyId,
+          (famId, patId) => {
+            navigateTo('case', { familyId: famId, patientId: patId });
+          },
+          currentSelection.isRedirectFromHeadReg || false,
+          () => {
+            navigateTo('family');
+          },
+          currentSelection.editPatientId || null
+        );
+      } else if (currentView === 'case') {
+        renderConsultationView(container, currentSelection, (famId, patId) => {
+          currentSelection = { familyId: famId, patientId: patId };
+          renderActiveView();
+        }, (pat, visit) => {
+          openPrescriptionModal(pat, visit);
+        }, (pat, visit) => {
+          openLabReportModal(pat, visit);
+        }, (famId, patId) => {
+          navigateTo('patient', { familyId: famId, patientId: patId, editPatientId: patId });
+        });
+      } else if (currentView === 'masters') {
+        renderMastersView(container);
+      } else if (currentView === 'appointments') {
+        renderAppointmentsView(container);
+      } else if (currentView === 'billing') {
+        renderBillingView(container);
+      } else if (currentView === 'medicines') {
+        renderMedicineList(container);
+      } else if (currentView === 'inventory') {
+        renderInventoryView(container);
+      } else if (currentView === 'certificates') {
+        renderCertificateView(container);
+      } else if (currentView === 'followups') {
+        renderFollowUpsView(container);
+      } else if (currentView === 'reports') {
+        renderReportsView(container);
+      }
+    }
+
+    /* ---- Global Search Handler ---- */
+    document.getElementById('cms-global-search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = document.getElementById('cms-top-search').value.toLowerCase().trim();
+      if (!q) return;
+
+      const curSession = initAuth();
+      const db = getLocalDB(curSession?.profile?.activeClinicId || 'demo');
+      let found = null;
+
+      for (const fam of Object.values(db.families || {})) {
+        for (const pat of Object.values(fam.patients || {})) {
+          if (pat.id.toLowerCase() === q || pat.name.toLowerCase().includes(q)) {
+            found = { familyId: fam.id, patientId: pat.id };
+            break;
+          }
+        }
+        if (found) break;
+
+        if (fam.id.toLowerCase() === q || fam.headName.toLowerCase().includes(q) || (fam.area || '').toLowerCase().includes(q)) {
+          found = { familyId: fam.id, patientId: Object.keys(fam.patients || {})[0] || null };
+          break;
+        }
+      }
+
+      if (found) {
+        navigateTo('case', found);
+        document.getElementById('cms-top-search').value = '';
+      } else {
+        showToast(`No patient or family found for "${q}"`, 'error');
+      }
+    });
+
+    /* ---- Dynamic Keyboard Shortcut Normalizer & Executor ---- */
+    function getKeyComboString(e) {
+      const parts = [];
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.altKey) parts.push('Alt');
+      if (e.shiftKey && (e.key.length > 1 || (e.key.length === 2 && e.key.startsWith('F')))) parts.push('Shift');
+      if (e.metaKey) parts.push('Meta');
+
+      let mainKey = e.key;
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(mainKey)) {
+        return '';
+      }
+      if (mainKey === 'Escape') mainKey = 'Esc';
+      if (mainKey === ' ') mainKey = 'Space';
+      if (mainKey.length === 1) mainKey = mainKey.toUpperCase();
+
+      if (parts.length > 0) {
+        if (!parts.includes(mainKey)) {
+          parts.push(mainKey);
+        }
+        return parts.join('+');
+      }
+      return mainKey;
+    }
+
+    function executeShortcutTarget(target) {
+      if (!target) return;
+
+      // 1. Top Navigation Views
+      const navViews = {
+        dashboard: () => navigateTo('dashboard'),
+        family: () => navigateTo('family'),
+        patient: () => navigateTo('patient', { familyId: null, isRedirectFromHeadReg: false }),
+        case: () => navigateTo('case'),
+        appointments: () => navigateTo('appointments'),
+        billing: () => navigateTo('billing'),
+        inventory: () => navigateTo('inventory'),
+        medicines: () => navigateTo('medicines'),
+        certificates: () => navigateTo('certificates'),
+        followups: () => navigateTo('followups'),
+        reports: () => navigateTo('reports'),
+        masters: () => navigateTo('masters')
+      };
+
+      if (navViews[target]) {
+        navViews[target]();
+        return;
+      }
+
+      // 2. Master Data Sub-Tabs
+      if (target.startsWith('master_')) {
+        const subTab = target.replace('master_', '');
+        if (currentView !== 'masters') {
+          navigateTo('masters');
+          setTimeout(() => {
+            const btn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+            if (btn) btn.click();
+          }, 60);
+        } else {
+          const btn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      // 3. Form Openers & Modals
+      if (target === 'open_new_case') {
+        if (currentView !== 'case') {
+          navigateTo('case');
+          setTimeout(() => {
+            const btn = document.getElementById('btn-toggle-visit-form') || document.querySelector('.cms-btn-new-visit') || document.getElementById('btn-add-new-case');
+            if (btn) btn.click();
+          }, 100);
+        } else {
+          const btn = document.getElementById('btn-toggle-visit-form') || document.querySelector('.cms-btn-new-visit') || document.getElementById('btn-add-new-case');
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      if (target === 'open_add_family') {
+        if (currentView !== 'family') {
+          navigateTo('family');
+        }
+        setTimeout(() => {
+          const headInput = document.getElementById('fam-head-name') || document.querySelector('#family-reg-form input');
+          if (headInput) headInput.focus();
+        }, 80);
+        return;
+      }
+
+      if (target === 'open_add_member') {
+        if (currentView !== 'patient') {
+          navigateTo('patient', { familyId: null, isRedirectFromHeadReg: false });
+        }
+        setTimeout(() => {
+          const memInput = document.getElementById('pat-name') || document.querySelector('#patient-reg-form input');
+          if (memInput) memInput.focus();
+        }, 80);
+        return;
+      }
+
+      if (target === 'open_add_appointment') {
+        if (currentView !== 'appointments') {
+          navigateTo('appointments');
+          setTimeout(() => {
+            const btn = document.getElementById('btn-add-appointment') || document.querySelector('[data-action="add-appointment"]');
+            if (btn) btn.click();
+          }, 80);
+        } else {
+          const btn = document.getElementById('btn-add-appointment') || document.querySelector('[data-action="add-appointment"]');
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      const masterModalMap = {
+        open_add_dietary: 'dietary',
+        open_add_complaint: 'complaints',
+        open_add_investigation: 'investigations',
+        open_add_area: 'areas',
+        open_add_medicine: 'medicines',
+        open_add_allergy: 'allergies',
+        open_add_relation: 'relations',
+        open_add_society: 'societies',
+        open_add_shortcut: 'shortcuts',
+      };
+
+      if (masterModalMap[target]) {
+        const subTab = masterModalMap[target];
+        if (currentView !== 'masters') {
+          navigateTo('masters');
+          setTimeout(() => {
+            const tabBtn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+            if (tabBtn) tabBtn.click();
+            setTimeout(() => {
+              const addBtn = document.querySelector(`.btn-open-add-modal[data-type="${subTab}"]`) || document.querySelector('.btn-open-add-modal');
+              if (addBtn) addBtn.click();
+            }, 50);
+          }, 60);
+        } else {
+          const tabBtn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+          if (tabBtn) tabBtn.click();
+          setTimeout(() => {
+            const addBtn = document.querySelector(`.btn-open-add-modal[data-type="${subTab}"]`) || document.querySelector('.btn-open-add-modal');
+            if (addBtn) addBtn.click();
+          }, 50);
+        }
+        return;
+      }
+
+      if (target === 'open_attach_lab') {
+        const btn = document.getElementById('btn-attach-lab-report') || document.querySelector('.btn-attach-lab');
+        if (btn) btn.click();
+        return;
+      }
+
+      // 4. Clinical Actions
+      if (target === 'quick_search') {
+        const searchBox = document.getElementById('cms-top-search');
+        if (searchBox) {
+          searchBox.focus();
+          searchBox.select();
+        }
+        return;
+      }
+
+      if (target === 'print_prescription') {
+        const printBtn = document.getElementById('btn-print-rx-preview') || document.querySelector('.btn-print-rx') || document.getElementById('btn-print-prescription');
+        if (printBtn) printBtn.click();
+        return;
+      }
+
+      if (target === 'submit_case') {
+        const saveBtn = document.getElementById('btn-save-consultation') || document.querySelector('button[type="submit"].btn-save-case') || document.querySelector('#form-case-entry button[type="submit"]');
+        if (saveBtn) saveBtn.click();
+        return;
+      }
+
+      if (target === 'close_modal') {
+        const modal = document.querySelector('.cms-master-modal-backdrop') || document.querySelector('.cms-modal-backdrop') || document.querySelector('.cms-modal-overlay');
+        if (modal) {
+          modal.remove();
+        } else if (document.activeElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      if (target === 'toggle_theme') {
+        const themeBtn = document.getElementById('btn-theme-toggle');
+        if (themeBtn) themeBtn.click();
+        return;
+      }
+    }
+
+    /* ---- Global Keyboard Navigation & Custom Shortcuts Handler ---- */
+    window.addEventListener('keydown', (e) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+      // Escape key closes modal or un-focuses input
+      if (e.key === 'Escape') {
+        const modal = document.querySelector('.cms-master-modal-backdrop') || document.querySelector('.cms-modal-backdrop') || document.querySelector('.cms-modal-overlay');
+        if (modal) {
+          e.preventDefault();
+          modal.remove();
+          return;
+        }
+        if (isInput) {
+          activeEl.blur();
+          return;
+        }
+      }
+
+      // Extract normalized keystroke combo
+      const combo = getKeyComboString(e);
+      if (!combo) return;
+
+      // Inside input fields: preserve regular typing and standard clipboard shortcuts
+      if (isInput) {
+        if (['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+A', 'Ctrl+Z', 'Ctrl+Y'].includes(combo)) {
+          return;
+        }
+        // Only trigger shortcut in input if Alt/Ctrl modifier is pressed or it is a Function Key (F1-F12)
+        if (!e.altKey && !e.ctrlKey && !e.metaKey && !combo.startsWith('F')) {
+          return;
+        }
+      }
+
+      // Retrieve custom shortcuts from DB
+      const curSession = initAuth();
+      const activeClinicId = curSession?.profile?.activeClinicId || 'demo';
+      const db = getLocalDB(activeClinicId);
+      const shortcuts = db.customShortcuts || [
+        { key: 'F1', target: 'family' },
+        { key: 'F2', target: 'patient' },
+        { key: 'F3', target: 'case' },
+        { key: 'F4', target: 'dashboard' },
+        { key: 'F5', target: 'reports' },
+        { key: 'F6', target: 'certificates' },
+        { key: 'F7', target: 'masters' },
+        { key: '/', target: 'quick_search' },
+        { key: 'Alt+N', target: 'open_new_case' },
+        { key: 'Esc', target: 'close_modal' },
+      ];
+
+      // Match pressed combo against saved shortcuts
+      const matched = shortcuts.find(sc => {
+        if (!sc.key) return false;
+        const scNorm = sc.key.trim().toUpperCase().replace(/\s+/g, '');
+        const comboNorm = combo.trim().toUpperCase().replace(/\s+/g, '');
+        return scNorm === comboNorm;
+      });
+
+      if (matched) {
+        e.preventDefault();
+        executeShortcutTarget(matched.target);
+      }
+    });
+
+    /* ---- Admin Dashboard Helper ---- */
+    async function renderAdminDashboard() {
+      const listEl = document.getElementById('admin-doctors-list');
+      let doctors = [];
+      try {
+        const res = await apiFetch('/auth/doctors');
+        if (res && res.doctors) doctors = res.doctors;
+      } catch (e) {}
+
+      // Add demo doctor
+      if (!doctors.some(d => d.username === 'dhyey')) {
+        doctors.unshift({
+          _id: 'demo',
+          username: 'dhyey',
+          name: 'Dr. Chirag Paghdal',
+          clinics: [{ id: 'demo', name: 'Dhyey Clinic & Nursing Home' }]
+        });
+      }
+
+      listEl.innerHTML = doctors.map(d => `
+        <div class="cms-card" style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <b>${d.name || 'Dr. ' + d.username}</b> (@${d.username})
+            <div style="font-size: 11.5px; color: var(--text-muted);">${(d.clinics || []).map(c => c.name).join(', ')}</div>
+          </div>
+          <button type="button" class="cms-btn cms-btn-primary admin-enter-doc-btn" data-id="${d._id || d.id}" data-user="${d.username}" data-name="${d.name || d.username}" style="padding: 5px 12px; font-size: 12px;">Login as Doctor <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.admin-enter-doc-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const doctorSession = {
+            role: 'doctor',
+            profile: {
+              id: btn.dataset.id,
+              username: btn.dataset.user,
+              name: btn.dataset.name,
+              clinics: [{ id: btn.dataset.id, name: `${btn.dataset.name}'s Clinic` }],
+              activeClinicId: btn.dataset.id,
+            },
+            token: 'mock-doctor-token-' + btn.dataset.id,
+          };
+          sessionStorage.setItem('clinic-auth-session', JSON.stringify(doctorSession));
+          localStorage.setItem('clinic-auth-session', JSON.stringify(doctorSession));
+          showAppScreen(doctorSession);
+        });
+      });
+
+      document.getElementById('admin-add-doc-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const clinicName = document.getElementById('new-doc-clinic').value.trim();
+        const name = document.getElementById('new-doc-name').value.trim();
+        const username = document.getElementById('new-doc-user').value.trim();
+        const password = document.getElementById('new-doc-pass').value.trim();
+
+        try {
+          await apiFetch('/auth/register-doctor', {
+            method: 'POST',
+            body: { clinicName, name, username, password }
+          });
+          showToast(`Doctor @${username} created!`);
+          document.getElementById('admin-add-doc-form').reset();
+          renderAdminDashboard();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
   </script>
 </body>
-
 </html>

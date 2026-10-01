@@ -157,7 +157,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
         </form>
 
         <!-- Right / Bottom: Registered Families Directory -->
-        <div id="family-directory-card" class="cms-card" style="display: flex; flex-direction: column; gap: 10px; ${layoutPref === 'pref-1' ? 'height: 515px; min-height: 515px; max-height: 515px;' : 'min-height: 480px; max-height: 580px;'} box-sizing: border-box; overflow: hidden;">
+        <div id="family-directory-card" class="cms-card" style="display: flex; flex-direction: column; gap: 10px; ${layoutPref === 'pref-1' ? 'height: 560px; min-height: 560px; max-height: 560px;' : 'min-height: 520px; max-height: 650px;'} box-sizing: border-box; overflow: hidden;">
           <div class="cms-card-header" style="margin-bottom: 0; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
             <div class="cms-card-title">Registered Families Directory</div>
             <span class="cms-pill cms-badge-paid font-mono" id="family-badge-total" style="font-size: 11px;">0 Families</span>
@@ -170,7 +170,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
           </div>
 
           <!-- Scrollable Directory List Area -->
-          <div id="family-cards-list" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+          <div id="family-cards-list" class="cms-scrollbar" style="flex: 1 1 auto; min-height: 0; overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
             <!-- Dynamically Rendered -->
           </div>
 
@@ -241,12 +241,12 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
 
     if (pref === 'pref-1') {
       layoutGrid.style.gridTemplateColumns = '1fr 1fr';
-      formCard.style.height = '515px';
-      formCard.style.minHeight = '515px';
-      formCard.style.maxHeight = '515px';
-      dirCard.style.height = '515px';
-      dirCard.style.minHeight = '515px';
-      dirCard.style.maxHeight = '515px';
+      formCard.style.height = '560px';
+      formCard.style.minHeight = '560px';
+      formCard.style.maxHeight = '560px';
+      dirCard.style.height = '560px';
+      dirCard.style.minHeight = '560px';
+      dirCard.style.maxHeight = '560px';
       btnPref1.className = 'cms-btn cms-btn-sm cms-btn-primary';
       btnPref2.className = 'cms-btn cms-btn-sm cms-btn-ghost';
     } else {
@@ -255,8 +255,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
       formCard.style.minHeight = 'auto';
       formCard.style.maxHeight = 'none';
       dirCard.style.height = 'auto';
-      dirCard.style.minHeight = '480px';
-      dirCard.style.maxHeight = '580px';
+      dirCard.style.minHeight = '520px';
+      dirCard.style.maxHeight = '650px';
       btnPref1.className = 'cms-btn cms-btn-sm cms-btn-ghost';
       btnPref2.className = 'cms-btn cms-btn-sm cms-btn-primary';
     }
@@ -538,7 +538,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     }
 
     const finalFamId = createdFamId || computedFamId;
-    const finalPatId = createdPatId || `${clinicCode}${curYr}${pad((db.counters?.patient || 0) + 1, 4)}`;
+    const famSeqCode = pad(curSeq, 4);
+    const finalPatId = createdPatId || `${famSeqCode}0001`;
 
     const pat = {
       id: finalPatId,
@@ -635,6 +636,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
 
   function renderFamilyList() {
     const listContainer = container.querySelector('#family-cards-list');
+    if (!listContainer) return;
+    const prevScrollTop = listContainer.scrollTop;
     const showingCountEl = container.querySelector('#family-showing-count');
     const badgeTotalEl = container.querySelector('#family-badge-total');
     const pageIndicator = container.querySelector('#family-page-indicator');
@@ -696,17 +699,17 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
         const membersHTML = Object.values(f.patients || {})
           .map(
             (p) => `
-          <div class="cms-member-item cms-clickable" data-famid="${famIdentifier}" data-patid="${p.id || p.patId}" style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 4px; font-size: 13px;">
-            <div>
-              <b>${p.name}</b>
-              <span style="color: var(--text-muted); font-size: 11.5px; margin-left: 6px;">(${p.relation || 'Member'})</span>
-              ${p.age ? `<span class="cms-pill" style="font-size: 10px; padding: 1px 6px; margin-left: 4px;">${p.age} Yrs</span>` : ''}
-              ${p.bloodGroup ? `<span class="cms-pill cms-badge-danger" style="font-size: 10px; padding: 1px 6px; margin-left: 4px;">${p.bloodGroup}</span>` : ''}
-              ${p.allergy ? `<span class="cms-pill cms-badge-warning" style="font-size: 10px; padding: 1px 6px; margin-left: 4px;">Allergy: ${p.allergy}</span>` : ''}
+          <div class="cms-member-item cms-clickable" data-famid="${famIdentifier}" data-patid="${p.id || p.patId}" style="display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; cursor: pointer; min-height: 32px; box-sizing: border-box; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+              <b style="color: var(--text);">${p.name}</b>
+              <span style="color: var(--text-muted); font-size: 11px;">(${p.relation || 'Member'})</span>
+              ${p.age ? `<span class="cms-pill" style="font-size: 9.5px; padding: 1px 5px;">${p.age} Yrs</span>` : ''}
+              ${p.bloodGroup ? `<span class="cms-pill cms-badge-danger" style="font-size: 9.5px; padding: 1px 5px;">${p.bloodGroup}</span>` : ''}
+              ${p.allergy ? `<span class="cms-pill cms-badge-warning" style="font-size: 9.5px; padding: 1px 5px;">Allergy: ${p.allergy}</span>` : ''}
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="cms-kbd font-mono" style="font-size: 10.5px;">${p.patId || p.id}</span>
-              <i class="fa-solid fa-arrow-right" style="color: var(--primary);"></i>
+            <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+              <span class="cms-kbd font-mono" style="font-size: 10px; padding: 1px 5px;">${p.patId || p.id}</span>
+              <i class="fa-solid fa-arrow-right" style="color: var(--primary); font-size: 10.5px;"></i>
             </div>
           </div>
         `
@@ -714,7 +717,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
           .join('');
 
         return `
-        <div class="cms-family-block" style="border: ${isCurrentlyEditing ? '2px solid #ea580c' : '1px solid var(--border)'}; border-radius: 12px; background: ${isCurrentlyEditing ? 'rgba(234, 88, 12, 0.04)' : 'var(--surface-alt)'}; overflow: hidden; transition: border-color 0.2s ease;">
+        <div class="cms-family-block" style="border: ${isCurrentlyEditing ? '2px solid #ea580c' : '1px solid var(--border)'}; border-radius: 12px; background: ${isCurrentlyEditing ? 'rgba(234, 88, 12, 0.04)' : 'var(--surface-alt)'}; overflow: hidden; transition: border-color 0.2s ease; flex-shrink: 0;">
           <div class="cms-family-header" data-toggle="${famIdentifier}" style="padding: 9px 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
             <div style="flex: 1; min-width: 0;">
               <div style="font-weight: 700; font-size: 13.5px; color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -742,9 +745,16 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
           ${
             isExpanded
               ? `
-            <div style="padding: 8px 12px 12px; background: rgba(0,0,0,0.02); border-top: 1px solid var(--border-subtle);">
-              <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Family Members:</div>
-              ${membersHTML}
+            <div style="padding: 8px 12px 10px; background: rgba(0,0,0,0.025); border-top: 1px solid var(--border-subtle);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 5px;">
+                  <i class="fa-solid fa-users" style="color: var(--primary);"></i> Family Members (${memberCount}):
+                </div>
+                <span style="font-size: 10.5px; color: var(--primary); font-weight: 600;"><i class="fa-solid fa-arrows-up-down"></i> Scroll to view all &bull; Click to open</span>
+              </div>
+              <div class="cms-scrollbar cms-family-members-viewport" style="max-height: 105px; min-height: 38px; overflow-y: scroll !important; overflow-x: hidden; padding-right: 4px; display: flex; flex-direction: column; gap: 4px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
+                ${membersHTML || '<div style="padding: 10px; text-align: center; color: var(--text-muted); font-size: 12px; font-style: italic;">No members registered under this family head yet.</div>'}
+              </div>
             </div>
           `
               : ''
@@ -754,6 +764,19 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
       })
       .join('');
 
+    // Restore scroll position
+    if (prevScrollTop) {
+      listContainer.scrollTop = prevScrollTop;
+    }
+
+    // Direct wheel scroll handler on members viewport for immediate scrolling
+    listContainer.querySelectorAll('.cms-family-members-viewport').forEach((vp) => {
+      vp.addEventListener('wheel', (e) => {
+        vp.scrollTop += e.deltaY;
+        e.stopPropagation();
+      }, { passive: true });
+    });
+
     // Accordion Toggle Handlers
     listContainer.querySelectorAll('.cms-family-header').forEach((hdr) => {
       hdr.addEventListener('click', (e) => {
@@ -761,6 +784,14 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
         const famId = hdr.getAttribute('data-toggle');
         expandedFamId = expandedFamId === famId ? null : famId;
         renderFamilyList();
+        if (expandedFamId) {
+          setTimeout(() => {
+            const block = listContainer.querySelector(`[data-toggle="${famId}"]`)?.closest('.cms-family-block');
+            if (block) {
+              block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }, 40);
+        }
       });
     });
 

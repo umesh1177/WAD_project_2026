@@ -4,28 +4,65 @@
 
 @media print {
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
   
   #cms-print-area, #cms-print-area * {
-    visibility: visible;
+    visibility: visible !important;
   }
   
   #cms-print-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    margin: 0;
-    padding: 10mm 12mm;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 148mm !important;
+    max-width: 148mm !important;
+    min-height: 205mm !important;
+    margin: 0 !important;
+    padding: 6mm 8mm !important;
     background: #FFFFFF !important;
     color: #111111 !important;
     box-shadow: none !important;
     border: none !important;
+    z-index: 999999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
-  .no-print, .cms-overlay, .cms-sidebar, .cms-topbar, .cms-statusbar, .cms-toast {
+  .no-print, .cms-sidebar, .cms-topbar, .cms-statusbar, .cms-toast, .cms-modal-backdrop {
     display: none !important;
+  }
+
+  .cms-overlay {
+    background: transparent !important;
+    position: static !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+  }
+
+  .cms-overlay .cms-modal {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .cms-prescription-scroll-viewport {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
   }
   
   @page {
@@ -103,3 +140,14 @@
   margin-top: auto;
   color: #1167B1;
 }
+
+#print-dietary-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#print-dietary-content {
+  font-size: 9.5pt;
+  line-height: 1.45;
+}
+
