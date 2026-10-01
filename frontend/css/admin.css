@@ -6,6 +6,8 @@
   border-left: 1px solid var(--border-color);
   padding-left: 10px;
 }
+.admin-brand-logo { background: #0284c7; }
+.admin-brand-title { color: #0284c7; }
 .admin-subnav-link {
   color: var(--text-muted);
   font-size: 12px;
@@ -47,9 +49,24 @@
 .analysis-toolbar .form-group { min-width: 150px; margin: 0; }
 .analysis-toolbar .form-input, .analysis-toolbar .form-select { padding: 8px 10px; }
 .modal-overlay.active { display: flex; }
-.clinic-modal-card { width: min(520px, calc(100vw - 30px)); background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.clinic-modal-card { width: min(820px, calc(100vw - 30px)); max-height: 90vh; overflow: auto; background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .clinic-modal-card .modal-header, .clinic-modal-card .modal-body, .clinic-modal-card .modal-footer { padding: 17px 20px; }
 .clinic-modal-card .modal-body { border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; }
+.clinic-form-section { padding: 14px 0 4px; border-top: 1px solid var(--border-color); }
+.clinic-form-section:first-child { border-top: 0; padding-top: 0; }
+.clinic-form-section h3 { color: var(--primary-teal); font-size: 13px; margin-bottom: 12px; }
+.clinic-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.clinic-form-grid .form-group { min-width: 0; }
+.clinic-form-grid .full-width { grid-column: 1 / -1; }
+.clinic-form-help { color: var(--text-muted); display: block; font-size: 11px; margin-top: 4px; }
+.doctor-entry { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px; }
+.doctor-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.doctor-entry-header strong { color: var(--text-main); font-size: 12px; }
+.remove-doctor { color: #b91c1c; background: none; border: 0; cursor: pointer; font-size: 12px; }
+.file-input { font-size: 12px; width: 100%; }
+.quick-filter-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+.quick-filter { border: 1px solid var(--border-color); background: var(--surface-alt, #f8fafc); color: var(--text-muted); border-radius: 999px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 11px; }
+.quick-filter:hover, .quick-filter.active { color: var(--primary-teal); border-color: var(--primary-teal-border); background: var(--primary-teal-light); }
 @media (max-width: 1000px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } .admin-grid { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } }
+@media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } .clinic-form-grid { grid-template-columns: 1fr; } .clinic-form-grid .full-width { grid-column: auto; } }
