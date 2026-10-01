@@ -70,7 +70,7 @@ export function renderCertificateView(container) {
 
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
           <button type="button" id="btn-print-certificate" class="cms-btn cms-btn-primary" style="padding: 10px 24px;">
-            <span>🖨️</span>
+            <span><i class="fa-solid fa-print"></i></span>
             <span>Print Medical Certificate</span>
           </button>
         </div>

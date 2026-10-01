@@ -16,7 +16,7 @@ export async function renderDashboard(container, onSelectPatient) {
       <!-- Date Filter Bar -->
       <div class="cms-dash-header">
         <div class="cms-dash-date-filter">
-          <span style="font-size: 18px;">📅</span>
+          <i class="fa-solid fa-calendar-days" style="font-size: 18px; color: var(--primary);"></i>
           <span class="font-display" style="font-weight: 800; font-size: 16px;">Dashboard Filter Date:</span>
           <input type="date" id="dash-date-picker" class="cms-input cms-dash-date-input" value="${dateFilter}" />
         </div>
@@ -29,7 +29,7 @@ export async function renderDashboard(container, onSelectPatient) {
       <div class="cms-stat-grid" id="dash-stat-grid">
         <div class="cms-stat-card" id="card-families" data-tab="families">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon">👥</div>
+            <div class="cms-stat-icon"><i class="fa-solid fa-people-roof"></i></div>
             <span class="cms-kbd">All</span>
           </div>
           <div class="cms-stat-value" id="stat-families">-</div>
@@ -38,7 +38,7 @@ export async function renderDashboard(container, onSelectPatient) {
 
         <div class="cms-stat-card" id="card-patients" data-tab="patients">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon">🩺</div>
+            <div class="cms-stat-icon"><i class="fa-solid fa-user-injured"></i></div>
             <span class="cms-kbd">All</span>
           </div>
           <div class="cms-stat-value" id="stat-patients">-</div>
@@ -47,7 +47,7 @@ export async function renderDashboard(container, onSelectPatient) {
 
         <div class="cms-stat-card active tone-accent" id="card-visits" data-tab="visits">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon" style="color: var(--accent);">📋</div>
+            <div class="cms-stat-icon" style="color: var(--accent);"><i class="fa-solid fa-clipboard-list"></i></div>
             <span class="cms-kbd" id="stat-date-badge">Today</span>
           </div>
           <div class="cms-stat-value" id="stat-visits">-</div>
@@ -56,7 +56,7 @@ export async function renderDashboard(container, onSelectPatient) {
 
         <div class="cms-stat-card">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon" style="color: var(--success);">💰</div>
+            <div class="cms-stat-icon" style="color: var(--success);"><i class="fa-solid fa-indian-rupee-sign"></i></div>
             <span class="cms-kbd">Collection</span>
           </div>
           <div class="cms-stat-value" id="stat-collection">-</div>
@@ -65,7 +65,7 @@ export async function renderDashboard(container, onSelectPatient) {
 
         <div class="cms-stat-card tone-danger" id="card-dues" data-tab="dues">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon" style="color: var(--danger);">⚠️</div>
+            <div class="cms-stat-icon" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <span class="cms-kbd">Pending</span>
           </div>
           <div class="cms-stat-value" id="stat-dues" style="color: var(--danger);">-</div>
@@ -272,7 +272,7 @@ export async function renderDashboard(container, onSelectPatient) {
       const duesOnly = flatPatients.filter((p) => p.totalDue > 0).sort((a, b) => b.totalDue - a.totalDue);
       titleEl.textContent = `Outstanding Dues (${duesOnly.length} Patients)`;
       if (duesOnly.length === 0) {
-        tableEl.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--success); font-weight: 600;">✨ All accounts are fully settled. No pending dues!</div>`;
+        tableEl.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i> All accounts are fully settled. No pending dues!</div>`;
       } else {
         tableEl.innerHTML = `
           <table class="cms-table">

@@ -18,11 +18,11 @@ export function renderReportsView(container) {
     <div style="display: flex; flex-direction: column; gap: 16px;">
       <!-- Reports Sub-nav -->
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="cms-btn ${activeTab === 'area' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-area">📍 Area-wise</button>
-        <button type="button" class="cms-btn ${activeTab === 'refdr' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-refdr">👨‍⚕️ Ref. Doctor</button>
-        <button type="button" class="cms-btn ${activeTab === 'diagnosis' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-diag">🩺 Diagnosis-wise</button>
-        <button type="button" class="cms-btn ${activeTab === 'patient' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-pat">👤 Patient History</button>
-        <button type="button" class="cms-btn ${activeTab === 'collection' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-col">💰 Daily Collections</button>
+        <button type="button" class="cms-btn ${activeTab === 'area' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-area"><i class="fa-solid fa-location-dot"></i> Area-wise</button>
+        <button type="button" class="cms-btn ${activeTab === 'refdr' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-refdr"><i class="fa-solid fa-user-doctor"></i> Ref. Doctor</button>
+        <button type="button" class="cms-btn ${activeTab === 'diagnosis' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-diag"><i class="fa-solid fa-stethoscope"></i> Diagnosis-wise</button>
+        <button type="button" class="cms-btn ${activeTab === 'patient' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-pat"><i class="fa-solid fa-user"></i> Patient History</button>
+        <button type="button" class="cms-btn ${activeTab === 'collection' ? 'cms-btn-primary' : 'cms-btn-ghost'}" id="rpt-tab-col"><i class="fa-solid fa-indian-rupee-sign"></i> Daily Collections</button>
       </div>
 
       <!-- Report Content Card -->

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/login.css">
 </head>
@@ -11,29 +12,29 @@
   <div class="cms-login-page">
     <div class="cms-login-backdrop"></div>
     <div class="cms-login-card">
-      <div class="cms-login-avatar">🏥</div>
+      <div class="cms-login-avatar"><i class="fa-solid fa-hospital"></i></div>
       <h1 class="cms-login-title">Dhyey Clinic Portal</h1>
       <p class="cms-login-desc">Sign in to manage patient records, clinical visits, pharmacy, and billing seamlessly.</p>
 
       <div id="login-error-msg" class="cms-login-alert" style="display: none;">
-        <span>⚠️</span>
+        <span><i class="fa-solid fa-triangle-exclamation"></i></span>
         <span id="login-error-text">Invalid username or password</span>
       </div>
 
       <form id="standalone-login-form" class="cms-login-form">
         <div class="cms-login-input-group">
-          <i>👤</i>
+          <i><i class="fa-solid fa-user"></i></i>
           <input type="text" id="login-username" class="cms-login-input" placeholder="Username (e.g. dhyey or admin)" required autofocus />
         </div>
 
         <div class="cms-login-input-group">
-          <i>🔒</i>
+          <i><i class="fa-solid fa-lock"></i></i>
           <input type="password" id="login-password" class="cms-login-input" placeholder="Password (e.g. 123 or admin)" required />
         </div>
 
         <button type="submit" class="cms-login-submit">
           <span>Sign In</span>
-          <span>➔</span>
+          <span><i class="fa-solid fa-arrow-right"></i></span>
         </button>
       </form>
 

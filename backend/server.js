@@ -34,48 +34,83 @@ const { todayISO } = require('./utils/generateId');
 
 const seedDemoData = async () => {
   try {
+    // Clear out any legacy format data with old 4-digit or hyphenated famIds
+    await Family.deleteMany({
+      clinicId: 'demo',
+      $or: [
+        { famId: { $in: ['0001', '0002'] } },
+        { famId: { $regex: '-' } },
+        { famId: { $exists: true, $where: 'this.famId && this.famId.length < 12' } }
+      ]
+    });
+    await Patient.deleteMany({
+      clinicId: 'demo',
+      $or: [
+        { familyId: { $in: ['0001', '0002'] } },
+        { familyId: { $regex: '-' } },
+        { patId: { $in: ['0001', '0002'] } },
+        { patId: { $regex: '-' } },
+        { patId: { $exists: true, $where: 'this.patId && this.patId.length < 12' } }
+      ]
+    });
+    await Consultation.deleteMany({
+      clinicId: 'demo',
+      $or: [
+        { familyId: { $in: ['0001', '0002'] } },
+        { familyId: { $regex: '-' } },
+        { patientId: { $in: ['0001', '0002'] } },
+        { patientId: { $regex: '-' } }
+      ]
+    });
+
     const famCount = await Family.countDocuments({ clinicId: 'demo' });
     if (famCount === 0) {
-      console.log('[Database Seeding]: Seeding initial demo clinic data...');
+      console.log('[Database Seeding]: Seeding initial demo clinic data with 12-digit ID format...');
       
       const f1 = new Family({
-        famId: '0001',
+        famId: '000120260001',
         headName: 'PATEL RAMESHBHAI GOVINDBHAI',
+        society: 'Shanti Niketan Apt',
+        registeredBy: 'Self',
         area: 'VASTRAPUR',
         phone: '9876543210',
+        year: 2026,
+        sequence: 1,
         clinicId: 'demo'
       });
       await f1.save();
 
       const p1 = new Patient({
-        patId: '0001',
-        familyId: '0001',
+        patId: '000120260001',
+        familyId: '000120260001',
         name: 'PATEL RAMESHBHAI GOVINDBHAI',
         relation: 'Head',
         age: '45',
         bloodGroup: 'O+',
         allergy: '',
+        phone: '9876543210',
         clinicId: 'demo'
       });
       await p1.save();
 
       const p2 = new Patient({
-        patId: '0002',
-        familyId: '0001',
+        patId: '000120260002',
+        familyId: '000120260001',
         name: 'PATEL SHARDABEN RAMESHBHAI',
         relation: 'Wife',
         age: '43',
         bloodGroup: 'B+',
         allergy: 'DUST',
+        phone: '9876543210',
         clinicId: 'demo'
       });
       await p2.save();
 
       const v1 = new Consultation({
-        caseId: '0001000101',
+        caseId: '00012026000101',
         visitNum: 1,
-        patientId: '0001',
-        familyId: '0001',
+        patientId: '000120260001',
+        familyId: '000120260001',
         clinicId: 'demo',
         date: todayISO(),
         time: '10:15',
@@ -93,41 +128,36 @@ const seedDemoData = async () => {
       await v1.save();
 
       const f2 = new Family({
-        famId: '0002',
+        famId: '000120260002',
         headName: 'SHARMA AMITBHAI DINESHBHAI',
+        society: 'Gokuldham Society',
+        registeredBy: 'Self',
         area: 'NAVRANGPURA',
         phone: '9876543211',
+        year: 2026,
+        sequence: 2,
         clinicId: 'demo'
       });
       await f2.save();
 
       const p3 = new Patient({
-        patId: '0003',
-        familyId: '0002',
+        patId: '000120260003',
+        familyId: '000120260002',
         name: 'SHARMA AMITBHAI DINESHBHAI',
         relation: 'Head',
         age: '50',
         bloodGroup: 'A+',
+        allergy: '',
+        phone: '9876543211',
         clinicId: 'demo'
       });
       await p3.save();
 
-      const p4 = new Patient({
-        patId: '0004',
-        familyId: '0002',
-        name: 'SHARMA NEHABEN AMITBHAI',
-        relation: 'Wife',
-        age: '48',
-        bloodGroup: 'A+',
-        clinicId: 'demo'
-      });
-      await p4.save();
-
       const v2 = new Consultation({
-        caseId: '0002000401',
+        caseId: '00012026000201',
         visitNum: 1,
-        patientId: '0004',
-        familyId: '0002',
+        patientId: '000120260003',
+        familyId: '000120260002',
         clinicId: 'demo',
         date: todayISO(),
         time: '11:00',

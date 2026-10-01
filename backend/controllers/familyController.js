@@ -55,26 +55,34 @@ const getFamilyById = async (req, res) => {
 // Create new family + auto-create Head of Family patient
 const createFamily = async (req, res) => {
   try {
-    const { headName, area, phone, address } = req.body;
+    const { headName, age, bloodGroup, society, registeredBy, allergy, area, phone, address, famId: customFamId } = req.body;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
 
     if (!headName || !headName.trim()) {
       return res.status(400).json({ success: false, message: 'Family head name is required' });
     }
 
-    // Auto-calculate next sequential famId and patId for this clinic
-    const countFam = await Family.countDocuments({ clinicId });
-    const nextFamId = pad(countFam + 1, 4);
+    const currentYear = new Date().getFullYear();
+    const cleanClinicCode = (clinicId === 'demo' ? '0001' : (String(clinicId).replace(/\D/g, '') || String(clinicId).toUpperCase().replace(/[^A-Z0-9]/g, '')).padStart(4, '0').slice(-4)) || '0001';
+
+    // Auto-calculate next sequential famId and patId for this clinic and year (12-digit without hyphens)
+    const countFam = await Family.countDocuments({ clinicId, year: currentYear });
+    const sequence = countFam + 1;
+    const nextFamId = customFamId || `${cleanClinicCode}${currentYear}${pad(sequence, 4)}`;
 
     const countPat = await Patient.countDocuments({ clinicId });
-    const nextPatId = pad(countPat + 1, 4);
+    const nextPatId = `${cleanClinicCode}${currentYear}${pad(countPat + 1, 4)}`;
 
     const newFamily = new Family({
       famId: nextFamId,
       headName: headName.trim().toUpperCase(),
+      society: (society || '').trim(),
+      registeredBy: registeredBy || 'Self',
       area: (area || '').trim(),
       phone: (phone || '').trim(),
       address: (address || '').trim(),
+      year: currentYear,
+      sequence,
       clinicId,
     });
     await newFamily.save();
@@ -85,6 +93,11 @@ const createFamily = async (req, res) => {
       familyId: nextFamId,
       name: headName.trim().toUpperCase(),
       relation: 'Head',
+      age: age ? String(age).trim() : '',
+      bloodGroup: (bloodGroup || '').trim(),
+      allergy: (allergy || '').trim(),
+      society: (society || '').trim(),
+      area: (area || '').trim(),
       phone: (phone || '').trim(),
       clinicId,
     });
@@ -103,17 +116,19 @@ const createFamily = async (req, res) => {
   }
 };
 
-// Update family
+// Update family & sync Head of Family patient
 const updateFamily = async (req, res) => {
   try {
     const { id } = req.params;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const { headName, area, phone, address } = req.body;
+    const { headName, age, bloodGroup, society, registeredBy, allergy, area, phone, address } = req.body;
 
     const updated = await Family.findOneAndUpdate(
       { famId: id, clinicId },
       {
         ...(headName && { headName: headName.trim().toUpperCase() }),
+        ...(society !== undefined && { society: society.trim() }),
+        ...(registeredBy !== undefined && { registeredBy }),
         ...(area !== undefined && { area: area.trim() }),
         ...(phone !== undefined && { phone: phone.trim() }),
         ...(address !== undefined && { address: address.trim() }),
@@ -125,7 +140,29 @@ const updateFamily = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Family not found' });
     }
 
-    res.json({ success: true, message: 'Family updated successfully', data: updated });
+    // Sync Head patient record
+    const headPatient = await Patient.findOneAndUpdate(
+      { familyId: id, relation: 'Head', clinicId },
+      {
+        ...(headName && { name: headName.trim().toUpperCase() }),
+        ...(age !== undefined && { age: String(age).trim() }),
+        ...(bloodGroup !== undefined && { bloodGroup: bloodGroup.trim() }),
+        ...(allergy !== undefined && { allergy: allergy.trim() }),
+        ...(society !== undefined && { society: society.trim() }),
+        ...(area !== undefined && { area: area.trim() }),
+        ...(phone !== undefined && { phone: phone.trim() }),
+      },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Family head details updated successfully',
+      data: {
+        family: updated,
+        headPatient,
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

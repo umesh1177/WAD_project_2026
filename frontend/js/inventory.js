@@ -24,7 +24,7 @@ export async function renderInventoryView(container) {
       <div style="display: flex; gap: 14px;">
         <div class="cms-stat-card" style="flex: 1;">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon">📦</div>
+            <div class="cms-stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
             <span class="cms-kbd">Total Items</span>
           </div>
           <div class="cms-stat-value">${items.length}</div>
@@ -33,7 +33,7 @@ export async function renderInventoryView(container) {
 
         <div class="cms-stat-card tone-danger" style="flex: 1;">
           <div class="cms-stat-top">
-            <div class="cms-stat-icon" style="color: var(--danger);">⚠️</div>
+            <div class="cms-stat-icon" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <span class="cms-kbd">Attention</span>
           </div>
           <div class="cms-stat-value" style="color: var(--danger);">${lowStockCount}</div>
@@ -68,7 +68,7 @@ export async function renderInventoryView(container) {
             <input type="number" id="inv-reorder" class="cms-input" placeholder="20" value="20" />
           </div>
           <button type="submit" class="cms-btn cms-btn-primary" style="height: 42px;">
-            <span>📥</span>
+            <span><i class="fa-solid fa-boxes-packing"></i></span>
             <span>Add Stock</span>
           </button>
         </form>
@@ -109,7 +109,7 @@ export async function renderInventoryView(container) {
                           </span>
                         </td>
                         <td>
-                          <button type="button" class="cms-btn-ghost btn-adjust-stock" data-id="${i._id || i.id}" style="padding: 4px 8px; font-size: 12px;">+ Add 10</button>
+                          <button type="button" class="cms-btn-ghost btn-adjust-stock" data-id="${i._id || i.id}" style="padding: 4px 8px; font-size: 12px;"><i class="fa-solid fa-plus"></i> Add 10</button>
                         </td>
                       </tr>
                     `

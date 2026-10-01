@@ -83,9 +83,14 @@ export function openPrescriptionModal(patient, visit, onClose) {
       const expanded = [];
       for (const c of codes) {
         if (db.dietary && db.dietary[c]) {
-          expanded.push(db.dietary[c].text);
+          const d = db.dietary[c];
+          if (d.eat && d.avoid) {
+            expanded.push(`• ${d.disease || d.code} Dietary Advice:\n   - Eat (Recommended): ${d.eat}\n   - Avoid (Strictly Restrict): ${d.avoid}`);
+          } else {
+            expanded.push(`• ${d.text || d.code}`);
+          }
         } else {
-          expanded.push(c);
+          expanded.push(`• ${c}`);
         }
       }
       return expanded.join('\n\n');
@@ -104,7 +109,7 @@ export function openPrescriptionModal(patient, visit, onClose) {
               <option value="GU" ${currentLang === 'GU' ? 'selected' : ''}>ગુજરાતી</option>
               <option value="HI" ${currentLang === 'HI' ? 'selected' : ''}>हिंदी</option>
             </select>
-            <button type="button" id="modal-close-btn" class="cms-btn cms-btn-ghost" style="padding: 6px 10px;">✕</button>
+            <button type="button" id="modal-close-btn" class="cms-btn cms-btn-ghost" style="padding: 6px 10px;"><i class="fa-solid fa-xmark"></i></button>
           </div>
         </div>
 
@@ -116,7 +121,7 @@ export function openPrescriptionModal(patient, visit, onClose) {
           </div>
           <div style="text-align: right; margin-top: 14px;">
             <button type="button" id="modal-print-btn" class="cms-btn cms-btn-primary" style="padding: 8px 18px;">
-              <span>🖨️</span>
+              <span><i class="fa-solid fa-print"></i></span>
               <span>Print A5 Letterpad</span>
             </button>
           </div>

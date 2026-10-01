@@ -51,7 +51,7 @@ export async function renderPaymentView(container) {
             <input type="text" id="pay-remarks" class="cms-input" placeholder="e.g. Cleared due for visit 1" />
           </div>
           <button type="submit" class="cms-btn cms-btn-primary" style="height: 42px;">
-            <span>💵</span>
+            <span><i class="fa-solid fa-indian-rupee-sign"></i></span>
             <span>Receive Payment</span>
           </button>
         </form>

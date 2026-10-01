@@ -38,7 +38,7 @@ export async function renderFollowUpsView(container) {
             <input type="text" id="fu-reason" class="cms-input" placeholder="e.g. Blood Sugar Recheck, BP Review" />
           </div>
           <button type="submit" class="cms-btn cms-btn-primary" style="height: 42px;">
-            <span>🔔</span>
+            <span><i class="fa-solid fa-bell"></i></span>
             <span>Schedule</span>
           </button>
         </form>
@@ -73,7 +73,7 @@ export async function renderFollowUpsView(container) {
                         <td>${f.reason || 'General Review'}</td>
                         <td><span class="cms-pill ${f.status === 'Completed' ? 'cms-badge-paid' : 'cms-badge-due'}">${f.status || 'Pending'}</span></td>
                         <td>
-                          <button type="button" class="cms-btn-ghost btn-complete-fu" data-id="${f._id || f.id}" style="padding: 4px 8px; font-size: 12px;">✓ Visited</button>
+                          <button type="button" class="cms-btn-ghost btn-complete-fu" data-id="${f._id || f.id}" style="padding: 4px 8px; font-size: 12px;"><i class="fa-solid fa-check"></i> Visited</button>
                         </td>
                       </tr>
                     `

@@ -68,7 +68,7 @@ const getPatientById = async (req, res) => {
 // Add new member to an existing family
 const createPatientMember = async (req, res) => {
   try {
-    const { familyId, name, relation, age, gender, bloodGroup, allergy, phone } = req.body;
+    const { familyId, name, relation, age, gender, bloodGroup, allergy, society, area, phone } = req.body;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
 
     if (!familyId || !name || !name.trim()) {
@@ -80,8 +80,11 @@ const createPatientMember = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Family not found' });
     }
 
+    const currentYear = new Date().getFullYear();
+    const cleanClinicCode = (clinicId === 'demo' ? '0001' : (String(clinicId).replace(/\D/g, '') || String(clinicId).toUpperCase().replace(/[^A-Z0-9]/g, '')).padStart(4, '0').slice(-4)) || '0001';
+
     const countPat = await Patient.countDocuments({ clinicId });
-    const nextPatId = pad(countPat + 1, 4);
+    const nextPatId = `${cleanClinicCode}${currentYear}${pad(countPat + 1, 4)}`;
 
     const newPatient = new Patient({
       patId: nextPatId,
@@ -92,6 +95,8 @@ const createPatientMember = async (req, res) => {
       gender: gender || 'Male',
       bloodGroup: (bloodGroup || '').trim().toUpperCase(),
       allergy: (allergy || '').trim().toUpperCase(),
+      society: (society !== undefined ? society : family.society || '').trim(),
+      area: (area !== undefined ? area : family.area || '').trim(),
       phone: (phone || family.phone || '').trim(),
       clinicId,
     });

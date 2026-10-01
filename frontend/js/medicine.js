@@ -48,7 +48,7 @@ export async function renderMedicineList(container) {
             <input type="number" id="med-price" class="cms-input" placeholder="5" value="5" />
           </div>
           <button type="submit" class="cms-btn cms-btn-primary" style="height: 42px;">
-            <span>➕</span>
+            <span><i class="fa-solid fa-plus"></i></span>
             <span>Add Medicine</span>
           </button>
         </form>

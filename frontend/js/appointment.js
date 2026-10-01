@@ -38,7 +38,7 @@ export async function renderAppointmentsView(container) {
             <input type="text" id="apt-reason" class="cms-input" placeholder="General Checkup, Follow-up" />
           </div>
           <button type="submit" class="cms-btn cms-btn-primary" style="height: 42px;">
-            <span>📅</span>
+            <span><i class="fa-solid fa-calendar-check"></i></span>
             <span>Book Slot</span>
           </button>
         </form>
@@ -73,7 +73,7 @@ export async function renderAppointmentsView(container) {
                         <td>${a.reason || 'Consultation'}</td>
                         <td><span class="cms-pill ${a.status === 'completed' ? 'cms-badge-paid' : 'cms-badge-due'}">${a.status || 'scheduled'}</span></td>
                         <td>
-                          <button type="button" class="cms-btn-ghost btn-complete-apt" data-id="${a._id || a.id}" style="padding: 4px 8px; font-size: 12px;">✓ Complete</button>
+                          <button type="button" class="cms-btn-ghost btn-complete-apt" data-id="${a._id || a.id}" style="padding: 4px 8px; font-size: 12px;"><i class="fa-solid fa-check"></i> Complete</button>
                         </td>
                       </tr>
                     `

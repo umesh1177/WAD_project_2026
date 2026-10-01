@@ -14,19 +14,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
   const db = getLocalDB(clinicId);
 
   let { familyId, patientId } = selection;
-  let family = familyId && db.families[familyId] ? db.families[familyId] : null;
-  let patient = family && patientId && family.patients[patientId] ? family.patients[patientId] : null;
+  let family = familyId ? (db.families[familyId] || Object.values(db.families || {}).find(f => (f.famId === familyId || f.id === familyId))) : null;
+  let patient = family && patientId ? (family.patients?.[patientId] || Object.values(family.patients || {}).find(p => (p.patId === patientId || p.id === patientId))) : null;
 
   // If no selection, default to the first family & patient
   if (!family || !patient) {
     const firstFam = Object.values(db.families || {})[0];
     if (firstFam) {
       family = firstFam;
-      familyId = firstFam.id;
+      familyId = firstFam.famId || firstFam.id;
       const firstPat = Object.values(firstFam.patients || {})[0];
       if (firstPat) {
         patient = firstPat;
-        patientId = firstPat.id;
+        patientId = firstPat.patId || firstPat.id;
       }
     }
   }
@@ -52,7 +52,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         <!-- Patient Header Card -->
         <div class="cms-patient-header-card">
           <div class="cms-patient-info-left">
-            <div class="cms-patient-avatar">👤</div>
+            <div class="cms-patient-avatar"><i class="fa-solid fa-user"></i></div>
             <div class="cms-patient-title-group">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="cms-patient-name">${patient.name}</span>
@@ -72,16 +72,16 @@ export function renderConsultationView(container, selection, onSelectPatient, on
 
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <button type="button" id="btn-toggle-new-visit" class="cms-btn cms-btn-primary">
-              <span>🩺</span>
+              <span><i class="fa-solid fa-stethoscope"></i></span>
               <span>New Visit</span>
               <span class="cms-kbd">F6</span>
             </button>
             <button type="button" id="btn-edit-patient" class="cms-btn cms-btn-ghost">
-              <span>✏️</span>
+              <span><i class="fa-solid fa-pen-to-square"></i></span>
               <span>Edit Info</span>
             </button>
             <button type="button" id="btn-family-dues" class="cms-btn cms-btn-ghost">
-              <span>💰</span>
+              <span><i class="fa-solid fa-indian-rupee-sign"></i></span>
               <span>Family Dues</span>
             </button>
           </div>
@@ -94,7 +94,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <div class="font-display" style="font-weight: 800; font-size: 16px; color: var(--primary);">
                 Record Clinical Consultation &middot; Visit #${(patient.visits || []).length + 1}
               </div>
-              <button type="button" id="btn-close-visit-form" class="cms-btn-ghost" style="padding: 4px 8px;">✕</button>
+              <button type="button" id="btn-close-visit-form" class="cms-btn-ghost" style="padding: 4px 8px;"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <!-- Vitals Grid -->
@@ -146,7 +146,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface-alt);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label class="cms-label" style="margin: 0; color: var(--primary-dark);">Clinic Treatments / Procedures</label>
-                <button type="button" id="btn-add-treatment-row" class="cms-btn cms-btn-ghost" style="padding: 4px 10px; font-size: 12px;">+ Add Item</button>
+                <button type="button" id="btn-add-treatment-row" class="cms-btn cms-btn-ghost" style="padding: 4px 10px; font-size: 12px;"><i class="fa-solid fa-plus"></i> Add Item</button>
               </div>
               <div id="treatment-rows-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
@@ -155,7 +155,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             <div style="border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface-alt);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label class="cms-label" style="margin: 0; color: var(--primary-dark);">Prescription (Medical Store)</label>
-                <button type="button" id="btn-add-rx-row" class="cms-btn cms-btn-ghost" style="padding: 4px 10px; font-size: 12px;">+ Add Medicine</button>
+                <button type="button" id="btn-add-rx-row" class="cms-btn cms-btn-ghost" style="padding: 4px 10px; font-size: 12px;"><i class="fa-solid fa-plus"></i> Add Medicine</button>
               </div>
               <div id="rx-rows-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
@@ -177,9 +177,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 6px;">
-              <button type="button" id="btn-open-lab-modal" class="cms-btn cms-btn-ghost">🔬 Attach Lab Reports</button>
+              <button type="button" id="btn-open-lab-modal" class="cms-btn cms-btn-ghost"><i class="fa-solid fa-flask-vial"></i> Attach Lab Reports</button>
               <button type="submit" class="cms-btn cms-btn-primary" style="padding: 10px 24px;">
-                <span>💾</span>
+                <span><i class="fa-solid fa-floppy-disk"></i></span>
                 <span>Save Consultation &amp; Print</span>
               </button>
             </div>
@@ -209,7 +209,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
       `
           : `
         <div class="cms-card" style="padding: 60px; text-align: center; color: var(--text-muted);">
-          <div style="font-size: 42px; margin-bottom: 12px;">📂</div>
+          <div style="font-size: 42px; margin-bottom: 12px;"><i class="fa-solid fa-folder-open"></i></div>
           <div class="font-display" style="font-size: 18px; font-weight: 800; color: var(--text);">No Patient Selected</div>
           <div style="font-size: 14px; margin-top: 6px;">Search for a patient above or register a new family.</div>
         </div>
@@ -232,7 +232,7 @@ function renderVisitCardHTML(v) {
       <div class="cms-visit-card-header">
         <div style="display: flex; align-items: center; gap: 12px;">
           <span class="font-mono" style="font-weight: 800; color: var(--primary);">Case ${v.caseId}</span>
-          <span style="font-size: 13px; color: var(--text-muted);">📅 ${fmtDate(v.date)} at ${v.time || '10:00'}</span>
+          <span style="font-size: 13px; color: var(--text-muted);"><i class="fa-solid fa-calendar-days"></i> ${fmtDate(v.date)} at ${v.time || '10:00'}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="font-mono" style="font-size: 13px; font-weight: 700;">Charge: ${fmtMoney(v.charge)}</span>
@@ -241,7 +241,7 @@ function renderVisitCardHTML(v) {
               ? `<span class="cms-pill cms-badge-due">Due: ${fmtMoney(v.due)}</span>`
               : `<span class="cms-pill cms-badge-paid">Paid Full</span>`
           }
-          <button type="button" class="cms-btn cms-btn-ghost btn-print-visit" data-caseid="${v.caseId}" style="padding: 4px 8px; font-size: 12px;">🖨️ Print</button>
+          <button type="button" class="cms-btn cms-btn-ghost btn-print-visit" data-caseid="${v.caseId}" style="padding: 4px 8px; font-size: 12px;"><i class="fa-solid fa-print"></i> Print</button>
         </div>
       </div>
 
@@ -264,7 +264,7 @@ function renderVisitCardHTML(v) {
           <div style="background: var(--surface-alt); border-radius: 8px; padding: 8px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Clinic Treatments Given:</div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
-              ${(v.treatment || []).map((t) => `<div class="cms-repeat-badge btn-repeat-treatment" data-name="${t.name}" data-qty="${t.qty}">➕ ${t.name} (x${t.qty})</div>`).join('')}
+              ${(v.treatment || []).map((t) => `<div class="cms-repeat-badge btn-repeat-treatment" data-name="${t.name}" data-qty="${t.qty}"><i class="fa-solid fa-plus" style="margin-right: 4px;"></i> ${t.name} (x${t.qty})</div>`).join('')}
             </div>
           </div>
 
@@ -272,7 +272,7 @@ function renderVisitCardHTML(v) {
           <div style="background: var(--surface-alt); border-radius: 8px; padding: 8px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Prescriptions (Pharmacy):</div>
             <div style="display: flex; flex-direction: column; gap: 4px;">
-              ${(v.prescription || []).map((p) => `<div class="cms-repeat-badge btn-repeat-rx" data-name="${p.name}" data-qty="${p.qty}" data-mor="${p.mor}" data-noon="${p.noon}" data-eve="${p.eve}" data-ngt="${p.ngt}" data-timing="${p.timing || 'AF'}">➕ ${p.name} [Qty ${p.qty}] (${p.mor}-${p.noon}-${p.eve}-${p.ngt}) ${p.timing || 'AF'}</div>`).join('')}
+              ${(v.prescription || []).map((p) => `<div class="cms-repeat-badge btn-repeat-rx" data-name="${p.name}" data-qty="${p.qty}" data-mor="${p.mor}" data-noon="${p.noon}" data-eve="${p.eve}" data-ngt="${p.ngt}" data-timing="${p.timing || 'AF'}"><i class="fa-solid fa-plus" style="margin-right: 4px;"></i> ${p.name} [Qty ${p.qty}] (${p.mor}-${p.noon}-${p.eve}-${p.ngt}) ${p.timing || 'AF'}</div>`).join('')}
             </div>
           </div>
         </div>
@@ -391,7 +391,7 @@ function setupVisitFormLogic(container, db, clinicId, family, patient, treatment
       <div style="display: flex; gap: 8px; align-items: center;">
         <input type="text" class="cms-input cms-input-sm tr-name" data-idx="${idx}" value="${t.name}" placeholder="Treatment / injection name" style="flex: 3;" />
         <input type="text" class="cms-input cms-input-sm tr-qty" data-idx="${idx}" value="${t.qty}" placeholder="Qty" style="flex: 1;" />
-        <button type="button" class="cms-btn-ghost btn-del-tr" data-idx="${idx}" style="color: var(--danger); padding: 4px 8px;">✕</button>
+        <button type="button" class="cms-btn-ghost btn-del-tr" data-idx="${idx}" style="color: var(--danger); padding: 4px 8px;"><i class="fa-solid fa-trash-can"></i></button>
       </div>
     `
       )
@@ -439,7 +439,7 @@ function setupVisitFormLogic(container, db, clinicId, family, patient, treatment
             <input type="radio" name="rx-timing-${idx}" value="AF" ${p.timing !== 'BF' ? 'checked' : ''} class="rx-timing" data-idx="${idx}" /> AF
           </label>
         </div>
-        <button type="button" class="cms-btn-ghost btn-del-rx" data-idx="${idx}" style="color: var(--danger); padding: 4px 8px;">✕</button>
+        <button type="button" class="cms-btn-ghost btn-del-rx" data-idx="${idx}" style="color: var(--danger); padding: 4px 8px;"><i class="fa-solid fa-trash-can"></i></button>
       </div>
     `
       )

@@ -27,7 +27,7 @@ export function openLabReportModal(patient, visit, initialData = {}, onSave, onC
               Case: ${visit ? visit.caseId : 'New Entry'} &middot; Date: ${visit ? visit.date : 'Today'}
             </div>
           </div>
-          <button type="button" id="lab-close-x" class="cms-btn-ghost" style="padding: 4px 8px;">✕</button>
+          <button type="button" id="lab-close-x" class="cms-btn-ghost" style="padding: 4px 8px;"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <!-- Meta Inputs -->
@@ -187,7 +187,7 @@ export function openLabReportModal(patient, visit, initialData = {}, onSave, onC
         <div class="cms-modal-footer">
           <button type="button" id="lab-cancel-btn" class="cms-btn cms-btn-ghost">Cancel</button>
           <button type="button" id="lab-save-btn" class="cms-btn cms-btn-primary">
-            <span>💾</span>
+            <span><i class="fa-solid fa-floppy-disk"></i></span>
             <span>Save Lab Results</span>
           </button>
         </div>

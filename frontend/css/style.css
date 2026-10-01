@@ -249,6 +249,12 @@ html, body {
   gap: 10px;
 }
 
+.cms-nav-left i {
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+
 .cms-kbd {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
