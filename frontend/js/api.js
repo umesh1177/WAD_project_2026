@@ -160,6 +160,125 @@ export const defaultMasterInvestigations = [
   { id: 'inv14', code: 'VITD', name: 'Vitamin D3 & B12 Levels', category: 'Immunoassay', sampleType: 'Serum', description: '25-OH Vitamin D and Cyanocobalamin evaluation', createdAt: '2026-01-01' },
 ];
 
+export const defaultCertificateTemplates = [
+  {
+    id: 'tpl-1',
+    templateName: 'Medical Fitness Certificate',
+    title: 'MEDICAL FITNESS CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, has been examined by me. The patient has clinically recovered from {DIAGNOSIS} and is now found medically fit in all respects to resume normal daily duties.',
+    category: 'Fitness',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-2',
+    templateName: 'Medical Leave & Sickness Certificate',
+    title: 'MEDICAL SICKNESS & LEAVE CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, is suffering from {DIAGNOSIS} and has been under my medical care. The patient is advised complete bed rest and absence from work/studies from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days) for proper recovery.',
+    category: 'Leave',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-3',
+    templateName: 'Medical Examination & Treatment Certificate',
+    title: 'CERTIFICATE OF MEDICAL EXAMINATION',
+    body: 'This is to certify that {PATIENT_NAME} was medically examined and provided treatment for {DIAGNOSIS} on {TODAY_DATE} at this clinic. The patient has been given necessary medications and medical advice.',
+    category: 'General',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-4',
+    templateName: 'Light Duty / Work Exemption Certificate',
+    title: 'MEDICAL EXEMPTION / LIGHT WORK CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME} is undergoing medical management for {DIAGNOSIS}. The patient is advised to avoid heavy physical exertion, lifting, or prolonged standing from {FROM_DATE} to {TO_DATE}, and is recommended only light duties.',
+    category: 'Exemption',
+    isDefault: true,
+  },
+];
+
+export const defaultFeedbacks = [
+  {
+    id: 'tkt-1',
+    ticketNo: 'TKT-2026-0001',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'clinic_request',
+    categoryLabel: 'New Clinic Registration Request',
+    priority: 'High',
+    subject: 'Request for New Branch Registration: Dhyey Wellness Centre - Satellite',
+    message: 'Respected Admin, We are inaugurating our new OPD branch in Satellite area from next Monday. Kindly register and enable this new branch under our doctor account so we can seamlessly switch between Vastrapur and Satellite clinics for consultations.',
+    metaDetails: {
+      requestedClinicName: 'Dhyey Wellness Centre - Satellite',
+      clinicCity: 'Ahmedabad',
+      clinicAddress: 'FF-204, Surya Kiran Complex, Near Iscon Cross Roads, Satellite',
+      clinicPhone: '+91 98765 43210',
+      speciality: 'Family Medicine, Diabetes & Lifestyle Care',
+      clinicApproved: true,
+    },
+    status: 'Resolved',
+    replies: [
+      {
+        senderRole: 'admin',
+        senderName: 'System Administrator (Admin)',
+        message: 'Dear Dr. Chirag, congratulations on your new branch! We have successfully approved and registered "Dhyey Wellness Centre - Satellite" to your account. You can now select it from the top profile dropdown.',
+        createdAt: '2026-09-30T11:45:00.000Z',
+      },
+    ],
+    createdAt: '2026-09-30T09:15:00.000Z',
+    lastReplyAt: '2026-09-30T11:45:00.000Z',
+  },
+  {
+    id: 'tkt-2',
+    ticketNo: 'TKT-2026-0002',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'feature_request',
+    categoryLabel: 'Feature Request / Enhancement',
+    priority: 'Normal',
+    subject: 'Feature Request: Direct WhatsApp Prescription Sharing with Patient',
+    message: 'It would be extremely helpful if we can have a 1-click WhatsApp share button on the prescription print screen to instantly send digital prescription summary to the patient’s registered mobile number.',
+    metaDetails: {
+      targetModule: 'Prescription & Billing',
+      expectedBenefit: 'Saves paper printing time and allows patients to store digital Rx on their smartphones.',
+    },
+    status: 'In Progress',
+    replies: [
+      {
+        senderRole: 'admin',
+        senderName: 'Technical Support Team',
+        message: 'Hello Doctor, thanks for this excellent suggestion! Our development team has queued the WhatsApp API gateway integration for the upcoming sprint update.',
+        createdAt: '2026-10-01T14:20:00.000Z',
+      },
+    ],
+    createdAt: '2026-10-01T10:00:00.000Z',
+    lastReplyAt: '2026-10-01T14:20:00.000Z',
+  },
+  {
+    id: 'tkt-3',
+    ticketNo: 'TKT-2026-0003',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'bug_report',
+    categoryLabel: 'Technical Issue / Bug Report',
+    priority: 'Low',
+    subject: 'Thermal printer 80mm margin alignment query',
+    message: 'When printing bills on 3-inch roll receipt printers, the rightmost rupees symbol sometimes clips slightly on edge browsers. Kindly check if print CSS padding can be fine-tuned.',
+    metaDetails: {
+      affectedModule: 'Billing & Receipt Print',
+      deviceInfo: 'Windows 11 / Chrome 120 / TVS RP-3200 Printer',
+    },
+    status: 'Pending',
+    replies: [],
+    createdAt: '2026-10-01T16:30:00.000Z',
+    lastReplyAt: null,
+  },
+];
+
 /* ---- Offline/Local DB Fallback Engine ---- */
 export function getLocalDB(clinicId = 'demo') {
   const key = `clinic-db-${clinicId}`;
@@ -221,6 +340,54 @@ export function getLocalDB(clinicId = 'demo') {
   }
   if (!db.customComplaints) db.customComplaints = [];
   if (!db.customInvestigations) db.customInvestigations = [];
+
+  // Ensure certificateTemplates and certificates exist
+  if (!db.certificateTemplates || db.certificateTemplates.length === 0) {
+    db.certificateTemplates = [...defaultCertificateTemplates];
+  }
+  if (!db.certificates) {
+    db.certificates = [
+      {
+        id: 'cert-1',
+        certNo: 'CERT-2026-0001',
+        patientName: 'PATEL RAMESHBHAI GOVINDBHAI',
+        patientAge: '46',
+        patientGender: 'Male',
+        diagnosis: 'Acute Viral Pyrexia & Weakness',
+        fromDate: '2026-09-28',
+        toDate: '2026-10-01',
+        restDays: 4,
+        templateName: 'Medical Leave & Sickness Certificate',
+        title: 'MEDICAL SICKNESS & LEAVE CERTIFICATE',
+        customBody: 'This is to certify that PATEL RAMESHBHAI GOVINDBHAI, aged 46, is suffering from Acute Viral Pyrexia & Weakness and has been under my medical care. The patient is advised complete bed rest and absence from work/studies from 28/09/2026 to 01/10/2026 (4 days) for proper recovery.',
+        issuedDate: todayISO(),
+        place: 'Surat',
+        status: 'Issued',
+      },
+      {
+        id: 'cert-2',
+        certNo: 'CERT-2026-0002',
+        patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA',
+        patientAge: '42',
+        patientGender: 'Male',
+        diagnosis: 'Acute Gastroenteritis & Dehydration',
+        fromDate: '2026-09-29',
+        toDate: '2026-10-01',
+        restDays: 3,
+        templateName: 'Medical Fitness Certificate',
+        title: 'MEDICAL FITNESS CERTIFICATE',
+        customBody: 'This is to certify that SHAH JIGNESHBHAI PRAVINCHANDRA, aged 42, has been examined by me. The patient has clinically recovered from Acute Gastroenteritis & Dehydration and is now found medically fit in all respects to resume normal daily duties.',
+        issuedDate: todayISO(),
+        place: 'Surat',
+        status: 'Issued',
+      },
+    ];
+  }
+
+  // Ensure feedbacks collection exists
+  if (!db.feedbacks || db.feedbacks.length === 0) {
+    db.feedbacks = [...defaultFeedbacks];
+  }
 
   return db;
 }
@@ -947,6 +1114,223 @@ function fallbackLocalHandler(endpoint, config) {
         areaCounts: {},
       },
     };
+  }
+
+  // Fallback for certificate templates
+  if (endpoint.startsWith('/certificates/templates')) {
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const newTpl = {
+        id: 'tpl-' + uid(),
+        templateName: body.templateName || 'Custom Template',
+        title: (body.title || 'MEDICAL CERTIFICATE').toUpperCase(),
+        body: body.body || '',
+        category: body.category || 'Custom',
+        isDefault: false,
+        createdAt: todayISO(),
+      };
+      if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
+      db.certificateTemplates.push(newTpl);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Template saved', data: newTpl };
+    }
+    if (config.method === 'DELETE') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.length - 1];
+      if (db.certificateTemplates) {
+        db.certificateTemplates = db.certificateTemplates.filter((t) => t.id !== id);
+        saveLocalDB(db, clinicId);
+      }
+      return { success: true, message: 'Template deleted' };
+    }
+    const tpls = db.certificateTemplates || defaultCertificateTemplates;
+    return { success: true, count: tpls.length, data: tpls };
+  }
+
+  // Fallback for certificate verification
+  if (endpoint.startsWith('/certificates/verify/')) {
+    const certNo = decodeURIComponent(endpoint.replace('/certificates/verify/', '')).trim();
+    const certs = db.certificates || [];
+    const found = certs.find((c) => (c.certNo || '').toLowerCase() === certNo.toLowerCase());
+    if (!found) {
+      return { success: false, valid: false, message: `No certificate found for ID: ${certNo}` };
+    }
+    return { success: true, valid: true, data: found, message: 'Certificate successfully verified' };
+  }
+
+  // Fallback for certificates CRUD
+  if (endpoint.startsWith('/certificates')) {
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      if (!db.certificates) db.certificates = [];
+      const year = new Date().getFullYear();
+      const count = db.certificates.length + 1;
+      const certNo = body.certNo || `CERT-${year}-${pad(count, 4)}`;
+
+      const newCert = {
+        id: 'cert-' + uid(),
+        certNo,
+        patientId: body.patientId || '',
+        patientName: (body.patientName || '').trim(),
+        patientAge: body.patientAge || '',
+        patientGender: body.patientGender || '',
+        diagnosis: (body.diagnosis || '').trim(),
+        fromDate: body.fromDate || todayISO(),
+        toDate: body.toDate || todayISO(),
+        restDays: Number(body.restDays) || 0,
+        templateId: body.templateId || '',
+        templateName: body.templateName || 'Medical Fitness / Leave',
+        title: body.title || 'MEDICAL CERTIFICATE',
+        customBody: body.customBody || '',
+        reason: body.reason || 'Medical Rest & Treatment',
+        place: body.place || 'Surat',
+        doctorName: body.doctorName || 'Dr. Chirag Paghdal',
+        issuedDate: todayISO(),
+        status: 'Issued',
+      };
+
+      db.certificates.unshift(newCert);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Certificate issued', data: newCert };
+    }
+
+    if (config.method === 'DELETE') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.length - 1];
+      if (db.certificates) {
+        db.certificates = db.certificates.filter((c) => c.id !== id && c.certNo !== id);
+        saveLocalDB(db, clinicId);
+      }
+      return { success: true, message: 'Certificate deleted' };
+    }
+
+    const certList = db.certificates || [];
+    return { success: true, count: certList.length, data: certList };
+  }
+
+  // Fallback for feedback, complaints, support & clinic requests
+  if (endpoint.startsWith('/feedback') || endpoint.startsWith('/support')) {
+    if (!db.feedbacks) db.feedbacks = [...defaultFeedbacks];
+
+    // POST /feedback/:id/approve-clinic
+    if (endpoint.includes('/approve-clinic') && config.method === 'POST') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket) {
+        if (!ticket.metaDetails) ticket.metaDetails = {};
+        ticket.metaDetails.clinicApproved = true;
+        ticket.status = 'Resolved';
+        const clinicName = ticket.metaDetails.requestedClinicName || ticket.subject;
+        ticket.replies.push({
+          senderRole: 'admin',
+          senderName: 'System Administrator (Admin)',
+          message: `Official Approval: Your request for registering "${clinicName}" has been APPROVED. The clinic is now active in your clinics list!`,
+          createdAt: new Date().toISOString(),
+        });
+        ticket.lastReplyAt = new Date().toISOString();
+
+        // Also add new clinic to current session clinics list
+        const curSession = getAuthSession();
+        if (curSession && curSession.profile) {
+          if (!curSession.profile.clinics) curSession.profile.clinics = [];
+          const newClinicId = 'clinic-' + Date.now();
+          if (!curSession.profile.clinics.some((c) => c.name.toLowerCase() === clinicName.toLowerCase())) {
+            curSession.profile.clinics.push({ id: newClinicId, name: clinicName });
+            setAuthSession(curSession);
+          }
+        }
+
+        saveLocalDB(db, clinicId);
+        return { success: true, message: `Clinic "${clinicName}" approved and registered!`, data: ticket };
+      }
+      return { success: false, message: 'Ticket not found' };
+    }
+
+    // POST /feedback/:id/reply
+    if (endpoint.includes('/reply') && config.method === 'POST') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket) {
+        const senderRole = body.senderRole || (session?.role === 'admin' ? 'admin' : 'doctor');
+        const senderName = body.senderName || (senderRole === 'admin' ? 'System Administrator' : (session?.profile?.name || 'Dr. Chirag Paghdal'));
+        const replyObj = {
+          senderRole,
+          senderName,
+          message: (body.message || '').trim(),
+          createdAt: new Date().toISOString(),
+        };
+        ticket.replies.push(replyObj);
+        ticket.lastReplyAt = new Date().toISOString();
+        if (body.status) {
+          ticket.status = body.status;
+        } else if (senderRole === 'admin') {
+          ticket.status = 'Resolved';
+        } else {
+          ticket.status = 'Pending';
+        }
+        saveLocalDB(db, clinicId);
+        return { success: true, message: 'Reply sent', data: ticket };
+      }
+      return { success: false, message: 'Ticket not found' };
+    }
+
+    // PATCH /feedback/:id/status
+    if (config.method === 'PATCH' && endpoint.includes('/status')) {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket && body.status) {
+        ticket.status = body.status;
+        saveLocalDB(db, clinicId);
+        return { success: true, message: 'Status updated', data: ticket };
+      }
+      return { success: false, message: 'Ticket not found or invalid status' };
+    }
+
+    // POST /feedback (Create new ticket)
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const year = new Date().getFullYear();
+      const count = db.feedbacks.length + 1;
+      const ticketNo = `TKT-${year}-${pad(count, 4)}`;
+
+      const categoryLabels = {
+        clinic_request: 'New Clinic Registration Request',
+        feature_request: 'Feature Request / Enhancement',
+        bug_report: 'Technical Issue / Bug Report',
+        general_feedback: 'General Feedback / Support',
+      };
+
+      const newTicket = {
+        id: 'tkt-' + uid(),
+        ticketNo,
+        doctorId: session?.profile?.id || 'demo',
+        doctorName: body.doctorName || session?.profile?.name || 'Dr. Chirag Paghdal',
+        clinicId: clinicId || 'demo',
+        clinicName: body.clinicName || 'Dhyey Clinic & Hospital',
+        category: body.category || 'general_feedback',
+        categoryLabel: body.categoryLabel || categoryLabels[body.category] || 'General Feedback',
+        priority: body.priority || 'Normal',
+        subject: (body.subject || '').trim(),
+        message: (body.message || '').trim(),
+        metaDetails: body.metaDetails || {},
+        status: 'Pending',
+        replies: [],
+        createdAt: new Date().toISOString(),
+        lastReplyAt: null,
+      };
+
+      db.feedbacks.unshift(newTicket);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
+    }
+
+    // GET /feedback / /feedback/admin/all
+    return { success: true, count: db.feedbacks.length, data: db.feedbacks };
   }
 
   return { success: true, data: [] };

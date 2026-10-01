@@ -64,14 +64,16 @@
       </div>
       <button type="button" id="admin-logout-btn" class="cms-btn cms-btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
     </div>
-    <div style="flex: 1; overflow-y: auto; padding: 24px; max-width: 1000px; margin: 0 auto; width: 100%;">
+    <div style="flex: 1; overflow-y: auto; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- Doctor Accounts & Registration Grid -->
       <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;">
         <div class="cms-card">
-          <div class="cms-card-header"><div class="cms-card-title">Registered Doctor Clinics</div></div>
+          <div class="cms-card-header"><div class="cms-card-title"><i class="fa-solid fa-user-doctor"></i> Registered Doctor Clinics</div></div>
           <div id="admin-doctors-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
         <div class="cms-card">
-          <div class="cms-card-header"><div class="cms-card-title">Add New Doctor Account</div></div>
+          <div class="cms-card-header"><div class="cms-card-title"><i class="fa-solid fa-plus-circle"></i> Add New Doctor Account</div></div>
           <form id="admin-add-doc-form" style="display: flex; flex-direction: column; gap: 14px;">
             <div class="cms-form-group">
               <label class="cms-label">Clinic Name</label>
@@ -93,6 +95,34 @@
           </form>
         </div>
       </div>
+
+      <!-- Doctor Support Tickets, Complaints & Clinic Requests Section -->
+      <div class="cms-card">
+        <div class="cms-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="cms-card-title" style="font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-headset" style="color: var(--primary);"></i> Doctor Support Tickets &amp; Clinic Registration Requests
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);">Manage complaints, feature suggestions, bug reports and approve new clinic requests</div>
+          </div>
+          <div id="admin-ticket-counts" style="display: flex; gap: 8px;"></div>
+        </div>
+
+        <div style="padding: 16px 20px;">
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;" id="admin-ticket-filters">
+            <button type="button" class="cms-btn cms-btn-ghost admin-tkt-filter active-filter" data-filter="all">All Requests</button>
+            <button type="button" class="cms-btn cms-btn-ghost admin-tkt-filter" data-filter="pending">Pending Review</button>
+            <button type="button" class="cms-btn cms-btn-ghost admin-tkt-filter" data-filter="clinic_request"><i class="fa-solid fa-hospital"></i> Clinic Requests</button>
+            <button type="button" class="cms-btn cms-btn-ghost admin-tkt-filter" data-filter="feature_request"><i class="fa-solid fa-lightbulb"></i> Feature Requests</button>
+            <button type="button" class="cms-btn cms-btn-ghost admin-tkt-filter" data-filter="bug_report"><i class="fa-solid fa-triangle-exclamation"></i> Bug Reports</button>
+          </div>
+
+          <div id="admin-tickets-table-container" style="overflow-x: auto;">
+            <!-- Rendered by renderAdminDashboard -->
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -140,13 +170,17 @@
           <span class="cms-nav-left"><i class="fa-solid fa-chart-line"></i><span>Reports</span></span>
           <span class="cms-kbd">F5</span>
         </a>
+        <a class="cms-nav-item" data-view="feedback">
+          <span class="cms-nav-left"><i class="fa-solid fa-headset"></i><span>Send Complaint / Feedback</span></span>
+          <span class="cms-kbd">F8</span>
+        </a>
       </nav>
 
       <div class="cms-sidebar-footer">
         <b>Keyboard Shortcuts:</b><br>
         F1 Family &middot; F2 Member &middot; F3 Case<br>
         F4 Dash &middot; F5 Reports &middot; F6 Cert<br>
-        F7 Masters &middot; / Search &middot; Esc Close
+        F7 Masters &middot; F8 Feedback &middot; Esc Close
       </div>
     </aside>
 
@@ -209,6 +243,7 @@
         <span>F5 Reports</span>
         <span>F6 Certificate</span>
         <span>F7 Master Data</span>
+        <span>F8 Feedback</span>
         <span id="statusbar-clock" class="font-mono" style="margin-left: auto;">--:--</span>
       </footer>
     </main>
@@ -228,6 +263,7 @@
     import { openPrescriptionModal } from './js/prescription.js';
     import { openLabReportModal } from './js/history.js';
     import { renderCertificateView } from './js/certificate.js';
+    import { renderFeedbackView } from './js/feedback.js';
     import { renderAppointmentsView } from './js/appointment.js';
     import { renderBillingView } from './js/billing.js';
     import { renderPaymentView } from './js/payment.js';
@@ -450,6 +486,8 @@
         renderInventoryView(container);
       } else if (currentView === 'certificates') {
         renderCertificateView(container);
+      } else if (currentView === 'feedback') {
+        renderFeedbackView(container);
       } else if (currentView === 'followups') {
         renderFollowUpsView(container);
       } else if (currentView === 'reports') {
@@ -529,6 +567,7 @@
         inventory: () => navigateTo('inventory'),
         medicines: () => navigateTo('medicines'),
         certificates: () => navigateTo('certificates'),
+        feedback: () => navigateTo('feedback'),
         followups: () => navigateTo('followups'),
         reports: () => navigateTo('reports'),
         masters: () => navigateTo('masters')
@@ -732,6 +771,7 @@
         { key: 'F5', target: 'reports' },
         { key: 'F6', target: 'certificates' },
         { key: 'F7', target: 'masters' },
+        { key: 'F8', target: 'feedback' },
         { key: '/', target: 'quick_search' },
         { key: 'Alt+N', target: 'open_new_case' },
         { key: 'Esc', target: 'close_modal' },
@@ -816,6 +856,291 @@
           renderAdminDashboard();
         } catch (err) {
           showToast(err.message, 'error');
+        }
+      });
+
+      // Load and Render Admin Support & Feedback Tickets Table
+      await renderAdminTicketsSection();
+    }
+
+    async function renderAdminTicketsSection(activeFilter = 'all') {
+      const countsEl = document.getElementById('admin-ticket-counts');
+      const tableContainer = document.getElementById('admin-tickets-table-container');
+      if (!tableContainer) return;
+
+      const db = getLocalDB('demo');
+      let tickets = db.feedbacks || [];
+      try {
+        const res = await apiFetch('/feedback/admin/all');
+        if (res && res.data) {
+          tickets = res.data;
+          db.feedbacks = tickets;
+        }
+      } catch (e) {}
+
+      const total = tickets.length;
+      const pending = tickets.filter(t => t.status === 'Pending').length;
+      const clinicReqs = tickets.filter(t => t.category === 'clinic_request').length;
+
+      if (countsEl) {
+        countsEl.innerHTML = `
+          <span class="cms-pill" style="background: var(--primary-soft); color: var(--primary); font-weight: 700;">Total: ${total}</span>
+          <span class="cms-pill" style="background: #fef3c7; color: #92400e; font-weight: 700;">Pending: ${pending}</span>
+          <span class="cms-pill" style="background: #ede9fe; color: #6d28d9; font-weight: 700;">Clinics: ${clinicReqs}</span>
+        `;
+      }
+
+      // Filter
+      let filtered = [...tickets];
+      if (activeFilter === 'pending') {
+        filtered = filtered.filter(t => t.status === 'Pending');
+      } else if (activeFilter === 'clinic_request') {
+        filtered = filtered.filter(t => t.category === 'clinic_request');
+      } else if (activeFilter === 'feature_request') {
+        filtered = filtered.filter(t => t.category === 'feature_request');
+      } else if (activeFilter === 'bug_report') {
+        filtered = filtered.filter(t => t.category === 'bug_report');
+      }
+
+      // Filter button clicks
+      document.querySelectorAll('.admin-tkt-filter').forEach(btn => {
+        btn.classList.toggle('active-filter', btn.dataset.filter === activeFilter);
+        btn.onclick = () => renderAdminTicketsSection(btn.dataset.filter);
+      });
+
+      if (filtered.length === 0) {
+        tableContainer.innerHTML = `
+          <div style="text-align: center; padding: 32px; color: var(--text-muted); font-size: 13.5px;">
+            <i class="fa-solid fa-clipboard-check" style="font-size: 28px; margin-bottom: 8px; color: var(--border-focus);"></i>
+            <div>No support tickets matching this filter.</div>
+          </div>
+        `;
+        return;
+      }
+
+      tableContainer.innerHTML = `
+        <table class="cms-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="width: 120px;">Ticket #</th>
+              <th>Doctor / Clinic</th>
+              <th style="width: 140px;">Category</th>
+              <th style="width: 80px;">Priority</th>
+              <th>Subject &amp; Message</th>
+              <th style="width: 120px;">Status</th>
+              <th style="width: 170px; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(t => {
+              const isClinic = t.category === 'clinic_request';
+              const isApproved = t.metaDetails?.clinicApproved || false;
+              const hasReplies = t.replies && t.replies.length > 0;
+              
+              let statusBadge = '';
+              if (t.status === 'Pending') statusBadge = '<span class="cms-pill" style="background: #fef3c7; color: #92400e; font-weight: 700;">Pending</span>';
+              else if (t.status === 'In Progress') statusBadge = '<span class="cms-pill" style="background: #e0e7ff; color: #3730a3; font-weight: 700;">In Progress</span>';
+              else if (t.status === 'Resolved') statusBadge = '<span class="cms-pill cms-badge-paid" style="font-weight: 700;">Resolved</span>';
+              else statusBadge = '<span class="cms-pill" style="background: var(--bg); color: var(--text-muted);">Closed</span>';
+
+              return `
+                <tr id="admin-tkt-row-${t.id}">
+                  <td>
+                    <b class="font-mono" style="font-size: 12px; color: var(--primary);">${t.ticketNo || t.id}</b>
+                    <div style="font-size: 11px; color: var(--text-muted);">${fmtDate(t.createdAt || todayISO())}</div>
+                  </td>
+                  <td>
+                    <b style="font-size: 13px;">${t.doctorName || 'Doctor'}</b>
+                    <div style="font-size: 11.5px; color: var(--text-muted);">${t.clinicName || 'Clinic'}</div>
+                  </td>
+                  <td>
+                    <span class="cms-pill" style="font-size: 11px; background: var(--bg); font-weight: 600;">
+                      ${t.categoryLabel || t.category}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="cms-pill" style="font-size: 11px; font-weight: 700; ${t.priority === 'Urgent' ? 'background: #fee2e2; color: #b91c1c;' : t.priority === 'High' ? 'background: #ffedd5; color: #c2410c;' : ''}">
+                      ${t.priority}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="font-weight: 700; font-size: 13px; color: var(--text-main); margin-bottom: 2px;">${t.subject}</div>
+                    <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${t.message}
+                    </div>
+                    ${isClinic && t.metaDetails?.requestedClinicName ? `
+                      <div style="margin-top: 4px; font-size: 11px; color: #059669; font-weight: 700; background: rgba(16,185,129,0.08); padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                        🏥 Branch: ${t.metaDetails.requestedClinicName} (${t.metaDetails.clinicCity || ''})
+                      </div>
+                    ` : ''}
+                    ${hasReplies ? `
+                      <div style="margin-top: 4px; font-size: 11px; color: var(--primary);">
+                        <i class="fa-solid fa-reply"></i> ${t.replies.length} replies logged (Last by: ${t.replies[t.replies.length-1].senderName})
+                      </div>
+                    ` : ''}
+                  </td>
+                  <td>${statusBadge}</td>
+                  <td style="text-align: right;">
+                    <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+                      ${isClinic && !isApproved ? `
+                        <button type="button" class="cms-btn cms-btn-primary btn-admin-approve-clinic" data-id="${t.id}" data-clinic="${t.metaDetails?.requestedClinicName || t.subject}" style="font-size: 11.5px; padding: 4px 8px; background: #059669; border-color: #059669;" title="1-Click Approve Clinic Registration">
+                          <i class="fa-solid fa-check"></i> Approve Clinic
+                        </button>
+                      ` : ''}
+                      <button type="button" class="cms-btn cms-btn-primary btn-admin-open-reply" data-id="${t.id}" style="font-size: 11.5px; padding: 4px 9px;">
+                        <i class="fa-solid fa-reply"></i> Reply
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // Attach Actions
+      tableContainer.querySelectorAll('.btn-admin-approve-clinic').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const clinicName = btn.dataset.clinic;
+          if (!confirm(`Approve and register clinic "${clinicName}" for this doctor account?`)) return;
+
+          try {
+            await apiFetch(`/feedback/${id}/approve-clinic`, { method: 'POST' });
+            showToast(`Clinic "${clinicName}" approved & registered!`);
+            renderAdminDashboard();
+          } catch (err) {
+            showToast(err.message || 'Error approving clinic', 'error');
+          }
+        });
+      });
+
+      tableContainer.querySelectorAll('.btn-admin-open-reply').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const ticket = (getLocalDB('demo').feedbacks || []).find(t => t.id === id || t.ticketNo === id);
+          if (ticket) openAdminReplyModal(ticket);
+        });
+      });
+    }
+
+    function openAdminReplyModal(ticket) {
+      const modalRoot = document.getElementById('modal-root');
+      const modalId = 'admin-reply-modal-' + ticket.id;
+
+      const modalEl = document.createElement('div');
+      modalEl.className = 'cms-master-modal-backdrop';
+      modalEl.id = modalId;
+      modalEl.innerHTML = `
+        <div class="cms-master-modal-box" style="max-width: 620px; width: 95%;">
+          <div class="cms-modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-reply"></i>
+              </div>
+              <div>
+                <h3 class="font-display" style="font-size: 16px; font-weight: 800; margin: 0;">Reply to Doctor Ticket #${ticket.ticketNo || ticket.id}</h3>
+                <div style="font-size: 11.5px; color: var(--text-muted);">Doctor: <b>${ticket.doctorName}</b> (${ticket.clinicName})</div>
+              </div>
+            </div>
+            <button type="button" class="cms-btn cms-btn-ghost btn-close-admin-reply" style="padding: 4px 8px;"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <div class="cms-modal-body" style="padding: 16px 20px; max-height: 70vh; overflow-y: auto;">
+            <div style="background: var(--bg); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 16px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Original Request Subject:</div>
+              <div style="font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">${ticket.subject}</div>
+              <div style="font-size: 13px; color: var(--text-main); line-height: 1.5; white-space: pre-wrap;">${ticket.message}</div>
+            </div>
+
+            <!-- Existing Replies Thread -->
+            ${(ticket.replies && ticket.replies.length > 0) ? `
+              <div style="margin-bottom: 16px;">
+                <div style="font-size: 11.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Previous Messages:</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${ticket.replies.map(r => `
+                    <div style="background: ${r.senderRole === 'admin' ? 'rgba(37,99,235,0.06)' : 'var(--surface)'}; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 12.5px;">
+                      <div style="display: flex; justify-content: space-between; font-weight: 700; color: ${r.senderRole === 'admin' ? 'var(--primary)' : 'var(--text-main)'}; margin-bottom: 3px;">
+                        <span>${r.senderName} (${r.senderRole.toUpperCase()})</span>
+                        <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">${fmtDate(r.createdAt)}</span>
+                      </div>
+                      <div>${r.message}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Quick Template Replies -->
+            <div style="margin-bottom: 12px;">
+              <label class="cms-label" style="font-size: 11.5px; margin-bottom: 4px;">Quick Reply Templates:</label>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="cms-btn cms-btn-ghost btn-admin-quick-reply" data-text="Thank you Doctor, your request is being reviewed by our technical operations team." style="font-size: 11px; padding: 3px 8px;">Under Review</button>
+                <button type="button" class="cms-btn cms-btn-ghost btn-admin-quick-reply" data-text="We have resolved the issue. Kindly refresh your portal screen to verify." style="font-size: 11px; padding: 3px 8px;">Resolved</button>
+                <button type="button" class="cms-btn cms-btn-ghost btn-admin-quick-reply" data-text="Great suggestion! This feature has been added to our development roadmap." style="font-size: 11px; padding: 3px 8px;">Roadmap Queued</button>
+              </div>
+            </div>
+
+            <form id="form-send-admin-reply" style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="cms-form-group">
+                <label class="cms-label">Admin Official Reply Message <span style="color: red;">*</span></label>
+                <textarea id="admin-reply-text" class="cms-input" rows="4" placeholder="Type your official administrative reply to the doctor here..." required style="resize: vertical; font-size: 13px;"></textarea>
+              </div>
+
+              <div class="cms-form-group">
+                <label class="cms-label">Update Ticket Status</label>
+                <select id="admin-reply-status" class="cms-select">
+                  <option value="Resolved" selected>Resolved / Answered</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Pending">Pending Further Details</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                <button type="button" class="cms-btn cms-btn-ghost btn-close-admin-reply">Cancel</button>
+                <button type="submit" class="cms-btn cms-btn-primary" style="padding: 8px 18px;">
+                  <i class="fa-solid fa-paper-plane"></i> Send Reply to Doctor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      modalRoot.appendChild(modalEl);
+
+      const closeFn = () => modalEl.remove();
+      modalEl.querySelectorAll('.btn-close-admin-reply').forEach(b => b.addEventListener('click', closeFn));
+
+      modalEl.querySelectorAll('.btn-admin-quick-reply').forEach(b => {
+        b.addEventListener('click', () => {
+          modalEl.querySelector('#admin-reply-text').value = b.dataset.text;
+        });
+      });
+
+      modalEl.querySelector('#form-send-admin-reply').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = modalEl.querySelector('#admin-reply-text').value.trim();
+        const status = modalEl.querySelector('#admin-reply-status').value;
+
+        try {
+          await apiFetch(`/feedback/${ticket.id}/reply`, {
+            method: 'POST',
+            body: {
+              message,
+              senderRole: 'admin',
+              senderName: 'System Administrator (Admin)',
+              status,
+            },
+          });
+
+          showToast('Official reply sent to doctor!');
+          closeFn();
+          renderAdminDashboard();
+        } catch (err) {
+          showToast(err.message || 'Error sending reply', 'error');
         }
       });
     }

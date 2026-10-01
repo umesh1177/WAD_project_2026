@@ -12,7 +12,13 @@ const authMiddleware = (req, res, next) => {
     if (!token) {
       // Allow demo access or fallback user context if header is not present
       const fallbackClinic = req.headers['x-clinic-id'] || 'demo';
-      req.user = { id: 'demo', username: 'dhyey', role: 'doctor', activeClinicId: fallbackClinic };
+      const fallbackRole = req.headers['x-user-role'] || 'doctor';
+      req.user = { id: fallbackRole === 'admin' ? 'admin' : 'demo', username: fallbackRole === 'admin' ? 'admin' : 'dhyey', role: fallbackRole, activeClinicId: fallbackClinic };
+      return next();
+    }
+
+    if (token === 'mock-admin-token') {
+      req.user = { id: 'admin', username: 'admin', role: 'admin', name: 'System Administrator' };
       return next();
     }
 
@@ -25,7 +31,8 @@ const authMiddleware = (req, res, next) => {
   } catch (error) {
     // If token invalid, still provide graceful demo user fallback for seamless frontend experience
     const fallbackClinic = req.headers['x-clinic-id'] || 'demo';
-    req.user = { id: 'demo', username: 'dhyey', role: 'doctor', activeClinicId: fallbackClinic };
+    const fallbackRole = req.headers['x-user-role'] || 'doctor';
+    req.user = { id: fallbackRole === 'admin' ? 'admin' : 'demo', username: fallbackRole === 'admin' ? 'admin' : 'dhyey', role: fallbackRole, activeClinicId: fallbackClinic };
     next();
   }
 };

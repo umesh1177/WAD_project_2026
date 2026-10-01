@@ -30,6 +30,7 @@ export const AVAILABLE_SHORTCUT_TARGETS = [
   { category: 'Navigation', title: 'Medical Certificate Generator', target: 'certificates', keyHint: 'F6' },
   { category: 'Navigation', title: 'Follow-up Tracker', target: 'followups', keyHint: 'Alt+U' },
   { category: 'Navigation', title: 'Clinical Reports & Analytics', target: 'reports', keyHint: 'F5' },
+  { category: 'Navigation', title: 'Send Complaint & Feedback Helpdesk', target: 'feedback', keyHint: 'F8' },
   { category: 'Navigation', title: 'Clinical Master Data Setup', target: 'masters', keyHint: 'F7' },
 
   // --- Master Data Sub-Tabs ---

@@ -23,6 +23,7 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const followUpRoutes = require('./routes/followUpRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 const app = express();
 
@@ -348,6 +349,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/followups', followUpRoutes);
 app.use('/api/followup', followUpRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/support', feedbackRoutes);
 
 // SPA / direct route fallback for frontend pages
 app.get('*', (req, res, next) => {

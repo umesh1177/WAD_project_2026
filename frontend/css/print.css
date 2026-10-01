@@ -7,7 +7,8 @@
     visibility: hidden !important;
   }
   
-  #cms-print-area, #cms-print-area * {
+  #cms-print-area, #cms-print-area *,
+  #cms-cert-print-area, #cms-cert-print-area * {
     visibility: visible !important;
   }
   
@@ -24,6 +25,25 @@
     color: #111111 !important;
     box-shadow: none !important;
     border: none !important;
+    z-index: 999999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #cms-cert-print-area {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 12mm 16mm !important;
+    background: #FFFFFF !important;
+    color: #111111 !important;
+    box-shadow: none !important;
+    border: 2px solid #146B5C !important;
+    border-radius: 8px !important;
     z-index: 999999 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
