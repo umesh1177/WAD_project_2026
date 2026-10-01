@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Dhyey Clinic Management System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="css/receptionist.css">
+</head>
+
+"<body class="login-page-body">
+
+    <div class="login-container-card">
+        <!-- Left Hero / Brand Panel -->
+        <div class="login-brand-panel">
+            <div class="brand-panel-header">
+                <div class="brand-logo-icon">
+                    <i class="fa-solid fa-stethoscope"></i>
+                </div>
+                <div class="brand-title">Dhyey Clinic</div>
+            </div>
+
+            <div class="brand-panel-body">
+                <span class="security-badge">
+                    <i class="fa-solid fa-shield-halved"></i> Enterprise Portal v2.4
+                </span>
+                <h1 class="brand-headline">Healthcare Operations, Simplified.</h1>
+                <p class="brand-description">
+                    Unified Family EHR, OPD Queue Tracking, and Automated Billing — designed specifically for modern clinical workflows.
+                </p>
+
+                <div class="brand-highlights">
+                    <div class="highlight-item">
+                        <div class="highlight-icon"><i class="fa-solid fa-wifi-slash"></i></div>
+                        <div class="highlight-text">
+                            <strong>100% Offline Capable</strong>
+                            <span>Works seamlessly without internet lag</span>
+                        </div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-icon"><i class="fa-solid fa-people-roof"></i></div>
+                        <div class="highlight-text">
+                            <strong>Family ID System</strong>
+                            <span>Zero duplicate records, instant lookup</span>
+                        </div>
+                    </div>
+                    <div class="highlight-item">
+                        <div class="highlight-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <div class="highlight-text">
+                            <strong>Keyboard-First (F-Keys)</strong>
+                            <span>Fast patient check-in in under 10 seconds</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="brand-panel-footer">
+                <div class="footer-stat">
+                    <span class="stat-num">2,500+</span>
+                    <span class="stat-lbl">Patients Served</span>
+                </div>
+                <div class="footer-divider"></div>
+                <div class="footer-stat">
+                    <span class="stat-num">99.9%</span>
+                    <span class="stat-lbl">System Uptime</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Form Panel -->
+        <div class="login-form-panel">
+            <div class="form-panel-header">
+                <h2 class="form-title">Portal Sign In</h2>
+                <p class="form-subtitle">Select your account role and enter credentials</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="login-form">
+                <!-- Role Selector (3 Roles: Receptionist, Doctor, Admin) -->
+                <div class="form-group">
+                    <label class="form-label">Select Account Role <span class="req">*</span></label>
+                    <div class="role-grid-selector" id="roleSelector">
+                        <button type="button" class="role-card-btn active" onclick="selectRole('receptionist', this)">
+                            <div class="role-icon-circle"><i class="fa-solid fa-clipboard-user"></i></div>
+                            <span class="role-name">Receptionist</span>
+                        </button>
+                        <button type="button" class="role-card-btn" onclick="selectRole('doctor', this)">
+                            <div class="role-icon-circle"><i class="fa-solid fa-user-doctor"></i></div>
+                            <span class="role-name">Doctor</span>
+                        </button>
+                        <button type="button" class="role-card-btn" onclick="selectRole('admin', this)">
+                            <div class="role-icon-circle"><i class="fa-solid fa-user-gear"></i></div>
+                            <span class="role-name">Admin</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="userRole" value="receptionist">
+                </div>
+
+                <!-- Username Input -->
+                <div class="form-group">
+                    <label class="form-label" for="username">Username or Email <span class="req">*</span></label>
+                    <div class="input-field-wrap">
+                        <i class="fa-solid fa-envelope field-icon"></i>
+                        <input type="text" id="username" class="custom-input" placeholder="e.g. receptionist" value="receptionist" required>
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div class="form-group">
+                    <div class="label-row">
+                        <label class="form-label" for="password">Password <span class="req">*</span></label>
+                        <a href="javascript:void(0)" class="forgot-pass-link" onclick="alert('Password reset link has been dispatched to admin.')">Forgot Password?</a>
+                    </div>
+                    <div class="input-field-wrap">
+                        <i class="fa-solid fa-lock field-icon"></i>
+                        <input type="password" id="password" class="custom-input" placeholder="••••••••••••" value="password123" required>
+                        <i class="fa-solid fa-eye eye-toggle-icon" id="togglePassword" onclick="togglePasswordVisibility()"></i>
+                    </div>
+                </div>
+
+                <!-- Options Row -->
+                <div class="form-options-row">
+                    <label class="remember-checkbox-wrap">
+                        <input type="checkbox" id="rememberMe" checked>
+                        <span class="checkbox-box"></span>
+                        <span class="checkbox-text">Keep me signed in on this workstation</span>
+                    </label>
+                </div>
+
+                <!-- Primary Submit CTA -->
+                <button type="submit" class="login-submit-btn">
+                    <span>Sign In to Portal</span>
+                    <i class="fa-solid fa-arrow-right-long btn-arrow"></i>
+                </button>
+            </form>
+
+            <!-- Quick Demo Presets -->
+            <div class="demo-presets-wrap">
+                <span class="demo-title">Quick Demo Login Presets</span>
+                <div class="demo-chips">
+                    <button type="button" class="demo-chip-btn" onclick="quickLogin('receptionist')">
+                        <i class="fa-solid fa-clipboard-user"></i> Receptionist
+                    </button>
+                    <button type="button" class="demo-chip-btn" onclick="quickLogin('doctor')">
+                        <i class="fa-solid fa-user-doctor"></i> Doctor
+                    </button>
+                    <button type="button" class="demo-chip-btn" onclick="quickLogin('admin')">
+                        <i class="fa-solid fa-user-gear"></i> Admin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+"    <script>
+        function selectRole(role, btnElement) {
+            document.getElementById('userRole').value = role;
+            const buttons = document.querySelectorAll('.role-card-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            if (btnElement) {
+                btnElement.classList.add('active');
+            }
+
+            const usernameInput = document.getElementById('username');
+            if (role === 'receptionist') {
+                usernameInput.value = 'receptionist';
+            } else if (role === 'doctor') {
+                usernameInput.value = 'dr_shah';
+            } else if (role === 'admin') {
+                usernameInput.value = 'admin';
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('togglePassword');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function quickLogin(role) {
+            const btns = document.querySelectorAll('.role-card-btn');
+            if (role === 'receptionist') {
+                selectRole('receptionist', btns[0]);
+            } else if (role === 'doctor') {
+                selectRole('doctor', btns[1]);
+            } else if (role === 'admin') {
+                selectRole('admin', btns[2]);
+            }
+            document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const role = document.getElementById('userRole').value;
+            const username = document.getElementById('username').value;
+
+            showToast(`Authenticated as ${role.toUpperCase()} (${username}). Redirecting...`, 'success');
+
+            setTimeout(() => {
+                if (role === 'receptionist') {
+                    window.location.href = 'receptionist/dashboard.html';
+                } else if (role === 'doctor') {
+                    window.location.href = 'doctor/dashboard.html';
+                } else {
+                    window.location.href = 'admin/dashboard.html';
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+
+</html>

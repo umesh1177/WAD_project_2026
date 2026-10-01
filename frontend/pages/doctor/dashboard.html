@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Portal - Dhyey Clinic Clinical Workspace</title>
+  <link rel="stylesheet" href="../css/receptionist.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="brand-logo" style="background: #0284c7;">
+            <i class="fa-solid fa-user-doctor"></i>
+          </div>
+          <span class="brand-title" style="color: #0284c7;">Dhyey Doctor</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a class="nav-item active" style="background: #0284c7; color:#fff;" onclick="switchDocTab('consultation')">
+            <div class="nav-item-left">
+              <i class="fa-solid fa-stethoscope nav-icon"></i>
+              <span>Active Consultation</span>
+            </div>
+          </a>
+
+          <a class="nav-item" onclick="switchDocTab('queue')">
+            <div class="nav-item-left">
+              <i class="fa-solid fa-list-ol nav-icon"></i>
+              <span>Today's Queue (5)</span>
+            </div>
+          </a>
+
+          <a class="nav-item" onclick="switchDocTab('prescriptions')">
+            <div class="nav-item-left">
+              <i class="fa-solid fa-pills nav-icon"></i>
+              <span>Prescription Logs</span>
+            </div>
+          </a>
+
+          <a class="nav-item" onclick="switchDocTab('lab')">
+            <div class="nav-item-left">
+              <i class="fa-solid fa-flask nav-icon"></i>
+              <span>Lab & Reports</span>
+            </div>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer-guide">
+        <h6>Doctor Quick Keys:</h6>
+        <div>F1 Save Rx · F2 Next Patient</div>
+        <div>F3 Past History · Esc Clear</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <main class="main-wrapper">
+      <!-- Top Navbar Header -->
+      <header class="top-navbar">
+        <div class="top-navbar-left">
+          <button class="menu-toggle-btn">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="page-title-group">
+            <h1 class="page-header-title" style="color: #0284c7;">
+              <i class="fa-solid fa-user-doctor"></i> Dr. Shah (General Medicine)
+            </h1>
+            <span class="page-header-date">OPD Room #04 · 01/10/2026</span>
+          </div>
+        </div>
+
+        <div class="top-navbar-right">
+          <button class="btn-primary" style="background:#0284c7;" onclick="callNextPatient()">
+            <i class="fa-solid fa-user-plus"></i> Call Next Patient [Token T-02]
+          </button>
+
+          <a href="../login.html" class="btn-icon" title="Logout" style="color:#ef4444; text-decoration:none;">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </a>
+        </div>
+      </header>
+
+      <!-- Content Body -->
+      <div class="content-body">
+        
+        <!-- Active Patient Header Banner -->
+        <div class="card" style="border-left: 4px solid #0284c7; background: #f0f9ff; padding: 16px 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span class="badge-key" style="background:#0284c7; color:#fff; font-size:12px;">Token #T-01</span>
+              <h2 style="font-size:18px; font-weight:800; color:#0369a1; margin-top:4px;">MEHTA SANJAYBHAI NATVERLAL</h2>
+              <div style="font-size:12px; color:#0284c7; font-weight:600; margin-top:2px;">
+                Age: 62 YRS · Male · Blood Group: A+ · Phone: 9654321098 · Family: MEHTA VIKRAMBHAI (THALTEJ)
+              </div>
+            </div>
+
+            <!-- Vitals Summary Pill Badges -->
+            <div style="display:flex; gap:12px;">
+              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 12px; border-radius:8px; text-align:center;">
+                <div style="font-size:10px; color:#0369a1; font-weight:700;">BP</div>
+                <div style="font-size:14px; font-weight:800; color:#0284c7;">130/85</div>
+              </div>
+              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 12px; border-radius:8px; text-align:center;">
+                <div style="font-size:10px; color:#0369a1; font-weight:700;">PULSE</div>
+                <div style="font-size:14px; font-weight:800; color:#0284c7;">72 bpm</div>
+              </div>
+              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 12px; border-radius:8px; text-align:center;">
+                <div style="font-size:10px; color:#0369a1; font-weight:700;">TEMP</div>
+                <div style="font-size:14px; font-weight:800; color:#0284c7;">98.6 °F</div>
+              </div>
+              <div style="background:#fff; border:1px solid #bae6fd; padding:6px 12px; border-radius:8px; text-align:center;">
+                <div style="font-size:10px; color:#0369a1; font-weight:700;">SPO2</div>
+                <div style="font-size:14px; font-weight:800; color:#10b981;">99%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinical Workspace Grid -->
+        <div class="grid-split-2" style="grid-template-columns: 1fr 1.2fr;">
+          <!-- Left: Clinical Notes & Diagnosis -->
+          <div class="card">
+            <h3 class="card-title"><i class="fa-solid fa-notes-medical" style="color:#0284c7;"></i> Chief Complaints & Diagnosis</h3>
+            
+            <div class="form-group" style="margin-top:12px;">
+              <label class="form-label">CHIEF COMPLAINTS</label>
+              <textarea class="form-textarea" rows="3" placeholder="e.g. Mild headache, feverish feeling for 2 days...">Patient complains of intermittent headache, fatigue, and mild body aches for 2 days.</textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">DIAGNOSIS</label>
+              <input type="text" class="form-input" value="Viral Pyrexia / Mild Hypertension">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">RECOMMENDED LAB TESTS</label>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12.5px; margin-top:6px;">
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" checked style="accent-color:#0284c7;"> CBC (Complete Blood)</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Lipid Profile</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Fasting Blood Sugar</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" style="accent-color:#0284c7;"> Urine Routine</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: E-Prescription Builder -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h3 class="card-title"><i class="fa-solid fa-file-prescription" style="color:#0284c7;"></i> Rx · Prescribed Medicines</h3>
+              <button class="btn-secondary" style="padding:4px 10px; font-size:11px; border-color:#0284c7; color:#0284c7;" onclick="addMedicineRow()">
+                <i class="fa-solid fa-plus"></i> Add Medicine
+              </button>
+            </div>
+
+            <table style="width:100%; border-collapse:collapse;" id="medicineRxTable">
+              <thead>
+                <tr style="background:#f0f9ff; font-size:11px; color:#0369a1; text-align:left;">
+                  <th style="padding:6px;">Medicine Name</th>
+                  <th style="padding:6px;">Dose</th>
+                  <th style="padding:6px;">Freq</th>
+                  <th style="padding:6px;">Days</th>
+                  <th style="padding:6px;">Instruction</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="Tab. Paracetamol 650mg"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0; font-size:12.5px;">
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="Cap. Amoxicillin 500mg"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 cap"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="5"></td>
+                  <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+              <div>
+                <label class="form-label">FOLLOW UP DATE</label>
+                <input type="date" class="form-input" value="2026-10-06" style="padding:6px 10px;">
+              </div>
+              <button class="btn-primary" style="background:#0284c7; padding:10px 18px;" onclick="savePrescription()">
+                <i class="fa-solid fa-print"></i> Save & Print Prescription
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Ticker -->
+      <footer class="bottom-ticker-bar" style="background:#0c4a6e;">
+        <div>Dhyey Clinic · Doctor OPD Portal | F1 Save Rx | F2 Next Patient | Esc Clear</div>
+        <div id="docClock">17:35:57</div>
+      </footer>
+    </main>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    function addMedicineRow() {
+      const tbody = document.querySelector('#medicineRxTable tbody');
+      const row = document.createElement('tr');
+      row.style.borderBottom = '1px solid #e2e8f0';
+      row.style.fontSize = '12.5px';
+      row.innerHTML = `
+        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" placeholder="Medicine name"></td>
+        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1 tab"></td>
+        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:60px;" value="1-0-1"></td>
+        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px; width:50px;" value="3"></td>
+        <td style="padding:6px;"><input type="text" class="form-input" style="padding:4px 8px; font-size:12px;" value="After Food"></td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    function savePrescription() {
+      showToast('Prescription saved & sent to Pharmacy & Receptionist!', 'success');
+    }
+
+    function callNextPatient() {
+      showToast('Calling Next Patient: Token T-02 (PATEL RAMESHBHAI GOVINDBHAI)', 'success');
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('docClock').textContent = now.toTimeString().split(' ')[0];
+    }, 1000);
+  </script>
+</body>
+</html>

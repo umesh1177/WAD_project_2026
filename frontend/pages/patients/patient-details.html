@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Record - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/patient.css">
+</head>
+<body class="cms-root">
+  <div class="cms-layout">
+    <main class="cms-main-container">
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <a href="patient-list.html" class="cms-btn-ghost cms-btn-icon" style="text-decoration: none;"><i class="fa-solid fa-arrow-left"></i></a>
+          <h1 class="cms-topbar-title">Patient Record &amp; Consultation History</h1>
+        </div>
+      </header>
+      <section class="cms-content-area" id="page-patient-details-container"></section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderConsultationView } from '../../js/consultation.js';
+    import { openPrescriptionModal } from '../../js/prescription.js';
+    import { openLabReportModal } from '../../js/history.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const familyId = params.get('fam');
+    const patientId = params.get('pat');
+
+    renderConsultationView(document.getElementById('page-patient-details-container'), { familyId, patientId }, (fId, pId) => {
+      window.location.href = `patient-details.html?fam=${fId}&pat=${pId}`;
+    }, (pat, visit) => {
+      openPrescriptionModal(pat, visit);
+    }, (pat, visit) => {
+      openLabReportModal(pat, visit);
+    });
+  </script>
+</body>
+</html>
