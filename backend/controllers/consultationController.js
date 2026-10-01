@@ -200,8 +200,13 @@ const deleteConsultation = async (req, res) => {
     const { id } = req.params;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
 
-    await Consultation.findOneAndDelete({ $or: [{ _id: id }, { caseId: id }], clinicId });
-    res.json({ success: true, message: 'Visit deleted' });
+    const deleted = await Consultation.findOneAndDelete({ $or: [{ _id: id }, { caseId: id }], clinicId });
+    if (deleted && deleted.caseId) {
+      await Prescription.deleteMany({ caseId: deleted.caseId, clinicId });
+      await Bill.deleteMany({ caseId: deleted.caseId, clinicId });
+      await Payment.deleteMany({ caseId: deleted.caseId, clinicId });
+    }
+    res.json({ success: true, message: 'Visit deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

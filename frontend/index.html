@@ -373,7 +373,11 @@
         document.querySelectorAll('.cms-nav-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         currentView = item.getAttribute('data-view');
-        currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
+        if (currentView === 'case') {
+          currentSelection = { familyId: null, patientId: null };
+        } else {
+          currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
+        }
         renderActiveView();
       });
     });
@@ -382,6 +386,8 @@
     function navigateTo(viewName, selection = null) {
       if (selection) {
         currentSelection = selection;
+      } else if (viewName === 'case') {
+        currentSelection = { familyId: null, patientId: null };
       } else {
         currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
       }
@@ -418,7 +424,8 @@
           currentSelection.isRedirectFromHeadReg || false,
           () => {
             navigateTo('family');
-          }
+          },
+          currentSelection.editPatientId || null
         );
       } else if (currentView === 'case') {
         renderConsultationView(container, currentSelection, (famId, patId) => {
@@ -428,6 +435,8 @@
           openPrescriptionModal(pat, visit);
         }, (pat, visit) => {
           openLabReportModal(pat, visit);
+        }, (famId, patId) => {
+          navigateTo('patient', { familyId: famId, patientId: patId, editPatientId: patId });
         });
       } else if (currentView === 'masters') {
         renderMastersView(container);
@@ -481,25 +490,264 @@
       }
     });
 
-    /* ---- Global Keyboard Navigation (F1 to F9, /, Esc) ---- */
-    window.addEventListener('keydown', (e) => {
-      const tag = document.activeElement.tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') {
-        if (e.key === 'Escape') document.activeElement.blur();
+    /* ---- Dynamic Keyboard Shortcut Normalizer & Executor ---- */
+    function getKeyComboString(e) {
+      const parts = [];
+      if (e.ctrlKey) parts.push('Ctrl');
+      if (e.altKey) parts.push('Alt');
+      if (e.shiftKey && (e.key.length > 1 || (e.key.length === 2 && e.key.startsWith('F')))) parts.push('Shift');
+      if (e.metaKey) parts.push('Meta');
+
+      let mainKey = e.key;
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(mainKey)) {
+        return '';
+      }
+      if (mainKey === 'Escape') mainKey = 'Esc';
+      if (mainKey === ' ') mainKey = 'Space';
+      if (mainKey.length === 1) mainKey = mainKey.toUpperCase();
+
+      if (parts.length > 0) {
+        if (!parts.includes(mainKey)) {
+          parts.push(mainKey);
+        }
+        return parts.join('+');
+      }
+      return mainKey;
+    }
+
+    function executeShortcutTarget(target) {
+      if (!target) return;
+
+      // 1. Top Navigation Views
+      const navViews = {
+        dashboard: () => navigateTo('dashboard'),
+        family: () => navigateTo('family'),
+        patient: () => navigateTo('patient', { familyId: null, isRedirectFromHeadReg: false }),
+        case: () => navigateTo('case'),
+        appointments: () => navigateTo('appointments'),
+        billing: () => navigateTo('billing'),
+        inventory: () => navigateTo('inventory'),
+        medicines: () => navigateTo('medicines'),
+        certificates: () => navigateTo('certificates'),
+        followups: () => navigateTo('followups'),
+        reports: () => navigateTo('reports'),
+        masters: () => navigateTo('masters')
+      };
+
+      if (navViews[target]) {
+        navViews[target]();
         return;
       }
 
-      if (e.key === 'F1') { e.preventDefault(); navigateTo('family'); }
-      if (e.key === 'F2') { e.preventDefault(); navigateTo('patient', { familyId: null, isRedirectFromHeadReg: false }); }
-      if (e.key === 'F3') { e.preventDefault(); navigateTo('case'); }
-      if (e.key === 'F4') { e.preventDefault(); navigateTo('dashboard'); }
-      if (e.key === 'F5') { e.preventDefault(); navigateTo('reports'); }
-      if (e.key === 'F6') { e.preventDefault(); navigateTo('certificates'); }
-      if (e.key === 'F7') { e.preventDefault(); navigateTo('masters'); }
-      if (e.key === '/') {
-        e.preventDefault();
+      // 2. Master Data Sub-Tabs
+      if (target.startsWith('master_')) {
+        const subTab = target.replace('master_', '');
+        if (currentView !== 'masters') {
+          navigateTo('masters');
+          setTimeout(() => {
+            const btn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+            if (btn) btn.click();
+          }, 60);
+        } else {
+          const btn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      // 3. Form Openers & Modals
+      if (target === 'open_new_case') {
+        if (currentView !== 'case') {
+          navigateTo('case');
+          setTimeout(() => {
+            const btn = document.getElementById('btn-toggle-visit-form') || document.querySelector('.cms-btn-new-visit') || document.getElementById('btn-add-new-case');
+            if (btn) btn.click();
+          }, 100);
+        } else {
+          const btn = document.getElementById('btn-toggle-visit-form') || document.querySelector('.cms-btn-new-visit') || document.getElementById('btn-add-new-case');
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      if (target === 'open_add_family') {
+        if (currentView !== 'family') {
+          navigateTo('family');
+        }
+        setTimeout(() => {
+          const headInput = document.getElementById('fam-head-name') || document.querySelector('#family-reg-form input');
+          if (headInput) headInput.focus();
+        }, 80);
+        return;
+      }
+
+      if (target === 'open_add_member') {
+        if (currentView !== 'patient') {
+          navigateTo('patient', { familyId: null, isRedirectFromHeadReg: false });
+        }
+        setTimeout(() => {
+          const memInput = document.getElementById('pat-name') || document.querySelector('#patient-reg-form input');
+          if (memInput) memInput.focus();
+        }, 80);
+        return;
+      }
+
+      if (target === 'open_add_appointment') {
+        if (currentView !== 'appointments') {
+          navigateTo('appointments');
+          setTimeout(() => {
+            const btn = document.getElementById('btn-add-appointment') || document.querySelector('[data-action="add-appointment"]');
+            if (btn) btn.click();
+          }, 80);
+        } else {
+          const btn = document.getElementById('btn-add-appointment') || document.querySelector('[data-action="add-appointment"]');
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      const masterModalMap = {
+        open_add_dietary: 'dietary',
+        open_add_complaint: 'complaints',
+        open_add_investigation: 'investigations',
+        open_add_area: 'areas',
+        open_add_medicine: 'medicines',
+        open_add_allergy: 'allergies',
+        open_add_relation: 'relations',
+        open_add_society: 'societies',
+        open_add_shortcut: 'shortcuts',
+      };
+
+      if (masterModalMap[target]) {
+        const subTab = masterModalMap[target];
+        if (currentView !== 'masters') {
+          navigateTo('masters');
+          setTimeout(() => {
+            const tabBtn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+            if (tabBtn) tabBtn.click();
+            setTimeout(() => {
+              const addBtn = document.querySelector(`.btn-open-add-modal[data-type="${subTab}"]`) || document.querySelector('.btn-open-add-modal');
+              if (addBtn) addBtn.click();
+            }, 50);
+          }, 60);
+        } else {
+          const tabBtn = document.querySelector(`.cms-master-tab-btn[data-tab="${subTab}"]`);
+          if (tabBtn) tabBtn.click();
+          setTimeout(() => {
+            const addBtn = document.querySelector(`.btn-open-add-modal[data-type="${subTab}"]`) || document.querySelector('.btn-open-add-modal');
+            if (addBtn) addBtn.click();
+          }, 50);
+        }
+        return;
+      }
+
+      if (target === 'open_attach_lab') {
+        const btn = document.getElementById('btn-attach-lab-report') || document.querySelector('.btn-attach-lab');
+        if (btn) btn.click();
+        return;
+      }
+
+      // 4. Clinical Actions
+      if (target === 'quick_search') {
         const searchBox = document.getElementById('cms-top-search');
-        if (searchBox) searchBox.focus();
+        if (searchBox) {
+          searchBox.focus();
+          searchBox.select();
+        }
+        return;
+      }
+
+      if (target === 'print_prescription') {
+        const printBtn = document.getElementById('btn-print-rx-preview') || document.querySelector('.btn-print-rx') || document.getElementById('btn-print-prescription');
+        if (printBtn) printBtn.click();
+        return;
+      }
+
+      if (target === 'submit_case') {
+        const saveBtn = document.getElementById('btn-save-consultation') || document.querySelector('button[type="submit"].btn-save-case') || document.querySelector('#form-case-entry button[type="submit"]');
+        if (saveBtn) saveBtn.click();
+        return;
+      }
+
+      if (target === 'close_modal') {
+        const modal = document.querySelector('.cms-master-modal-backdrop') || document.querySelector('.cms-modal-backdrop') || document.querySelector('.cms-modal-overlay');
+        if (modal) {
+          modal.remove();
+        } else if (document.activeElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      if (target === 'toggle_theme') {
+        const themeBtn = document.getElementById('btn-theme-toggle');
+        if (themeBtn) themeBtn.click();
+        return;
+      }
+    }
+
+    /* ---- Global Keyboard Navigation & Custom Shortcuts Handler ---- */
+    window.addEventListener('keydown', (e) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+      // Escape key closes modal or un-focuses input
+      if (e.key === 'Escape') {
+        const modal = document.querySelector('.cms-master-modal-backdrop') || document.querySelector('.cms-modal-backdrop') || document.querySelector('.cms-modal-overlay');
+        if (modal) {
+          e.preventDefault();
+          modal.remove();
+          return;
+        }
+        if (isInput) {
+          activeEl.blur();
+          return;
+        }
+      }
+
+      // Extract normalized keystroke combo
+      const combo = getKeyComboString(e);
+      if (!combo) return;
+
+      // Inside input fields: preserve regular typing and standard clipboard shortcuts
+      if (isInput) {
+        if (['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+A', 'Ctrl+Z', 'Ctrl+Y'].includes(combo)) {
+          return;
+        }
+        // Only trigger shortcut in input if Alt/Ctrl modifier is pressed or it is a Function Key (F1-F12)
+        if (!e.altKey && !e.ctrlKey && !e.metaKey && !combo.startsWith('F')) {
+          return;
+        }
+      }
+
+      // Retrieve custom shortcuts from DB
+      const curSession = initAuth();
+      const activeClinicId = curSession?.profile?.activeClinicId || 'demo';
+      const db = getLocalDB(activeClinicId);
+      const shortcuts = db.customShortcuts || [
+        { key: 'F1', target: 'family' },
+        { key: 'F2', target: 'patient' },
+        { key: 'F3', target: 'case' },
+        { key: 'F4', target: 'dashboard' },
+        { key: 'F5', target: 'reports' },
+        { key: 'F6', target: 'certificates' },
+        { key: 'F7', target: 'masters' },
+        { key: '/', target: 'quick_search' },
+        { key: 'Alt+N', target: 'open_new_case' },
+        { key: 'Esc', target: 'close_modal' },
+      ];
+
+      // Match pressed combo against saved shortcuts
+      const matched = shortcuts.find(sc => {
+        if (!sc.key) return false;
+        const scNorm = sc.key.trim().toUpperCase().replace(/\s+/g, '');
+        const comboNorm = combo.trim().toUpperCase().replace(/\s+/g, '');
+        return scNorm === comboNorm;
+      });
+
+      if (matched) {
+        e.preventDefault();
+        executeShortcutTarget(matched.target);
       }
     });
 

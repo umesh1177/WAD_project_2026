@@ -65,13 +65,12 @@ const createFamily = async (req, res) => {
     const currentYear = new Date().getFullYear();
     const cleanClinicCode = (clinicId === 'demo' ? '0001' : (String(clinicId).replace(/\D/g, '') || String(clinicId).toUpperCase().replace(/[^A-Z0-9]/g, '')).padStart(4, '0').slice(-4)) || '0001';
 
-    // Auto-calculate next sequential famId and patId for this clinic and year (12-digit without hyphens)
     const countFam = await Family.countDocuments({ clinicId, year: currentYear });
     const sequence = countFam + 1;
     const nextFamId = customFamId || `${cleanClinicCode}${currentYear}${pad(sequence, 4)}`;
 
-    const countPat = await Patient.countDocuments({ clinicId });
-    const nextPatId = `${cleanClinicCode}${currentYear}${pad(countPat + 1, 4)}`;
+    const famSeqCode = pad(sequence, 4);
+    const nextPatId = `${famSeqCode}0001`;
 
     const newFamily = new Family({
       famId: nextFamId,

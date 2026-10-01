@@ -30,44 +30,28 @@ const app = express();
 const Family = require('./models/Family');
 const Patient = require('./models/Patient');
 const Consultation = require('./models/Consultation');
+const Appointment = require('./models/Appointment');
+const FollowUp = require('./models/FollowUp');
+const Bill = require('./models/Bill');
 const { todayISO } = require('./utils/generateId');
 
 const seedDemoData = async () => {
   try {
-    // Clear out any legacy format data with old 4-digit or hyphenated famIds
-    await Family.deleteMany({
-      clinicId: 'demo',
-      $or: [
-        { famId: { $in: ['0001', '0002'] } },
-        { famId: { $regex: '-' } },
-        { famId: { $exists: true, $where: 'this.famId && this.famId.length < 12' } }
-      ]
-    });
-    await Patient.deleteMany({
-      clinicId: 'demo',
-      $or: [
-        { familyId: { $in: ['0001', '0002'] } },
-        { familyId: { $regex: '-' } },
-        { patId: { $in: ['0001', '0002'] } },
-        { patId: { $regex: '-' } },
-        { patId: { $exists: true, $where: 'this.patId && this.patId.length < 12' } }
-      ]
-    });
-    await Consultation.deleteMany({
-      clinicId: 'demo',
-      $or: [
-        { familyId: { $in: ['0001', '0002'] } },
-        { familyId: { $regex: '-' } },
-        { patientId: { $in: ['0001', '0002'] } },
-        { patientId: { $regex: '-' } }
-      ]
-    });
-
+    const curDate = todayISO();
     const famCount = await Family.countDocuments({ clinicId: 'demo' });
-    if (famCount === 0) {
-      console.log('[Database Seeding]: Seeding initial demo clinic data with 12-digit ID format...');
+    if (famCount < 4) {
+      console.log('[Database Seeding]: Seeding initial rich clinic demo dataset...');
       
-      const f1 = new Family({
+      // Clean previous demo data
+      await Family.deleteMany({ clinicId: 'demo' });
+      await Patient.deleteMany({ clinicId: 'demo' });
+      await Consultation.deleteMany({ clinicId: 'demo' });
+      await Appointment.deleteMany({ clinicId: 'demo' });
+      await FollowUp.deleteMany({ clinicId: 'demo' });
+      await Bill.deleteMany({ clinicId: 'demo' });
+
+      // Family 1 - Vastrapur
+      await new Family({
         famId: '000120260001',
         headName: 'PATEL RAMESHBHAI GOVINDBHAI',
         society: 'Shanti Niketan Apt',
@@ -76,58 +60,68 @@ const seedDemoData = async () => {
         phone: '9876543210',
         year: 2026,
         sequence: 1,
-        clinicId: 'demo'
-      });
-      await f1.save();
+        clinicId: 'demo',
+      }).save();
 
-      const p1 = new Patient({
-        patId: '000120260001',
+      await new Patient({
+        patId: '00010001',
         familyId: '000120260001',
         name: 'PATEL RAMESHBHAI GOVINDBHAI',
         relation: 'Head',
-        age: '45',
+        age: '46',
         bloodGroup: 'O+',
-        allergy: '',
+        allergy: 'Dust / Pollen',
         phone: '9876543210',
-        clinicId: 'demo'
-      });
-      await p1.save();
+        clinicId: 'demo',
+      }).save();
 
-      const p2 = new Patient({
-        patId: '000120260002',
+      await new Patient({
+        patId: '00010002',
         familyId: '000120260001',
         name: 'PATEL SHARDABEN RAMESHBHAI',
         relation: 'Wife',
         age: '43',
         bloodGroup: 'B+',
-        allergy: 'DUST',
+        allergy: 'Penicillin',
         phone: '9876543210',
-        clinicId: 'demo'
-      });
-      await p2.save();
+        clinicId: 'demo',
+      }).save();
 
-      const v1 = new Consultation({
+      await new Patient({
+        patId: '00010003',
+        familyId: '000120260001',
+        name: 'PATEL DHRUVIL RAMESHBHAI',
+        relation: 'Son',
+        age: '19',
+        bloodGroup: 'O+',
+        allergy: 'None',
+        phone: '9876543210',
+        clinicId: 'demo',
+      }).save();
+
+      await new Consultation({
         caseId: '00012026000101',
         visitNum: 1,
-        patientId: '000120260001',
+        patientId: '00010001',
         familyId: '000120260001',
         clinicId: 'demo',
-        date: todayISO(),
-        time: '10:15',
-        weight: '75',
-        bp: '130/80',
+        date: curDate,
+        time: '09:30 AM',
+        weight: '74',
+        bp: '130/85',
+        sugar: '110',
         reference: 'Dr. Shah',
-        diagnosis: 'Viral Infection',
-        complaint: 'Cough and Cold',
-        treatment: [{ name: 'Clinical Checkup', qty: '1', cost: 300 }],
+        diagnosis: 'Acute Viral Pyrexia',
+        complaint: 'High fever, body chills and shivering for 2 days',
+        treatment: [{ name: 'Clinical Consultation', qty: 1, cost: 300 }, { name: 'Injection Paracetamol IM', qty: 1, cost: 300 }],
         prescription: [{ name: 'Paracetamol 650mg', qty: '10', mor: '1', noon: '1', eve: '1', ngt: '0', timing: 'AF' }],
-        charge: 800,
-        received: 500,
-        due: 300
-      });
-      await v1.save();
+        charge: 600,
+        received: 600,
+        due: 0,
+      }).save();
 
-      const f2 = new Family({
+      // Family 2 - Navrangpura
+      await new Family({
         famId: '000120260002',
         headName: 'SHARMA AMITBHAI DINESHBHAI',
         society: 'Gokuldham Society',
@@ -136,44 +130,159 @@ const seedDemoData = async () => {
         phone: '9876543211',
         year: 2026,
         sequence: 2,
-        clinicId: 'demo'
-      });
-      await f2.save();
+        clinicId: 'demo',
+      }).save();
 
-      const p3 = new Patient({
-        patId: '000120260003',
+      await new Patient({
+        patId: '00020001',
         familyId: '000120260002',
         name: 'SHARMA AMITBHAI DINESHBHAI',
         relation: 'Head',
         age: '50',
         bloodGroup: 'A+',
-        allergy: '',
+        allergy: 'None',
         phone: '9876543211',
-        clinicId: 'demo'
-      });
-      await p3.save();
+        clinicId: 'demo',
+      }).save();
 
-      const v2 = new Consultation({
+      await new Patient({
+        patId: '00020002',
+        familyId: '000120260002',
+        name: 'SHARMA PRIYABEN AMITBHAI',
+        relation: 'Wife',
+        age: '47',
+        bloodGroup: 'A+',
+        allergy: 'Sulfa Drugs',
+        phone: '9876543211',
+        clinicId: 'demo',
+      }).save();
+
+      await new Consultation({
         caseId: '00012026000201',
         visitNum: 1,
-        patientId: '000120260003',
+        patientId: '00020002',
         familyId: '000120260002',
         clinicId: 'demo',
-        date: todayISO(),
-        time: '11:00',
-        weight: '62',
-        bp: '110/70',
+        date: curDate,
+        time: '10:15 AM',
+        weight: '58',
+        bp: '118/78',
         reference: 'Self',
-        diagnosis: 'Acidity',
-        complaint: 'Stomach pain',
-        treatment: [{ name: 'General Consultation', qty: '1', cost: 400 }],
-        prescription: [{ name: 'Pantoprazole 40mg', qty: '5', mor: '1', noon: '0', eve: '0', ngt: '0', timing: 'BF' }],
-        charge: 400,
-        received: 400,
-        due: 0
-      });
-      await v2.save();
-      console.log('[Database Seeding]: Seeding complete.');
+        diagnosis: 'Acute Upper Respiratory Tract Infection (URTI)',
+        complaint: 'Severe sore throat, dry painful cough and mild fever',
+        treatment: [{ name: 'Consultation & Throat Examination', qty: 1, cost: 500 }],
+        prescription: [{ name: 'Amoxicillin 500mg', qty: '10', mor: '1', noon: '0', eve: '1', ngt: '0', timing: 'AF' }],
+        charge: 500,
+        received: 500,
+        due: 0,
+      }).save();
+
+      // Family 3 - Satellite
+      await new Family({
+        famId: '000120260003',
+        headName: 'DESAI BHUPENDRABHAI KANTILAL',
+        society: 'Surya Kiran Heights',
+        registeredBy: 'Self',
+        area: 'SATELLITE',
+        phone: '9876543212',
+        year: 2026,
+        sequence: 3,
+        clinicId: 'demo',
+      }).save();
+
+      await new Patient({
+        patId: '00030001',
+        familyId: '000120260003',
+        name: 'DESAI BHUPENDRABHAI KANTILAL',
+        relation: 'Head',
+        age: '58',
+        bloodGroup: 'B+',
+        allergy: 'None',
+        phone: '9876543212',
+        clinicId: 'demo',
+      }).save();
+
+      await new Patient({
+        patId: '00030003',
+        familyId: '000120260003',
+        name: 'DESAI KANTABEN KANTILAL',
+        relation: 'Mother',
+        age: '82',
+        bloodGroup: 'O+',
+        allergy: 'Aspirin / NSAIDs',
+        phone: '9876543212',
+        clinicId: 'demo',
+      }).save();
+
+      await new Consultation({
+        caseId: '00012026000301',
+        visitNum: 1,
+        patientId: '00030001',
+        familyId: '000120260003',
+        clinicId: 'demo',
+        date: curDate,
+        time: '11:00 AM',
+        weight: '82',
+        bp: '142/92',
+        sugar: '138',
+        reference: 'Dr. Mehta',
+        diagnosis: 'Chronic Gastritis & Mild Hypertension',
+        complaint: 'Chest burning after spicy meals, chronic acidity and belching',
+        treatment: [{ name: 'Clinical Consultation', qty: 1, cost: 500 }],
+        prescription: [{ name: 'Pantoprazole 40mg', qty: '15', mor: '1', noon: '0', eve: '0', ngt: '0', timing: 'BF' }],
+        charge: 500,
+        received: 250,
+        due: 250,
+      }).save();
+
+      await new Consultation({
+        caseId: '00012026000302',
+        visitNum: 1,
+        patientId: '00030003',
+        familyId: '000120260003',
+        clinicId: 'demo',
+        date: curDate,
+        time: '11:45 AM',
+        weight: '54',
+        bp: '135/85',
+        sugar: '98',
+        reference: '',
+        diagnosis: 'Primary Osteoarthritis of Both Knees',
+        complaint: 'Severe bilateral knee pain, difficulty walking and swelling',
+        treatment: [{ name: 'Orthopaedic Knee Checkup', qty: 1, cost: 750 }],
+        prescription: [{ name: 'Paracetamol 650mg', qty: '10', mor: '1', noon: '0', eve: '1', ngt: '0', timing: 'AF' }],
+        charge: 750,
+        received: 750,
+        due: 0,
+      }).save();
+
+      // Seed Appointments
+      await Appointment.insertMany([
+        { patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', appointmentDate: curDate, appointmentTime: '09:30 AM', reason: 'Fever & Bodyache Follow-up', status: 'completed', clinicId: 'demo' },
+        { patientId: '00020002', patientName: 'SHARMA PRIYABEN AMITBHAI', appointmentDate: curDate, appointmentTime: '10:15 AM', reason: 'Severe Sore Throat & Dry Cough', status: 'completed', clinicId: 'demo' },
+        { patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', appointmentDate: curDate, appointmentTime: '11:00 AM', reason: 'Acid Reflux & Chest Discomfort', status: 'completed', clinicId: 'demo' },
+        { patientId: '00040001', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', appointmentDate: curDate, appointmentTime: '04:00 PM', reason: 'Severe Migraine Headache SOS', status: 'in-progress', clinicId: 'demo' },
+        { patientId: '00050001', patientName: 'PRAJAPATI MANISHBHAI KANUBHAI', appointmentDate: curDate, appointmentTime: '05:30 PM', reason: 'Routine BP & Blood Sugar Check', status: 'scheduled', clinicId: 'demo' },
+        { patientId: '00060001', patientName: 'MEHTA RAJESHBHAI CHANDRAKANT', appointmentDate: curDate, appointmentTime: '06:15 PM', reason: 'Cholesterol & Lipid Profile Review', status: 'scheduled', clinicId: 'demo' },
+      ]);
+
+      // Seed FollowUps
+      await FollowUp.insertMany([
+        { patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', followUpDate: curDate, reason: 'Platelet Count & Dengue Serology Recheck', status: 'Pending', clinicId: 'demo' },
+        { patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', followUpDate: curDate, reason: 'Endoscopy & H. Pylori Report Review', status: 'Pending', clinicId: 'demo' },
+        { patientId: '00030003', patientName: 'DESAI KANTABEN KANTILAL', followUpDate: '2026-10-04', reason: 'Bilateral Knee Joint Pain Follow-up', status: 'Pending', clinicId: 'demo' },
+        { patientId: '00040001', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', followUpDate: '2026-10-06', reason: 'Migraine Prophylaxis Assessment', status: 'Pending', clinicId: 'demo' },
+      ]);
+
+      // Seed Bills
+      await Bill.insertMany([
+        { billNo: 'INV-2026-001', billDate: curDate, patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', totalCharge: 600, paidAmount: 600, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
+        { billNo: 'INV-2026-002', billDate: curDate, patientId: '00020002', patientName: 'SHARMA PRIYABEN AMITBHAI', totalCharge: 500, paidAmount: 500, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
+        { billNo: 'INV-2026-003', billDate: curDate, patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', totalCharge: 500, paidAmount: 250, dueAmount: 250, status: 'Partial', clinicId: 'demo' },
+        { billNo: 'INV-2026-004', billDate: curDate, patientId: '00030003', patientName: 'DESAI KANTABEN KANTILAL', totalCharge: 750, paidAmount: 750, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
+      ]);
+
+      console.log('[Database Seeding]: Rich demo dataset seeded successfully.');
     }
   } catch (err) {
     console.warn('[Database Seeding Warning]:', err.message);

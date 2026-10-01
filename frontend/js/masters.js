@@ -1,13 +1,71 @@
 /**
  * =========================================================
  * CLINICAL MASTER DATA MANAGEMENT CONTROLLER
- * Dietary Suggestions (Shortcut, Disease, What to Eat, What Not to Eat),
+ * Dietary Suggestions, Clinical Complaints, Lab Investigations,
  * Area/Locations, Medicine Catalogue, Known Allergies,
  * Relation Hierarchy, Society/Flat, and Keyboard Shortcuts Masters
+ *
+ * Features:
+ * - All Add/Edit forms open in sleek Modal dialogs
+ * - Fixed-height Data Table Box with smooth internal record scrolling
+ * - Page Size selector (20, 50, 100, View All - View All selected by default)
+ * - Next / Previous pagination controls
+ * - Compact column spacing to eliminate large gaps
+ * - Real-time instant search filtering across all tabs
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, fmtMoney, showToast } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, showToast } from './api.js';
+
+export const AVAILABLE_SHORTCUT_TARGETS = [
+  // --- Navigation Tabs ---
+  { category: 'Navigation', title: 'Clinical Dashboard', target: 'dashboard', keyHint: 'F4' },
+  { category: 'Navigation', title: 'Family Head Registration', target: 'family', keyHint: 'F1' },
+  { category: 'Navigation', title: 'Add Family Member / Patient', target: 'patient', keyHint: 'F2' },
+  { category: 'Navigation', title: 'Patient Record & Case Consultation', target: 'case', keyHint: 'F3' },
+  { category: 'Navigation', title: 'Appointments & Tokens', target: 'appointments', keyHint: 'Alt+A' },
+  { category: 'Navigation', title: 'Billing & Cash Counter', target: 'billing', keyHint: 'Alt+B' },
+  { category: 'Navigation', title: 'Inventory & Pharmacy Stock', target: 'inventory', keyHint: 'Alt+I' },
+  { category: 'Navigation', title: 'Medicine Directory List', target: 'medicines', keyHint: 'Alt+M' },
+  { category: 'Navigation', title: 'Medical Certificate Generator', target: 'certificates', keyHint: 'F6' },
+  { category: 'Navigation', title: 'Follow-up Tracker', target: 'followups', keyHint: 'Alt+U' },
+  { category: 'Navigation', title: 'Clinical Reports & Analytics', target: 'reports', keyHint: 'F5' },
+  { category: 'Navigation', title: 'Clinical Master Data Setup', target: 'masters', keyHint: 'F7' },
+
+  // --- Master Data Sub-Tabs ---
+  { category: 'Navigation', title: 'Master Tab: Dietary Suggestions', target: 'master_dietary', keyHint: 'Alt+1' },
+  { category: 'Navigation', title: 'Master Tab: Complaints', target: 'master_complaints', keyHint: 'Alt+2' },
+  { category: 'Navigation', title: 'Master Tab: Investigations', target: 'master_investigations', keyHint: 'Alt+3' },
+  { category: 'Navigation', title: 'Master Tab: Area / Location', target: 'master_areas', keyHint: 'Alt+4' },
+  { category: 'Navigation', title: 'Master Tab: Medicine Catalogue', target: 'master_medicines', keyHint: 'Alt+5' },
+  { category: 'Navigation', title: 'Master Tab: Known Allergies', target: 'master_allergies', keyHint: 'Alt+6' },
+  { category: 'Navigation', title: 'Master Tab: Relation to Head', target: 'master_relations', keyHint: 'Alt+7' },
+  { category: 'Navigation', title: 'Master Tab: Society / Flat', target: 'master_societies', keyHint: 'Alt+8' },
+  { category: 'Navigation', title: 'Master Tab: Navigation Shortcuts', target: 'master_shortcuts', keyHint: 'Alt+9' },
+
+  // --- Form & Modal Openers (Buttons without default shortcut or customizable) ---
+  { category: 'Form', title: '+ Open New Patient Case Entry Form', target: 'open_new_case', keyHint: 'Alt+N' },
+  { category: 'Form', title: '+ Open Add Family Head Form', target: 'open_add_family', keyHint: 'Alt+H' },
+  { category: 'Form', title: '+ Open Add Family Member Form', target: 'open_add_member', keyHint: 'Alt+M' },
+  { category: 'Form', title: '+ Open Add New Appointment Form', target: 'open_add_appointment', keyHint: 'Alt+Q' },
+  { category: 'Form', title: '+ Open Add Dietary Suggestion Modal', target: 'open_add_dietary', keyHint: 'Alt+D' },
+  { category: 'Form', title: '+ Open Add Clinical Complaint Modal', target: 'open_add_complaint', keyHint: 'Alt+C' },
+  { category: 'Form', title: '+ Open Add Lab Investigation Modal', target: 'open_add_investigation', keyHint: 'Alt+L' },
+  { category: 'Form', title: '+ Open Add Area / Locality Modal', target: 'open_add_area', keyHint: 'Alt+R' },
+  { category: 'Form', title: '+ Open Add Medicine Modal', target: 'open_add_medicine', keyHint: 'Alt+E' },
+  { category: 'Form', title: '+ Open Add Known Allergy Modal', target: 'open_add_allergy', keyHint: 'Alt+Y' },
+  { category: 'Form', title: '+ Open Add Relation to Head Modal', target: 'open_add_relation', keyHint: 'Alt+T' },
+  { category: 'Form', title: '+ Open Add Society / Flat Modal', target: 'open_add_society', keyHint: 'Alt+O' },
+  { category: 'Form', title: '+ Open Add Navigation Shortcut Modal', target: 'open_add_shortcut', keyHint: 'Alt+K' },
+  { category: 'Form', title: '+ Open Attach Lab Report Photos Modal', target: 'open_attach_lab', keyHint: 'Alt+P' },
+
+  // --- Clinical Actions & Button Triggers ---
+  { category: 'Action', title: 'Quick Global Search (Focus Top Search)', target: 'quick_search', keyHint: '/' },
+  { category: 'Action', title: 'Print Prescription Preview Modal', target: 'print_prescription', keyHint: 'Ctrl+P' },
+  { category: 'Action', title: 'Save / Submit Current Case Record', target: 'submit_case', keyHint: 'Ctrl+S' },
+  { category: 'Action', title: 'Close Modal / Unfocus / Cancel Drawer', target: 'close_modal', keyHint: 'Esc' },
+  { category: 'Action', title: 'Toggle Light / Dark Theme Mode', target: 'toggle_theme', keyHint: 'Alt+T' },
+];
 
 export function renderMastersView(container) {
   const session = getAuthSession();
@@ -16,100 +74,144 @@ export function renderMastersView(container) {
 
   // Ensure all master structures exist in db
   if (!db.dietary) db.dietary = {};
+  if (!db.masterComplaints) db.masterComplaints = [];
+  if (!db.masterInvestigations) db.masterInvestigations = [];
   if (!db.masterAreas) db.masterAreas = [];
   if (!db.masterMedicines) db.masterMedicines = [];
   if (!db.masterAllergies) db.masterAllergies = [];
   if (!db.masterRelations) db.masterRelations = [];
   if (!db.masterSocieties) db.masterSocieties = [];
-  if (!db.customShortcuts) {
+  if (!db.customShortcuts || db.customShortcuts.length === 0) {
     db.customShortcuts = [
-      { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', desc: 'Register family head with auto-generated ID & directory' },
-      { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', desc: 'Add family member under registered family with live search' },
-      { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', desc: 'Manage vitals, symptoms, diagnosis, and prescription prints' },
-      { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', desc: 'Overview of daily visits, revenue, and queue metrics' },
-      { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', desc: 'Financial, daily register, and disease summary reports' },
-      { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', desc: 'Generate and print sickness & fitness medical certificates' },
-      { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', desc: 'Manage dietary, areas, medicines, allergies, relations, shortcuts' },
-      { id: 'sc8', key: '/', target: 'search', title: 'Quick Global Search', desc: 'Focus global search bar to search patients or families' },
-      { id: 'sc9', key: 'Enter', target: 'submit', title: 'Form Quick Submit', desc: 'Instant submission on registration & consultation forms' },
-      { id: 'sc10', key: 'Esc', target: 'close', title: 'Close Modal / Unfocus', desc: 'Close dialogs, print previews, or blur input focus' },
+      { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
+      { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', category: 'Navigation' },
+      { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', category: 'Navigation' },
+      { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', category: 'Navigation' },
+      { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', category: 'Navigation' },
+      { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', category: 'Navigation' },
+      { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', category: 'Navigation' },
+      { id: 'sc8', key: '/', target: 'quick_search', title: 'Quick Global Search', category: 'Action' },
+      { id: 'sc9', key: 'Alt+N', target: 'open_new_case', title: '+ Open New Case Form', category: 'Form' },
+      { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' },
     ];
   }
 
-  // Active sub-tab state: 'dietary' | 'areas' | 'medicines' | 'allergies' | 'relations' | 'societies' | 'shortcuts'
+  // Ensure persistent IDs on all master records
+  Object.entries(db.dietary || {}).forEach(([code, item]) => {
+    if (!item.id) item.id = `d_${code.toLowerCase()}`;
+    if (!item.code) item.code = code;
+  });
+  (db.masterComplaints || []).forEach((c, idx) => {
+    if (!c.id) c.id = `c_${idx + 1}_${(c.code || '').toLowerCase()}`;
+  });
+  (db.masterInvestigations || []).forEach((inv, idx) => {
+    if (!inv.id) inv.id = `inv_${idx + 1}_${(inv.code || '').toLowerCase()}`;
+  });
+  (db.masterAreas || []).forEach((a, idx) => {
+    if (!a.id) a.id = `a_${idx + 1}_${(a.name || '').toLowerCase().replace(/\s+/g, '_')}`;
+  });
+  (db.masterMedicines || []).forEach((m, idx) => {
+    if (!m.id) m.id = `m_${idx + 1}_${(m.code || '').toLowerCase()}`;
+  });
+  (db.masterAllergies || []).forEach((al, idx) => {
+    if (!al.id) al.id = `al_${idx + 1}_${(al.code || '').toLowerCase()}`;
+  });
+  (db.masterRelations || []).forEach((r, idx) => {
+    if (!r.id) r.id = `r_${idx + 1}_${(r.code || '').toLowerCase()}`;
+  });
+  (db.masterSocieties || []).forEach((s, idx) => {
+    if (!s.id) s.id = `s_${idx + 1}_${(s.name || '').toLowerCase().replace(/\s+/g, '_')}`;
+  });
+  (db.customShortcuts || []).forEach((sc, idx) => {
+    if (!sc.id) sc.id = `sc_${idx + 1}_${(sc.key || '').toLowerCase()}`;
+  });
+  saveLocalDB(db, clinicId);
+
+  // Active sub-tab state: 'dietary' | 'complaints' | 'investigations' | 'areas' | 'medicines' | 'allergies' | 'relations' | 'societies' | 'shortcuts'
   let activeTab = 'dietary';
   let searchQuery = '';
-
-  // Edit state object across all tabs
-  let editItem = null; // { type: 'dietary'|'areas'|'medicines'|'allergies'|'relations'|'societies'|'shortcuts', data: {...} }
+  let pageSize = 'all'; // Default: View All
+  let currentPage = 1;
 
   function renderView() {
     container.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 18px; max-width: 1280px; margin: 0 auto; width: 100%;">
+      <div class="cms-master-container">
         
         <!-- Header Banner -->
-        <div class="cms-card" style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, var(--surface), rgba(37,99,235,0.03)); border: 1px solid var(--border);">
-          <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: var(--shadow-sm);">
+        <div class="cms-card" style="padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, var(--surface), rgba(15, 81, 50, 0.04)); border: 1px solid var(--border);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: #0f5132; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: var(--shadow-sm);">
               <i class="fa-solid fa-layer-group"></i>
             </div>
             <div>
-              <h1 class="font-display" style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text);">Clinical Master Data &amp; Shortcuts</h1>
-              <p style="font-size: 12.5px; color: var(--text-muted); margin: 2px 0 0 0;">Manage dietary templates (shortcut, disease, foods to eat &amp; avoid), area masters, medicines, allergies, relations &amp; navigation shortcuts.</p>
+              <h1 class="font-display" style="font-size: 17px; font-weight: 800; margin: 0; color: var(--text);">Clinical Master Data &amp; Shortcuts</h1>
+              <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0 0;">Manage dietary templates, complaints, investigations, area masters, medicine catalogue, allergies, and navigation shortcuts.</p>
             </div>
           </div>
-          <span class="cms-pill cms-badge-paid font-mono" style="font-size: 11px;">
+          <span class="cms-pill cms-badge-paid font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132;">
             <i class="fa-solid fa-database"></i> Auto-Synced
           </span>
         </div>
 
-        <!-- Horizontal Sub-Navigation Tabs Bar -->
-        <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1.5px solid var(--border); scrollbar-width: none;" id="master-tabs-bar">
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'dietary' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="dietary" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+        <!-- 2-Row Wrapping Sub-Navigation Tabs Bar (No horizontal scrolling) -->
+        <div class="cms-master-tabs-nav" id="master-tabs-bar">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'dietary' ? 'active' : ''}" data-tab="dietary">
             <i class="fa-solid fa-utensils"></i>
             <span>Dietary Suggestions</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${Object.keys(db.dietary || {}).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${Object.keys(db.dietary || {}).length}</span>
           </button>
           
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'areas' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="areas" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'complaints' ? 'active' : ''}" data-tab="complaints">
+            <i class="fa-solid fa-notes-medical"></i>
+            <span>Complaints</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterComplaints || []).length}</span>
+          </button>
+
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'investigations' ? 'active' : ''}" data-tab="investigations">
+            <i class="fa-solid fa-flask-vial"></i>
+            <span>Investigations (Reports)</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterInvestigations || []).length}</span>
+          </button>
+
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'areas' ? 'active' : ''}" data-tab="areas">
             <i class="fa-solid fa-map-location-dot"></i>
             <span>Area / Location</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${db.masterAreas.length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterAreas || []).length}</span>
           </button>
 
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'medicines' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="medicines" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'medicines' ? 'active' : ''}" data-tab="medicines">
             <i class="fa-solid fa-pills"></i>
             <span>Medicine Catalogue</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${db.masterMedicines.length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterMedicines || []).length}</span>
           </button>
 
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'allergies' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="allergies" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'allergies' ? 'active' : ''}" data-tab="allergies">
             <i class="fa-solid fa-shield-virus"></i>
             <span>Known Allergies</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${db.masterAllergies.length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterAllergies || []).length}</span>
           </button>
 
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'relations' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="relations" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'relations' ? 'active' : ''}" data-tab="relations">
             <i class="fa-solid fa-people-arrows"></i>
             <span>Relation to Head</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${db.masterRelations.length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterRelations || []).length}</span>
           </button>
 
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'societies' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="societies" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'societies' ? 'active' : ''}" data-tab="societies">
             <i class="fa-solid fa-building"></i>
             <span>Society / Flat</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${db.masterSocieties.length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterSocieties || []).length}</span>
           </button>
 
-          <button type="button" class="cms-btn cms-btn-sm ${activeTab === 'shortcuts' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="shortcuts" style="padding: 8px 16px; border-radius: var(--radius-md); font-size: 13px;">
+          <button type="button" class="cms-master-tab-btn ${activeTab === 'shortcuts' ? 'active' : ''}" data-tab="shortcuts">
             <i class="fa-solid fa-keyboard"></i>
             <span>Navigation Shortcuts</span>
-            <span class="cms-pill" style="font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.08);">${(db.customShortcuts || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.customShortcuts || []).length}</span>
           </button>
         </div>
 
-        <!-- Dynamic Content Mount Point -->
-        <div id="master-tab-content" style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Master Data Content (Fixed Height Card with Internal Scroll & Pagination) -->
+        <div id="master-tab-content">
           ${renderActiveTabContent()}
         </div>
       </div>
@@ -120,6 +222,8 @@ export function renderMastersView(container) {
 
   function renderActiveTabContent() {
     if (activeTab === 'dietary') return renderDietaryTab();
+    if (activeTab === 'complaints') return renderComplaintsTab();
+    if (activeTab === 'investigations') return renderInvestigationsTab();
     if (activeTab === 'areas') return renderAreasTab();
     if (activeTab === 'medicines') return renderMedicinesTab();
     if (activeTab === 'allergies') return renderAllergiesTab();
@@ -129,22 +233,83 @@ export function renderMastersView(container) {
     return '';
   }
 
+  // Generic pagination helper
+  function paginateItems(items) {
+    const total = items.length;
+    if (pageSize === 'all') {
+      return {
+        pagedList: items,
+        totalPages: 1,
+        currentPage: 1,
+        startIdx: 0,
+        endIdx: total,
+        total,
+      };
+    }
+
+    const num = Number(pageSize);
+    const totalPages = Math.max(1, Math.ceil(total / num));
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = (currentPage - 1) * num;
+    const endIdx = Math.min(startIdx + num, total);
+    const pagedList = items.slice(startIdx, endIdx);
+
+    return {
+      pagedList,
+      totalPages,
+      currentPage,
+      startIdx,
+      endIdx,
+      total,
+    };
+  }
+
+  function renderPaginationBar(paginationInfo) {
+    const { total, startIdx, endIdx, totalPages, currentPage } = paginationInfo;
+    const showingText = total === 0 ? 'No records' : `Showing ${startIdx + 1} to ${endIdx} of ${total} entries`;
+
+    return `
+      <div class="cms-master-pagination-bar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span>${showingText}</span>
+          <div style="display: inline-flex; align-items: center; gap: 6px;">
+            <label for="master-page-size" style="font-size: 11.5px; color: var(--text-muted);">Rows per page:</label>
+            <select id="master-page-size" class="cms-input cms-input-sm" style="padding: 2px 6px; font-size: 11.5px; width: auto; height: 28px; border-radius: 6px;">
+              <option value="20" ${pageSize === '20' ? 'selected' : ''}>20</option>
+              <option value="50" ${pageSize === '50' ? 'selected' : ''}>50</option>
+              <option value="100" ${pageSize === '100' ? 'selected' : ''}>100</option>
+              <option value="all" ${pageSize === 'all' ? 'selected' : ''}>View All</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btn-master-prev" class="cms-page-btn" ${currentPage <= 1 || pageSize === 'all' ? 'disabled' : ''}>
+            <i class="fa-solid fa-chevron-left"></i> Prev
+          </button>
+          <span style="font-weight: 700; font-size: 11.5px; padding: 0 4px;">
+            Page ${currentPage} of ${totalPages}
+          </span>
+          <button type="button" id="btn-master-next" class="cms-page-btn" ${currentPage >= totalPages || pageSize === 'all' ? 'disabled' : ''}>
+            Next <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   // ==========================================
-  // TAB 1: DIETARY SUGGESTIONS (4 Key Fields)
-  // 1) Shortcut Code, 2) Disease Name, 3) What to Eat, 4) What Not to Eat
+  // TAB 1: DIETARY SUGGESTIONS
   // ==========================================
   function renderDietaryTab() {
-    const isEdit = editItem && editItem.type === 'dietary';
-    const cur = isEdit ? editItem.data : { code: '', disease: '', eat: '', avoid: '', text: '' };
-
     const list = Object.values(db.dietary || {}).map((item, idx) => ({
       seq: idx + 1,
       id: item.id || item.code,
       code: item.code,
-      disease: item.disease || 'Clinical Condition',
-      eat: item.eat || 'High-fibre nutritious diet',
-      avoid: item.avoid || 'Oily and spicy foods',
-      text: item.text || `${item.disease || ''}: Eat: ${item.eat || ''} | Avoid: ${item.avoid || ''}`,
+      eat: item.eat || '',
+      avoid: item.avoid || '',
       createdAt: item.createdAt || todayISO(),
     }));
 
@@ -152,1423 +317,1549 @@ export function renderMastersView(container) {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
-        d.code.toLowerCase().includes(q) ||
-        d.disease.toLowerCase().includes(q) ||
-        d.eat.toLowerCase().includes(q) ||
-        d.avoid.toLowerCase().includes(q)
+        (d.code || '').toLowerCase().includes(q) ||
+        (d.eat || '').toLowerCase().includes(q) ||
+        (d.avoid || '').toLowerCase().includes(q)
       );
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1.15fr 1.85fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Dietary Suggestion Form -->
-        <form id="form-master-dietary" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Dietary Suggestion (${cur.code})` : 'Add Dietary Suggestion'}</span>
+      <div class="cms-master-table-card">
+        <!-- Top Toolbar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Dietary Suggestion Templates</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Templates</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search shortcut or food items..." value="${searchQuery}" autocomplete="off" />
             </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-          
-          <!-- Field 1: Shortcut Code -->
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px; font-weight: 700;">1. Shortcut Code * (e.g. DB, BP, THYROID, URIC, ACID)</label>
-            <input type="text" id="dietary-code" class="cms-input" required placeholder="e.g. THYROID" value="${cur.code || ''}" ${isEdit ? 'readonly style="background: rgba(0,0,0,0.04); font-weight: 800;"' : 'autofocus'} style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700;" />
-          </div>
 
-          <!-- Field 2: For Which Disease / Condition -->
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px; font-weight: 700;">2. For Which Disease / Clinical Condition *</label>
-            <input type="text" id="dietary-disease" class="cms-input" required placeholder="e.g. Diabetes Mellitus, Hypertension, Acidity" value="${cur.disease || ''}" />
-          </div>
-
-          <!-- Field 3: What to Eat (Recommended Foods) -->
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px; font-weight: 700; color: #059669;">
-              <i class="fa-solid fa-circle-check"></i> 3. What to Eat (Recommended Diet) *
-            </label>
-            <textarea id="dietary-eat" class="cms-textarea" rows="3" required placeholder="e.g. Green leafy vegetables, whole grains, pulses, salads, bitter gourd, water...">${cur.eat || ''}</textarea>
-          </div>
-
-          <!-- Field 4: What NOT to Eat (Avoid List) -->
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px; font-weight: 700; color: #dc2626;">
-              <i class="fa-solid fa-ban"></i> 4. What NOT to Eat (Restricted Foods) *
-            </label>
-            <textarea id="dietary-avoid" class="cms-textarea" rows="3" required placeholder="e.g. Direct sugar, sweets, jaggery, potatoes, bakery items, cold drinks...">${cur.avoid || ''}</textarea>
-          </div>
-
-          <!-- Action Buttons -->
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-dietary" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Dietary Suggestion' : 'Save Dietary Template'}</span>
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="dietary" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Dietary Suggestion
             </button>
           </div>
-        </form>
-
-        <!-- Right: Dietary Suggestions Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Dietary Suggestions (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Prescription dietary template directory with sequence and food rules</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search shortcut, disease or diet..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 540px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px;">#</th>
-                  <th style="width: 85px;">Shortcut</th>
-                  <th style="width: 130px;">Disease / Condition</th>
-                  <th>Recommended (What to Eat)</th>
-                  <th>Restricted (What NOT to Eat)</th>
-                  <th style="width: 90px;">Added On</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No dietary suggestions found.</td></tr>`
-                    : filtered
-                        .map(
-                          (d) => `
-                        <tr style="${isEdit && editItem.data.code === d.code ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${d.seq}</td>
-                          <td>
-                            <span class="cms-pill cms-badge-paid font-mono" style="font-weight: 800; font-size: 11px;">${d.code}</span>
-                          </td>
-                          <td style="font-size: 12.5px; font-weight: 700; color: var(--text);">${d.disease}</td>
-                          <td style="font-size: 12px; line-height: 1.35; color: #065f46;">
-                            <div style="display: flex; gap: 5px; align-items: flex-start;">
-                              <i class="fa-solid fa-circle-check" style="color: #10b981; font-size: 12px; margin-top: 2px;"></i>
-                              <span>${d.eat}</span>
-                            </div>
-                          </td>
-                          <td style="font-size: 12px; line-height: 1.35; color: #991b1b;">
-                            <div style="display: flex; gap: 5px; align-items: flex-start;">
-                              <i class="fa-solid fa-ban" style="color: #ef4444; font-size: 12px; margin-top: 2px;"></i>
-                              <span>${d.avoid}</span>
-                            </div>
-                          </td>
-                          <td class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${fmtDate(d.createdAt)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="dietary" data-id="${d.code}" style="padding: 4px 7px;" title="Edit Dietary Suggestion">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="dietary" data-id="${d.code}" style="padding: 4px 7px;" title="Delete Template">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
         </div>
+
+        <!-- Fixed Height Scrollable Table -->
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 120px;">Shortcut Code</th>
+                <th>Recommended (What to Eat)</th>
+                <th>Restricted (What NOT to Eat)</th>
+                <th style="width: 100px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 32px;">No dietary suggestions found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (d, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;">
+                          ${d.code}
+                        </span>
+                      </td>
+                      <td style="color: #065f46; font-size: 12px;">
+                        <i class="fa-solid fa-circle-check" style="font-size: 10px; margin-right: 4px; color: #10b981;"></i>
+                        <span>${d.eat || '—'}</span>
+                      </td>
+                      <td style="color: #991b1b; font-size: 12px;">
+                        <i class="fa-solid fa-ban" style="font-size: 10px; margin-right: 4px; color: #ef4444;"></i>
+                        <span>${d.avoid || '—'}</span>
+                      </td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(d.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="dietary" data-id="${d.id || d.code}" data-code="${d.code}" data-name="${encodeURIComponent(d.code || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Template">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="dietary" data-id="${d.id || d.code}" data-code="${d.code}" data-name="${encodeURIComponent(d.code || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Template">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        ${renderPaginationBar(pag)}
       </div>
     `;
   }
 
   // ==========================================
-  // TAB 2: AREA / LOCATION (with Edit & Delete)
+  // TAB 2: CLINICAL COMPLAINTS / SYMPTOMS
+  // ==========================================
+  function renderComplaintsTab() {
+    const list = (db.masterComplaints || []).map((item, idx) => ({
+      seq: idx + 1,
+      id: item.id || `c_${idx + 1}`,
+      code: item.code || `C${idx + 1}`,
+      name: item.name,
+      createdAt: item.createdAt || todayISO(),
+    }));
+
+    const filtered = list.filter((c) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (c.name || '').toLowerCase().includes(q) || (c.code || '').toLowerCase().includes(q);
+    });
+
+    const pag = paginateItems(filtered);
+
+    return `
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">All Clinical Complaints &amp; Symptoms</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Complaints</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search complaint name or code..." value="${searchQuery}" autocomplete="off" />
+            </div>
+
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="complaints" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Complaint
+            </button>
+          </div>
+        </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 130px;">Shortcut / Code</th>
+                <th>Complaint / Symptom Full Name</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No clinical complaints found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (c, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
+                          ${c.code}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">${c.name}</td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(c.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="complaints" data-id="${c.id}" data-code="${c.code || ''}" data-name="${encodeURIComponent(c.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Complaint">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="complaints" data-id="${c.id}" data-code="${c.code || ''}" data-name="${encodeURIComponent(c.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Complaint">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
+      </div>
+    `;
+  }
+
+  // ==========================================
+  // TAB 3: LAB INVESTIGATIONS (REPORTS)
+  // ==========================================
+  function renderInvestigationsTab() {
+    const list = (db.masterInvestigations || []).map((item, idx) => ({
+      seq: idx + 1,
+      id: item.id || `inv_${idx + 1}`,
+      code: item.code || `I${idx + 1}`,
+      name: item.name,
+      createdAt: item.createdAt || todayISO(),
+    }));
+
+    const filtered = list.filter((inv) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (inv.name || '').toLowerCase().includes(q) || (inv.code || '').toLowerCase().includes(q);
+    });
+
+    const pag = paginateItems(filtered);
+
+    return `
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Laboratory &amp; Diagnostic Investigations</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Tests</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search test name or code..." value="${searchQuery}" autocomplete="off" />
+            </div>
+
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="investigations" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Investigation
+            </button>
+          </div>
+        </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 130px;">Shortcut / Code</th>
+                <th>Investigation / Lab Test Full Name</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No lab investigations found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (inv, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">
+                          ${inv.code}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">${inv.name}</td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(inv.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="investigations" data-id="${inv.id}" data-code="${inv.code || ''}" data-name="${encodeURIComponent(inv.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Investigation">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="investigations" data-id="${inv.id}" data-code="${inv.code || ''}" data-name="${encodeURIComponent(inv.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Investigation">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
+      </div>
+    `;
+  }
+
+  // ==========================================
+  // TAB 4: AREA / LOCATIONS
   // ==========================================
   function renderAreasTab() {
-    const isEdit = editItem && editItem.type === 'areas';
-    const cur = isEdit ? editItem.data : { id: '', name: '', city: 'Ahmedabad', pincode: '' };
-
     const list = (db.masterAreas || []).map((item, idx) => ({
       seq: idx + 1,
-      id: item.id || `a_${idx}`,
+      id: item.id || `a_${idx + 1}`,
       name: item.name,
       city: item.city || 'Ahmedabad',
-      pincode: item.pincode || '-',
       createdAt: item.createdAt || todayISO(),
     }));
 
     const filtered = list.filter((a) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return a.name.toLowerCase().includes(q) || a.city.toLowerCase().includes(q) || (a.pincode || '').includes(q);
+      return (a.name || '').toLowerCase().includes(q) || (a.city || '').toLowerCase().includes(q);
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Area Form -->
-        <form id="form-master-area" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Area / Location` : 'Add Area / Location'}</span>
-            </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-          
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Area / Location Name *</label>
-            <input type="text" id="area-name" class="cms-input" required placeholder="e.g. Science City, Shela, Chandkheda" value="${cur.name || ''}" autofocus />
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Area &amp; Locality Master</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Areas</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">City / District</label>
-              <input type="text" id="area-city" class="cms-input" placeholder="e.g. Ahmedabad" value="${cur.city || 'Ahmedabad'}" />
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search area name or city..." value="${searchQuery}" autocomplete="off" />
             </div>
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Pincode (Optional)</label>
-              <input type="text" id="area-pincode" class="cms-input" placeholder="e.g. 380060" value="${cur.pincode === '-' ? '' : cur.pincode || ''}" />
-            </div>
-          </div>
 
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-area" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Area Location' : 'Save Area Location'}</span>
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="areas" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Area
             </button>
           </div>
-        </form>
-
-        <!-- Right: Area Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Areas / Locations (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">City areas and locations available across all patient registration datalists</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search area name or city..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th>Area / Location Name</th>
-                  <th>City / District</th>
-                  <th>Pincode</th>
-                  <th style="width: 95px;">Added On</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No area locations found.</td></tr>`
-                    : filtered
-                        .map(
-                          (a) => `
-                        <tr style="${isEdit && editItem.data.id === a.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${a.seq}</td>
-                          <td><b>${a.name}</b></td>
-                          <td>${a.city}</td>
-                          <td class="font-mono">${a.pincode}</td>
-                          <td class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${fmtDate(a.createdAt)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="areas" data-id="${a.id}" style="padding: 4px 7px;" title="Edit Area">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="areas" data-id="${a.id}" style="padding: 4px 7px;" title="Delete Area">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
         </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th>Area / Locality Name</th>
+                <th style="width: 220px;">City / District</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No areas found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (a, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
+                        <i class="fa-solid fa-location-dot" style="color: #0f5132; font-size: 11px; margin-right: 4px;"></i>
+                        <span>${a.name}</span>
+                      </td>
+                      <td style="color: var(--text-muted); font-size: 12px;">${a.city}</td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(a.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="areas" data-id="${a.id}" data-name="${encodeURIComponent(a.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Area">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="areas" data-id="${a.id}" data-name="${encodeURIComponent(a.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Area">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
       </div>
     `;
   }
 
   // ==========================================
-  // TAB 3: MEDICINE CATALOGUE (with Edit & Delete)
+  // TAB 5: MEDICINE CATALOGUE
   // ==========================================
   function renderMedicinesTab() {
-    const isEdit = editItem && editItem.type === 'medicines';
-    const cur = isEdit
-      ? editItem.data
-      : { id: '', name: '', form: 'Tablet', category: 'General', defaultDosage: '1-0-1 AF', unitPrice: 5 };
-
     const list = (db.masterMedicines || []).map((item, idx) => ({
       seq: idx + 1,
-      id: item.id || `m_${idx}`,
+      id: item.id || `m_${idx + 1}`,
+      code: item.code || `M${idx + 1}`,
       name: item.name,
-      category: item.category || 'General',
-      form: item.form || 'Tablet',
-      defaultDosage: item.defaultDosage || '1-0-1',
-      unitPrice: item.unitPrice || 0,
       createdAt: item.createdAt || todayISO(),
     }));
 
     const filtered = list.filter((m) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q) || m.form.toLowerCase().includes(q);
+      return (m.name || '').toLowerCase().includes(q) || (m.code || '').toLowerCase().includes(q);
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Medicine Form -->
-        <form id="form-master-med" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Medicine` : 'Add Medicine to Catalogue'}</span>
-            </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-          
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Medicine Brand / Generic Name *</label>
-            <input type="text" id="med-name" class="cms-input" required placeholder="e.g. Paracetamol 650mg" value="${cur.name || ''}" autofocus />
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Clinical Medicine Catalogue</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Medicines</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Form</label>
-              <select id="med-form" class="cms-select cms-input">
-                <option value="Tablet" ${cur.form === 'Tablet' ? 'selected' : ''}>Tablet</option>
-                <option value="Capsule" ${cur.form === 'Capsule' ? 'selected' : ''}>Capsule</option>
-                <option value="Syrup" ${cur.form === 'Syrup' ? 'selected' : ''}>Syrup</option>
-                <option value="Injection" ${cur.form === 'Injection' ? 'selected' : ''}>Injection</option>
-                <option value="Ointment" ${cur.form === 'Ointment' ? 'selected' : ''}>Ointment</option>
-                <option value="Drops" ${cur.form === 'Drops' ? 'selected' : ''}>Drops</option>
-                <option value="Powder" ${cur.form === 'Powder' ? 'selected' : ''}>Powder</option>
-              </select>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search medicine name or code..." value="${searchQuery}" autocomplete="off" />
             </div>
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Therapeutic Category</label>
-              <input type="text" id="med-cat" class="cms-input" placeholder="e.g. Antibiotic, Antacid" value="${cur.category || ''}" />
-            </div>
-          </div>
 
-          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px;">
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Default Dosage / Timing</label>
-              <input type="text" id="med-dosage" class="cms-input" placeholder="e.g. 1-0-1 AF, 1-0-0 BF" value="${cur.defaultDosage || '1-0-1 AF'}" />
-            </div>
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Unit Price (₹)</label>
-              <input type="number" id="med-price" class="cms-input" placeholder="5" min="0" step="0.5" value="${cur.unitPrice || 0}" />
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-med" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Medicine' : 'Save Medicine'}</span>
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="medicines" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Medicine
             </button>
           </div>
-        </form>
-
-        <!-- Right: Medicines Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Medicines (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Medicines used for prescription templates, dosage shortcuts, and billing</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search medicine name..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th>Medicine Name</th>
-                  <th>Form</th>
-                  <th>Category</th>
-                  <th>Default Dosage</th>
-                  <th>Price</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No medicines found.</td></tr>`
-                    : filtered
-                        .map(
-                          (m) => `
-                        <tr style="${isEdit && editItem.data.id === m.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${m.seq}</td>
-                          <td><b>${m.name}</b></td>
-                          <td><span class="cms-pill cms-badge-neutral">${m.form}</span></td>
-                          <td>${m.category}</td>
-                          <td class="font-mono">${m.defaultDosage}</td>
-                          <td class="font-mono" style="font-weight: 700;">${fmtMoney(m.unitPrice)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="medicines" data-id="${m.id}" style="padding: 4px 7px;" title="Edit Medicine">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="medicines" data-id="${m.id}" style="padding: 4px 7px;" title="Delete Medicine">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
         </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 140px;">Shortcut Code</th>
+                <th>Medicine / Brand / Generic Name</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No medicines found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (m, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #e6fffa; color: #0f766e; border: 1px solid #99f6e4;">
+                          ${m.code}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
+                        <i class="fa-solid fa-pills" style="color: #0d9488; font-size: 11px; margin-right: 4px;"></i>
+                        <span>${m.name}</span>
+                      </td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(m.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="medicines" data-id="${m.id}" data-code="${m.code || ''}" data-name="${encodeURIComponent(m.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Medicine">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="medicines" data-id="${m.id}" data-code="${m.code || ''}" data-name="${encodeURIComponent(m.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Medicine">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
       </div>
     `;
   }
 
   // ==========================================
-  // TAB 4: KNOWN ALLERGIES (with Edit & Delete)
+  // TAB 6: KNOWN ALLERGIES
   // ==========================================
   function renderAllergiesTab() {
-    const isEdit = editItem && editItem.type === 'allergies';
-    const cur = isEdit ? editItem.data : { id: '', name: '', category: 'Drug Allergy', severity: 'Moderate' };
-
     const list = (db.masterAllergies || []).map((item, idx) => ({
       seq: idx + 1,
-      id: item.id || `al_${idx}`,
+      id: item.id || `al_${idx + 1}`,
+      code: item.code || `AL${idx + 1}`,
       name: item.name,
-      category: item.category || 'General',
-      severity: item.severity || 'Moderate',
       createdAt: item.createdAt || todayISO(),
     }));
 
     const filtered = list.filter((al) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return al.name.toLowerCase().includes(q) || al.category.toLowerCase().includes(q) || al.severity.toLowerCase().includes(q);
+      return (al.name || '').toLowerCase().includes(q) || (al.code || '').toLowerCase().includes(q);
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Allergy Form -->
-        <form id="form-master-allergy" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Known Allergy` : 'Add Known Allergy'}</span>
-            </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-          
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Allergy Name / Substance *</label>
-            <input type="text" id="allergy-name" class="cms-input" required placeholder="e.g. Penicillin, Ciprofloxacin, Peanuts" value="${cur.name || ''}" autofocus />
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Known Allergies Directory</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Allergies</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Category</label>
-              <select id="allergy-category" class="cms-select cms-input">
-                <option value="Drug Allergy" ${cur.category === 'Drug Allergy' ? 'selected' : ''}>Drug Allergy</option>
-                <option value="Food Allergy" ${cur.category === 'Food Allergy' ? 'selected' : ''}>Food Allergy</option>
-                <option value="Environmental" ${cur.category === 'Environmental' ? 'selected' : ''}>Environmental</option>
-                <option value="Contact" ${cur.category === 'Contact' ? 'selected' : ''}>Contact</option>
-                <option value="General" ${cur.category === 'General' ? 'selected' : ''}>General</option>
-              </select>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search allergy or code..." value="${searchQuery}" autocomplete="off" />
             </div>
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Typical Severity</label>
-              <select id="allergy-severity" class="cms-select cms-input">
-                <option value="None" ${cur.severity === 'None' ? 'selected' : ''}>None</option>
-                <option value="Mild" ${cur.severity === 'Mild' ? 'selected' : ''}>Mild</option>
-                <option value="Moderate" ${cur.severity === 'Moderate' ? 'selected' : ''}>Moderate</option>
-                <option value="Severe" ${cur.severity === 'Severe' ? 'selected' : ''}>Severe (Anaphylaxis)</option>
-              </select>
-            </div>
-          </div>
 
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-allergy" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Known Allergy' : 'Save Known Allergy'}</span>
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="allergies" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Allergy
             </button>
           </div>
-        </form>
-
-        <!-- Right: Allergies Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Known Allergies (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Allergens with critical warning badges during prescription &amp; registration</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search allergy name..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th>Allergy Name</th>
-                  <th>Category</th>
-                  <th>Severity</th>
-                  <th style="width: 95px;">Added On</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No allergies found.</td></tr>`
-                    : filtered
-                        .map(
-                          (al) => `
-                        <tr style="${isEdit && editItem.data.id === al.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${al.seq}</td>
-                          <td><b>${al.name}</b></td>
-                          <td><span class="cms-pill cms-badge-neutral">${al.category}</span></td>
-                          <td><span class="cms-pill ${al.severity === 'Severe' ? 'cms-badge-danger' : al.severity === 'Moderate' ? 'cms-badge-warning' : 'cms-badge-neutral'}">${al.severity}</span></td>
-                          <td class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${fmtDate(al.createdAt)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="allergies" data-id="${al.id}" style="padding: 4px 7px;" title="Edit Allergy">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="allergies" data-id="${al.id}" style="padding: 4px 7px;" title="Delete Allergy">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
         </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 140px;">Shortcut / Code</th>
+                <th>Allergy / Allergen Name</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No allergies found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (al, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3;">
+                          ${al.code}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
+                        <i class="fa-solid fa-triangle-exclamation" style="color: #e11d48; font-size: 11px; margin-right: 4px;"></i>
+                        <span>${al.name}</span>
+                      </td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(al.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="allergies" data-id="${al.id}" data-code="${al.code || ''}" data-name="${encodeURIComponent(al.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Allergy">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="allergies" data-id="${al.id}" data-code="${al.code || ''}" data-name="${encodeURIComponent(al.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Allergy">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
       </div>
     `;
   }
 
   // ==========================================
-  // TAB 5: RELATION TO HEAD (with Edit & Delete)
+  // TAB 7: RELATION TO HEAD
   // ==========================================
   function renderRelationsTab() {
-    const isEdit = editItem && editItem.type === 'relations';
-    const cur = isEdit ? editItem.data : { id: '', name: '', category: 'Extended', description: '' };
-
     const list = (db.masterRelations || []).map((item, idx) => ({
       seq: idx + 1,
-      id: item.id || `r_${idx}`,
+      id: item.id || `r_${idx + 1}`,
+      code: item.code || `R${idx + 1}`,
       name: item.name,
-      category: item.category || 'General',
-      description: item.description || `${item.name} of Head`,
       createdAt: item.createdAt || todayISO(),
     }));
 
     const filtered = list.filter((r) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+      return (r.name || '').toLowerCase().includes(q) || (r.code || '').toLowerCase().includes(q);
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Relation Form -->
-        <form id="form-master-rel" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Relation to Head` : 'Add Relation to Head'}</span>
-            </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-          
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Relation Title * (e.g. Uncle, Aunt, Niece, Nephew)</label>
-            <input type="text" id="rel-name" class="cms-input" required placeholder="e.g. Uncle, Aunt" value="${cur.name || ''}" autofocus />
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Relation Hierarchy Master</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Relations</span>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Category</label>
-              <select id="rel-category" class="cms-select cms-input">
-                <option value="Primary" ${cur.category === 'Primary' ? 'selected' : ''}>Primary</option>
-                <option value="Spouse" ${cur.category === 'Spouse' ? 'selected' : ''}>Spouse</option>
-                <option value="Child" ${cur.category === 'Child' ? 'selected' : ''}>Child</option>
-                <option value="Parent" ${cur.category === 'Parent' ? 'selected' : ''}>Parent</option>
-                <option value="Sibling" ${cur.category === 'Sibling' ? 'selected' : ''}>Sibling</option>
-                <option value="Grandparent" ${cur.category === 'Grandparent' ? 'selected' : ''}>Grandparent</option>
-                <option value="In-Law" ${cur.category === 'In-Law' ? 'selected' : ''}>In-Law</option>
-                <option value="Extended" ${cur.category === 'Extended' ? 'selected' : ''}>Extended</option>
-              </select>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search relation or code..." value="${searchQuery}" autocomplete="off" />
             </div>
-            <div class="cms-form-group" style="margin-bottom: 0;">
-              <label class="cms-label" style="font-size: 12px;">Description / Notes</label>
-              <input type="text" id="rel-desc" class="cms-input" placeholder="e.g. Paternal Uncle" value="${cur.description || ''}" />
-            </div>
-          </div>
 
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-rel" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Relation' : 'Save Relation Hierarchy'}</span>
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="relations" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Relation
             </button>
           </div>
-        </form>
-
-        <!-- Right: Relations Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Relations (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Standard relation hierarchy used in Add Member auto-suggestions</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search relation name..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th>Relation Name</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th style="width: 95px;">Added On</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No relations found.</td></tr>`
-                    : filtered
-                        .map(
-                          (r) => `
-                        <tr style="${isEdit && editItem.data.id === r.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${r.seq}</td>
-                          <td><b>${r.name}</b></td>
-                          <td><span class="cms-pill cms-badge-neutral">${r.category}</span></td>
-                          <td>${r.description}</td>
-                          <td class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${fmtDate(r.createdAt)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="relations" data-id="${r.id}" style="padding: 4px 7px;" title="Edit Relation">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="relations" data-id="${r.id}" style="padding: 4px 7px;" title="Delete Relation">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
         </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 140px;">Shortcut / Code</th>
+                <th>Family Relation Name</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No relations found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (r, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #fdf4ff; color: #86198f; border: 1px solid #f5d0fe;">
+                          ${r.code}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
+                        <i class="fa-solid fa-user-group" style="color: #a21caf; font-size: 11px; margin-right: 4px;"></i>
+                        <span>${r.name}</span>
+                      </td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(r.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="relations" data-id="${r.id}" data-code="${r.code || ''}" data-name="${encodeURIComponent(r.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Relation">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="relations" data-id="${r.id}" data-code="${r.code || ''}" data-name="${encodeURIComponent(r.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Relation">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
       </div>
     `;
   }
 
   // ==========================================
-  // TAB 6: SOCIETY / FLAT (with Edit & Delete)
+  // TAB 8: SOCIETY / FLAT
   // ==========================================
   function renderSocietiesTab() {
-    const isEdit = editItem && editItem.type === 'societies';
-    const cur = isEdit ? editItem.data : { id: '', name: '', area: 'Ahmedabad' };
-
     const list = (db.masterSocieties || []).map((item, idx) => ({
       seq: idx + 1,
-      id: item.id || `s_${idx}`,
+      id: item.id || `s_${idx + 1}`,
       name: item.name,
-      area: item.area || 'Ahmedabad',
+      area: item.area || 'General',
       createdAt: item.createdAt || todayISO(),
     }));
 
     const filtered = list.filter((s) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
-      return s.name.toLowerCase().includes(q) || s.area.toLowerCase().includes(q);
+      return (s.name || '').toLowerCase().includes(q) || (s.area || '').toLowerCase().includes(q);
     });
 
+    const pag = paginateItems(filtered);
+
     return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Add / Edit Society Form -->
-        <form id="form-master-soc" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Society / Flat` : 'Add Society / Flat'}</span>
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Society &amp; Apartment Registry</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Societies</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search society or area..." value="${searchQuery}" autocomplete="off" />
             </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
+
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="societies" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Society
+            </button>
           </div>
-          
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Society / Flat / Apartment Name *</label>
-            <input type="text" id="soc-name" class="cms-input" required placeholder="e.g. Gokuldham Society, Shanti Niketan" value="${cur.name || ''}" autofocus />
+        </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th>Society / Complex / Flat Name</th>
+                <th style="width: 200px;">Area / Locality</th>
+                <th style="width: 110px;">Added On</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No societies found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (s, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
+                        <i class="fa-solid fa-building" style="color: #0f5132; font-size: 11px; margin-right: 4px;"></i>
+                        <span>${s.name}</span>
+                      </td>
+                      <td>
+                        <span class="cms-pill" style="font-size: 10.5px; background: rgba(0,0,0,0.04);">${s.area}</span>
+                      </td>
+                      <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${fmtDate(s.createdAt)}</td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="societies" data-id="${s.id}" data-name="${encodeURIComponent(s.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Society">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="societies" data-id="${s.id}" data-name="${encodeURIComponent(s.name || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Society">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
+      </div>
+    `;
+  }
+
+  // ==========================================
+  // TAB 9: NAVIGATION SHORTCUTS
+  // ==========================================
+  function renderShortcutsTab() {
+    const list = (db.customShortcuts || []).map((item, idx) => ({
+      seq: idx + 1,
+      id: item.id || `sc_${idx + 1}`,
+      key: item.key,
+      target: item.target,
+      title: item.title,
+      category: item.category || (item.key.startsWith('F') ? 'Navigation' : 'Action'),
+    }));
+
+    const filtered = list.filter((sc) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (sc.key || '').toLowerCase().includes(q) || (sc.title || '').toLowerCase().includes(q) || (sc.category || '').toLowerCase().includes(q);
+    });
+
+    const pag = paginateItems(filtered);
+
+    return `
+      <div class="cms-master-table-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="cms-card-title" style="font-size: 15px; font-weight: 800; color: #0f5132;">Application Navigation Shortcuts</div>
+            <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132; font-weight: 800;">${list.length} Shortcuts</span>
           </div>
 
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Associated Area / Location</label>
-            <input type="text" id="soc-area" class="cms-input" list="dl-area-list" placeholder="e.g. Vastrapur, Satellite" value="${cur.area || ''}" />
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
+              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 30px; font-size: 12px; height: 32px;" placeholder="Search shortcut key or action..." value="${searchQuery}" autocomplete="off" />
+            </div>
+
+            <button type="button" class="cms-btn cms-btn-primary btn-open-add-modal" data-type="shortcuts" style="background: #0f5132; border-color: #0f5132; padding: 6px 14px; font-size: 12px; font-weight: 700; height: 32px;">
+              <i class="fa-solid fa-plus"></i> Add Shortcut
+            </button>
+          </div>
+        </div>
+
+        <div class="cms-master-table-scroll">
+          <table class="cms-table cms-compact-table" id="master-data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">#</th>
+                <th style="width: 120px;">Shortcut Key</th>
+                <th>Target View / Action</th>
+                <th style="width: 140px;">Category</th>
+                <th style="width: 80px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pag.pagedList.length === 0
+                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No shortcuts found.</td></tr>`
+                  : pag.pagedList
+                      .map(
+                        (sc, i) => `
+                    <tr>
+                      <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
+                      <td>
+                        <span class="cms-kbd font-mono" style="font-size: 12px; font-weight: 800; padding: 3px 8px; background: #0f5132; color: #ffffff; border-radius: 4px;">
+                          ${sc.key}
+                        </span>
+                      </td>
+                      <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">${sc.title}</td>
+                      <td>
+                        <span class="cms-pill" style="font-size: 10px; background: rgba(0,0,0,0.06);">${sc.category}</span>
+                      </td>
+                      <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px;">
+                          <button type="button" class="cms-btn-ghost btn-edit-item" data-type="shortcuts" data-id="${sc.id}" data-code="${sc.key}" data-name="${encodeURIComponent(sc.title || '')}" style="padding: 3px 6px; font-size: 12px; color: #0284c7;" title="Edit Shortcut">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button type="button" class="cms-btn-ghost btn-delete-item" data-type="shortcuts" data-id="${sc.id}" data-code="${sc.key}" data-name="${encodeURIComponent(sc.title || '')}" style="padding: 3px 6px; font-size: 12px; color: #dc2626;" title="Delete Shortcut">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+
+        ${renderPaginationBar(pag)}
+      </div>
+    `;
+  }
+
+  // ==========================================
+  // MODAL FORM POPUP SYSTEM
+  // ==========================================
+  function openMasterFormModal(type, isEdit = false, itemData = null) {
+    const existing = document.getElementById('master-form-modal-backdrop');
+    if (existing) existing.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'master-form-modal-backdrop';
+    backdrop.className = 'cms-master-modal-backdrop';
+
+    let titleText = '';
+    let formFieldsHTML = '';
+
+    if (type === 'dietary') {
+      titleText = isEdit ? `Edit Dietary Suggestion (${itemData?.code})` : 'Add New Dietary Suggestion Template';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: #0f5132;">
+            <i class="fa-solid fa-barcode"></i> Shortcut Code *
+          </label>
+          <input type="text" id="modal-dietary-code" class="cms-input" required placeholder="e.g. DB, BP, ACID" value="${itemData?.code || ''}" ${isEdit ? 'readonly style="background: rgba(0,0,0,0.04); font-weight: 800;"' : 'autofocus'} style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Quick code doctor types to auto-fill (e.g. DB, BP)</span>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: #059669;">
+            <i class="fa-solid fa-circle-check"></i> What to Eat (Recommended Foods) *
+          </label>
+          <textarea id="modal-dietary-eat" class="cms-textarea" rows="3" required placeholder="e.g. Green leafy vegetables, whole grains, salads, fresh water..." style="font-size: 12.5px;">${itemData?.eat || ''}</textarea>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: #dc2626;">
+            <i class="fa-solid fa-ban"></i> What NOT to Eat (Restricted Foods) *
+          </label>
+          <textarea id="modal-dietary-avoid" class="cms-textarea" rows="3" required placeholder="e.g. Direct sugar, sweets, potatoes, cold drinks..." style="font-size: 12.5px;">${itemData?.avoid || ''}</textarea>
+        </div>
+      `;
+    } else if (type === 'complaints') {
+      titleText = isEdit ? `Edit Complaint (${itemData?.code || itemData?.name})` : 'Add New Clinical Complaint';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+          </label>
+          <input type="text" id="modal-complaint-code" class="cms-input" required placeholder="e.g. FEV, COUGH, HEAD" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this shortcut in case entry to auto-fill</span>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-notes-medical"></i> Complaint / Symptom Full Name *
+          </label>
+          <input type="text" id="modal-complaint-name" class="cms-input" required placeholder="e.g. High Grade Fever with Chills" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Full name displayed in consultation and prescription</span>
+        </div>
+      `;
+    } else if (type === 'investigations') {
+      titleText = isEdit ? `Edit Investigation (${itemData?.code || itemData?.name})` : 'Add New Lab Investigation';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+          </label>
+          <input type="text" id="modal-inv-code" class="cms-input" required placeholder="e.g. CBC, LFT, RFT, URINE" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this shortcut to auto-fill report</span>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-flask-vial"></i> Investigation / Test Full Name *
+          </label>
+          <input type="text" id="modal-inv-name" class="cms-input" required placeholder="e.g. Complete Blood Count (CBC)" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+      `;
+    } else if (type === 'areas') {
+      titleText = isEdit ? `Edit Area / Location (${itemData?.name})` : 'Add New Area / Locality';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-map-location-dot"></i> Area / Locality Name *
+          </label>
+          <input type="text" id="modal-area-name" class="cms-input" required placeholder="e.g. Vastrapur, Satellite, Bopal" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-city"></i> City / District *
+          </label>
+          <input type="text" id="modal-area-city" class="cms-input" required placeholder="e.g. Ahmedabad, Surat" value="${itemData?.city || 'Ahmedabad'}" style="height: 38px;" />
+        </div>
+      `;
+    } else if (type === 'medicines') {
+      titleText = isEdit ? `Edit Medicine (${itemData?.code || itemData?.name})` : 'Add New Medicine to Catalogue';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-barcode"></i> Shortcut Code *
+          </label>
+          <input type="text" id="modal-med-code" class="cms-input" required placeholder="e.g. PCM, PANTO, AMOX, CET" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this code to directly fill medicine</span>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-pills"></i> Medicine / Generic / Brand Name *
+          </label>
+          <input type="text" id="modal-med-name" class="cms-input" required placeholder="e.g. Paracetamol 650mg, Pantoprazole 40mg" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+      `;
+    } else if (type === 'allergies') {
+      titleText = isEdit ? `Edit Known Allergy (${itemData?.name})` : 'Add Known Allergy';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+          </label>
+          <input type="text" id="modal-allergy-code" class="cms-input" required placeholder="e.g. PEN, SULFA, DUST" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-shield-virus"></i> Allergy / Allergen Name *
+          </label>
+          <input type="text" id="modal-allergy-name" class="cms-input" required placeholder="e.g. Penicillin, Sulfa Drugs, Dust" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+      `;
+    } else if (type === 'relations') {
+      titleText = isEdit ? `Edit Relation (${itemData?.name})` : 'Add Relation to Head';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+          </label>
+          <input type="text" id="modal-rel-code" class="cms-input" required placeholder="e.g. HEAD, WIFE, SON, DAU" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-user-group"></i> Relation Name *
+          </label>
+          <input type="text" id="modal-rel-name" class="cms-input" required placeholder="e.g. Wife, Husband, Son, Daughter" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+      `;
+    } else if (type === 'societies') {
+      titleText = isEdit ? `Edit Society (${itemData?.name})` : 'Add Society / Apartment';
+      const areasList = (db.masterAreas || []).map((a) => a.name);
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-building"></i> Society / Complex Name *
+          </label>
+          <input type="text" id="modal-soc-name" class="cms-input" required placeholder="e.g. Shanti Niketan Apt, Gokuldham" value="${itemData?.name || ''}" autofocus style="height: 38px;" />
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-location-dot"></i> Area / Locality *
+          </label>
+          <input type="text" id="modal-soc-area" class="cms-input" list="modal-areas-list" required placeholder="e.g. Vastrapur" value="${itemData?.area || ''}" style="height: 38px;" />
+          <datalist id="modal-areas-list">
+            ${areasList.map((a) => `<option value="${a}">${a}</option>`).join('')}
+          </datalist>
+        </div>
+      `;
+    } else if (type === 'shortcuts') {
+      titleText = isEdit ? `Edit Navigation Shortcut (${itemData?.key})` : 'Add Navigation Shortcut';
+      formFieldsHTML = `
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-keyboard"></i> Shortcut Key *
+          </label>
+          <div style="position: relative;">
+            <input type="text" id="modal-sc-key" class="cms-input" required placeholder="e.g. F1, F8, Alt+N, Ctrl+S, /" value="${itemData?.key || ''}" style="font-family: var(--font-mono); font-weight: 800; height: 38px; padding-right: 95px; text-transform: uppercase;" autofocus autocomplete="off" />
+            <span class="cms-pill" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; background: #e0f2fe; color: #0369a1; font-weight: 700; pointer-events: none;">Auto-Detect</span>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted);">Press desired shortcut key on keyboard (e.g. F1-F12, Alt+N, Ctrl+S, /)</span>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-arrow-pointer"></i> Navigation Target / Form Action *
+          </label>
+          <select id="modal-sc-target-select" class="cms-input" style="height: 38px; font-weight: 700;">
+            <option value="">-- Select Navigation Tab or Form Action Button --</option>
+            <optgroup label="Navigation Tabs">
+              ${AVAILABLE_SHORTCUT_TARGETS.filter((t) => t.category === 'Navigation' && !t.target.startsWith('master_')).map((t) => `<option value="${t.target}" data-title="${t.title}" data-cat="${t.category}" ${itemData?.target === t.target ? 'selected' : ''}>${t.title} (${t.keyHint})</option>`).join('')}
+            </optgroup>
+            <optgroup label="Master Data Sub-Tabs">
+              ${AVAILABLE_SHORTCUT_TARGETS.filter((t) => t.target.startsWith('master_')).map((t) => `<option value="${t.target}" data-title="${t.title}" data-cat="${t.category}" ${itemData?.target === t.target ? 'selected' : ''}>${t.title} (${t.keyHint})</option>`).join('')}
+            </optgroup>
+            <optgroup label="Form Openers &amp; Modal Buttons">
+              ${AVAILABLE_SHORTCUT_TARGETS.filter((t) => t.category === 'Form').map((t) => `<option value="${t.target}" data-title="${t.title}" data-cat="${t.category}" ${itemData?.target === t.target ? 'selected' : ''}>${t.title} (${t.keyHint})</option>`).join('')}
+            </optgroup>
+            <optgroup label="Clinical Actions &amp; System Shortcuts">
+              ${AVAILABLE_SHORTCUT_TARGETS.filter((t) => t.category === 'Action').map((t) => `<option value="${t.target}" data-title="${t.title}" data-cat="${t.category}" ${itemData?.target === t.target ? 'selected' : ''}>${t.title} (${t.keyHint})</option>`).join('')}
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">
+            <i class="fa-solid fa-pen-nib"></i> Action Title / Label *
+          </label>
+          <input type="text" id="modal-sc-title" class="cms-input" required placeholder="e.g. Family Head Registration" value="${itemData?.title || ''}" style="height: 38px;" />
+        </div>
+
+        <div class="cms-master-field-group">
+          <label style="font-weight: 800; color: var(--text);">Category</label>
+          <select id="modal-sc-cat" class="cms-input" style="height: 38px;">
+            <option value="Navigation" ${itemData?.category === 'Navigation' ? 'selected' : ''}>Navigation</option>
+            <option value="Form" ${itemData?.category === 'Form' ? 'selected' : ''}>Form Opener / Modal</option>
+            <option value="Action" ${itemData?.category === 'Action' ? 'selected' : ''}>Action</option>
+          </select>
+        </div>
+      `;
+    }
+
+    backdrop.innerHTML = `
+      <div class="cms-master-modal-content">
+        <div class="cms-master-modal-header">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: #0f5132;">
+            <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-plus'}"></i>
+            <span>${titleText}</span>
+          </div>
+          <button type="button" id="btn-close-master-modal" class="cms-btn-ghost" style="font-size: 15px; color: var(--text-muted); padding: 4px 8px;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <form id="form-master-modal-submit">
+          <div class="cms-master-modal-body">
+            ${formFieldsHTML}
           </div>
 
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-soc" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-            `
-                : ''
-            }
-            <button type="submit" class="cms-btn ${isEdit ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2;">
-              <span><i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i></span>
-              <span>${isEdit ? 'Update Society' : 'Save Society'}</span>
+          <div class="cms-master-modal-footer">
+            <button type="button" id="btn-cancel-master-modal" class="cms-btn cms-btn-ghost" style="border: 1px solid var(--border); padding: 7px 18px; display: inline-flex; align-items: center; gap: 6px;">
+              <span>Cancel</span>
+              <span class="cms-kbd font-mono" style="font-size: 10px; opacity: 0.7; padding: 1px 4px;">Esc</span>
+            </button>
+            <button type="submit" id="btn-submit-master-modal" class="cms-btn cms-btn-primary" style="background: #0f5132; border-color: #0f5132; padding: 7px 22px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px;">
+              <i class="fa-solid ${isEdit ? 'fa-floppy-disk' : 'fa-plus'}"></i>
+              <span>${isEdit ? 'Update Record' : 'Save Record'}</span>
+              <span class="cms-kbd font-mono" style="font-size: 10.5px; padding: 2px 7px; background: rgba(255,255,255,0.25); color: #ffffff; border: 1px solid rgba(255,255,255,0.45); border-radius: 4px; font-weight: 800; letter-spacing: 0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.15);">Enter ↵</span>
             </button>
           </div>
         </form>
-
-        <!-- Right: Societies Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-              <div class="cms-card-title">All Societies / Flats (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Societies &amp; residences auto-suggested during family head and member reg</div>
-            </div>
-            <div style="position: relative; min-width: 220px;">
-              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 11px;"></i>
-              <input type="text" id="master-search-input" class="cms-input cms-input-sm" style="padding-left: 28px;" placeholder="Search society or area..." value="${searchQuery}" />
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th>Society / Flat Name</th>
-                  <th>Associated Area</th>
-                  <th style="width: 95px;">Added On</th>
-                  <th style="width: 80px; text-align: center;">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  filtered.length === 0
-                    ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No societies found.</td></tr>`
-                    : filtered
-                        .map(
-                          (s) => `
-                        <tr style="${isEdit && editItem.data.id === s.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                          <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${s.seq}</td>
-                          <td><b>${s.name}</b></td>
-                          <td><span class="cms-pill cms-badge-neutral">${s.area}</span></td>
-                          <td class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${fmtDate(s.createdAt)}</td>
-                          <td style="text-align: center;">
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                              <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="societies" data-id="${s.id}" style="padding: 4px 7px;" title="Edit Society">
-                                <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                              </button>
-                              <button type="button" class="cms-btn-danger btn-del-master" data-type="societies" data-id="${s.id}" style="padding: 4px 7px;" title="Delete Society">
-                                <i class="fa-solid fa-trash-can"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `
-                        )
-                        .join('')
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     `;
-  }
 
-  // ==========================================
-  // TAB 7: KEYBOARD SHORTCUTS MANAGER
-  // ==========================================
-  function renderShortcutsTab() {
-    const isEdit = editItem && editItem.type === 'shortcuts';
-    const cur = isEdit
-      ? editItem.data
-      : { id: '', key: '', target: '', title: '', desc: '' };
+    const closeModal = () => backdrop.remove();
 
-    const list = (db.customShortcuts || []).map((sc, idx) => ({
-      seq: idx + 1,
-      id: sc.id || `sc_${idx}`,
-      key: sc.key,
-      target: sc.target,
-      title: sc.title,
-      desc: sc.desc || '',
-    }));
+    backdrop.querySelector('#btn-close-master-modal')?.addEventListener('click', closeModal);
+    backdrop.querySelector('#btn-cancel-master-modal')?.addEventListener('click', closeModal);
 
-    return `
-      <div style="display: grid; grid-template-columns: 1fr 1.65fr; gap: 20px; align-items: start;">
-        <!-- Left: Edit Shortcut Form -->
-        <form id="form-master-shortcut" class="cms-card" style="display: flex; flex-direction: column; gap: 12px; border-top: 3px solid ${isEdit ? 'var(--warning)' : 'var(--primary)'};">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
-            <div class="cms-card-title">
-              <i class="fa-solid ${isEdit ? 'fa-pen-to-square' : 'fa-keyboard'}" style="color: ${isEdit ? 'var(--warning)' : 'var(--primary)'};"></i>
-              <span>${isEdit ? `Edit Shortcut Key (${cur.key})` : 'Shortcut Information'}</span>
-            </div>
-            ${isEdit ? '<span class="cms-pill cms-badge-warning font-mono" style="font-size: 10px;">Editing Mode</span>' : ''}
-          </div>
-
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Key Combination *</label>
-            <input type="text" id="sc-key" class="cms-input font-mono" required placeholder="e.g. F1, F2, F6, /" value="${cur.key || ''}" ${isEdit ? '' : 'placeholder="Select a shortcut from right to edit"'} style="font-weight: 800;" />
-          </div>
-
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Tab / Action Name *</label>
-            <input type="text" id="sc-title" class="cms-input" required placeholder="e.g. Medical Certificate" value="${cur.title || ''}" />
-          </div>
-
-          <div class="cms-form-group" style="margin-bottom: 0;">
-            <label class="cms-label" style="font-size: 12px;">Description / Purpose</label>
-            <textarea id="sc-desc" class="cms-textarea" rows="3" placeholder="Describe workflow action...">${cur.desc || ''}</textarea>
-          </div>
-
-          <div style="display: flex; gap: 8px; margin-top: 4px;">
-            ${
-              isEdit
-                ? `
-              <button type="button" id="btn-cancel-edit-sc" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border);">
-                <i class="fa-solid fa-xmark"></i> Cancel
-              </button>
-              <button type="submit" class="cms-btn cms-btn-warning" style="flex: 2;">
-                <span><i class="fa-solid fa-floppy-disk"></i></span>
-                <span>Update Shortcut</span>
-              </button>
-            `
-                : `
-              <div style="font-size: 11.5px; color: var(--text-muted); background: rgba(0,0,0,0.03); padding: 10px; border-radius: var(--radius-sm); width: 100%;">
-                <i class="fa-solid fa-info-circle" style="color: var(--primary);"></i> Click the <b>Edit</b> button next to any shortcut on the right to customize its title or workflow notes.
-              </div>
-            `
-            }
-          </div>
-        </form>
-
-        <!-- Right: Shortcuts Table -->
-        <div class="cms-card" style="display: flex; flex-direction: column; gap: 12px;">
-          <div class="cms-card-header" style="padding-bottom: 4px; margin-bottom: 0;">
-            <div>
-              <div class="cms-card-title">System Navigation Shortcuts (${list.length})</div>
-              <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Global instant hotkeys active across the entire clinic application</div>
-            </div>
-          </div>
-
-          <div class="cms-table-wrapper" style="max-height: 520px; overflow-y: auto;">
-            <table class="cms-table">
-              <thead>
-                <tr>
-                  <th style="width: 45px;">#</th>
-                  <th style="width: 90px;">Key</th>
-                  <th>Action / Tab Title</th>
-                  <th>Description</th>
-                  <th style="width: 65px; text-align: center;">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${list
-                  .map(
-                    (sc) => `
-                  <tr style="${isEdit && editItem.data.id === sc.id ? 'background: rgba(245,158,11,0.08);' : ''}">
-                    <td class="font-mono" style="color: var(--text-muted); font-weight: 700;">#${sc.seq}</td>
-                    <td>
-                      <span class="cms-kbd" style="font-size: 12px; padding: 4px 8px; font-weight: 800;">${sc.key}</span>
-                    </td>
-                    <td><b>${sc.title}</b></td>
-                    <td style="font-size: 12px; color: var(--text-muted);">${sc.desc}</td>
-                    <td style="text-align: center;">
-                      <button type="button" class="cms-btn cms-btn-ghost btn-edit-master" data-type="shortcuts" data-id="${sc.id}" style="padding: 4px 8px;" title="Edit Shortcut">
-                        <i class="fa-solid fa-pen-to-square" style="color: var(--primary);"></i>
-                      </button>
-                    </td>
-                  </tr>
-                `
-                  )
-                  .join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // ==========================================
-  // EVENT LISTENERS & FORM HANDLERS
-  // ==========================================
-  function attachTabEventListeners() {
-    // Sub-tab button clicks
-    container.querySelectorAll('#master-tabs-bar button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        activeTab = btn.getAttribute('data-tab');
-        searchQuery = '';
-        editItem = null;
-        renderView();
-      });
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) closeModal();
     });
 
-    // Search input handler
-    const searchInput = container.querySelector('#master-search-input');
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value;
-        const mount = container.querySelector('#master-tab-content');
-        if (mount) {
-          mount.innerHTML = renderActiveTabContent();
-          attachTabEventListeners();
+    // Keyboard shortcut handler: Enter submits modal, Shift+Enter makes newline in textarea, Esc cancels
+    backdrop.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'textarea' && e.shiftKey) {
+          // Allow Shift+Enter for new line in textarea
+          return;
         }
-      });
-    }
-
-    // Cancel Edit Handlers
-    const cancelDietary = container.querySelector('#btn-cancel-edit-dietary');
-    if (cancelDietary) {
-      cancelDietary.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelArea = container.querySelector('#btn-cancel-edit-area');
-    if (cancelArea) {
-      cancelArea.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelMed = container.querySelector('#btn-cancel-edit-med');
-    if (cancelMed) {
-      cancelMed.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelAllergy = container.querySelector('#btn-cancel-edit-allergy');
-    if (cancelAllergy) {
-      cancelAllergy.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelRel = container.querySelector('#btn-cancel-edit-rel');
-    if (cancelRel) {
-      cancelRel.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelSoc = container.querySelector('#btn-cancel-edit-soc');
-    if (cancelSoc) {
-      cancelSoc.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    const cancelSc = container.querySelector('#btn-cancel-edit-sc');
-    if (cancelSc) {
-      cancelSc.addEventListener('click', () => {
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 1: Dietary Form Submit (Add / Update)
-    const formDietary = container.querySelector('#form-master-dietary');
-    if (formDietary) {
-      formDietary.addEventListener('submit', (e) => {
+        if (activeTag === 'button' && document.activeElement.id === 'btn-cancel-master-modal') {
+          return; // Allow Enter on Cancel button to trigger cancel
+        }
         e.preventDefault();
-        const code = container.querySelector('#dietary-code').value.trim().toUpperCase();
-        const disease = container.querySelector('#dietary-disease').value.trim();
-        const eat = container.querySelector('#dietary-eat').value.trim();
-        const avoid = container.querySelector('#dietary-avoid').value.trim();
-        if (!code || !disease || !eat || !avoid) return;
+        const submitBtn = backdrop.querySelector('#btn-submit-master-modal');
+        if (submitBtn) {
+          submitBtn.click();
+        } else {
+          const form = backdrop.querySelector('#form-master-modal-submit');
+          form?.requestSubmit ? form.requestSubmit() : form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeModal();
+      }
+    });
+
+    const form = backdrop.querySelector('#form-master-modal-submit');
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      if (type === 'dietary') {
+        const code = backdrop.querySelector('#modal-dietary-code').value.trim().toUpperCase();
+        const eat = backdrop.querySelector('#modal-dietary-eat').value.trim();
+        const avoid = backdrop.querySelector('#modal-dietary-avoid').value.trim();
+        if (!code || !eat || !avoid) return;
 
         if (!db.dietary) db.dietary = {};
-        const isEdit = editItem && editItem.type === 'dietary';
         const existing = db.dietary[code];
-
         db.dietary[code] = {
           id: existing?.id || `d_${Date.now()}`,
           code,
-          disease,
           eat,
           avoid,
-          text: `${disease} - Recommended: ${eat} | Strictly Avoid: ${avoid}`,
+          text: `${code}: Eat: ${eat} | Avoid: ${avoid}`,
           createdAt: existing?.createdAt || todayISO(),
           updatedAt: todayISO(),
         };
 
         saveLocalDB(db, clinicId);
         showToast(`✨ Dietary template "${code}" ${isEdit ? 'updated' : 'added'} successfully!`);
-        editItem = null;
-        renderView();
-      });
-    }
+      } else if (type === 'complaints') {
+        const code = backdrop.querySelector('#modal-complaint-code').value.trim().toUpperCase();
+        const name = backdrop.querySelector('#modal-complaint-name').value.trim();
+        if (!code || !name) return;
 
-    // Form 2: Area Form Submit (Add / Update)
-    const formArea = container.querySelector('#form-master-area');
-    if (formArea) {
-      formArea.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = container.querySelector('#area-name').value.trim();
-        const city = container.querySelector('#area-city').value.trim() || 'Ahmedabad';
-        const pincode = container.querySelector('#area-pincode').value.trim() || '';
-        if (!name) return;
-
-        if (!db.masterAreas) db.masterAreas = [];
-        const isEdit = editItem && editItem.type === 'areas';
-
+        if (!db.masterComplaints) db.masterComplaints = [];
         if (isEdit) {
-          const idx = db.masterAreas.findIndex((a) => a.id === editItem.data.id);
+          const idx = db.masterComplaints.findIndex((c) => c.id === itemData?.id);
           if (idx !== -1) {
-            db.masterAreas[idx] = {
-              ...db.masterAreas[idx],
-              name,
-              city,
-              pincode,
-              updatedAt: todayISO(),
-            };
+            db.masterComplaints[idx] = { ...db.masterComplaints[idx], code, name, updatedAt: todayISO() };
           }
         } else {
-          db.masterAreas.unshift({
-            id: `a_${Date.now()}`,
-            name,
-            city,
-            pincode,
-            createdAt: todayISO(),
-          });
+          db.masterComplaints.unshift({ id: `c_${Date.now()}`, code, name, createdAt: todayISO() });
         }
+        if (!db.customComplaints) db.customComplaints = [];
+        if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
 
-        if (!db.customAreas) db.customAreas = [];
-        if (!db.customAreas.includes(name)) db.customAreas.push(name);
+        saveLocalDB(db, clinicId);
+        showToast(`✨ Complaint "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'investigations') {
+        const code = backdrop.querySelector('#modal-inv-code').value.trim().toUpperCase();
+        const name = backdrop.querySelector('#modal-inv-name').value.trim();
+        if (!code || !name) return;
+
+        if (!db.masterInvestigations) db.masterInvestigations = [];
+        if (isEdit) {
+          const idx = db.masterInvestigations.findIndex((inv) => inv.id === itemData?.id);
+          if (idx !== -1) {
+            db.masterInvestigations[idx] = { ...db.masterInvestigations[idx], code, name, updatedAt: todayISO() };
+          }
+        } else {
+          db.masterInvestigations.unshift({ id: `inv_${Date.now()}`, code, name, createdAt: todayISO() });
+        }
+        if (!db.customInvestigations) db.customInvestigations = [];
+        if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
+
+        saveLocalDB(db, clinicId);
+        showToast(`✨ Investigation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'areas') {
+        const name = backdrop.querySelector('#modal-area-name').value.trim();
+        const city = backdrop.querySelector('#modal-area-city').value.trim();
+        if (!name || !city) return;
+
+        if (!db.masterAreas) db.masterAreas = [];
+        if (isEdit) {
+          const idx = db.masterAreas.findIndex((a) => a.id === itemData?.id);
+          if (idx !== -1) {
+            db.masterAreas[idx] = { ...db.masterAreas[idx], name, city, updatedAt: todayISO() };
+          }
+        } else {
+          db.masterAreas.unshift({ id: `a_${Date.now()}`, name, city, createdAt: todayISO() });
+        }
 
         saveLocalDB(db, clinicId);
         showToast(`✨ Area "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 3: Medicine Form Submit (Add / Update)
-    const formMed = container.querySelector('#form-master-med');
-    if (formMed) {
-      formMed.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = container.querySelector('#med-name').value.trim();
-        const formType = container.querySelector('#med-form').value;
-        const category = container.querySelector('#med-cat').value.trim() || 'General';
-        const defaultDosage = container.querySelector('#med-dosage').value.trim() || '1-0-1 AF';
-        const unitPrice = Number(container.querySelector('#med-price').value || 0);
-        if (!name) return;
+      } else if (type === 'medicines') {
+        const code = backdrop.querySelector('#modal-med-code').value.trim().toUpperCase();
+        const name = backdrop.querySelector('#modal-med-name').value.trim();
+        if (!code || !name) return;
 
         if (!db.masterMedicines) db.masterMedicines = [];
-        const isEdit = editItem && editItem.type === 'medicines';
-
         if (isEdit) {
-          const idx = db.masterMedicines.findIndex((m) => m.id === editItem.data.id);
+          const idx = db.masterMedicines.findIndex((m) => m.id === itemData?.id);
           if (idx !== -1) {
-            db.masterMedicines[idx] = {
-              ...db.masterMedicines[idx],
-              name,
-              form: formType,
-              category,
-              defaultDosage,
-              unitPrice,
-              updatedAt: todayISO(),
-            };
+            db.masterMedicines[idx] = { ...db.masterMedicines[idx], code, name, updatedAt: todayISO() };
           }
         } else {
-          db.masterMedicines.unshift({
-            id: `m_${Date.now()}`,
-            name,
-            form: formType,
-            category,
-            defaultDosage,
-            unitPrice,
-            createdAt: todayISO(),
-          });
+          db.masterMedicines.unshift({ id: `m_${Date.now()}`, code, name, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
-        showToast(`✨ Medicine "${name}" ${isEdit ? 'updated' : 'added to catalogue'}!`);
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 4: Allergy Form Submit (Add / Update)
-    const formAllergy = container.querySelector('#form-master-allergy');
-    if (formAllergy) {
-      formAllergy.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = container.querySelector('#allergy-name').value.trim();
-        const category = container.querySelector('#allergy-category').value;
-        const severity = container.querySelector('#allergy-severity').value;
-        if (!name) return;
+        showToast(`✨ Medicine "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'allergies') {
+        const code = backdrop.querySelector('#modal-allergy-code').value.trim().toUpperCase();
+        const name = backdrop.querySelector('#modal-allergy-name').value.trim();
+        if (!code || !name) return;
 
         if (!db.masterAllergies) db.masterAllergies = [];
-        const isEdit = editItem && editItem.type === 'allergies';
-
         if (isEdit) {
-          const idx = db.masterAllergies.findIndex((al) => al.id === editItem.data.id);
+          const idx = db.masterAllergies.findIndex((al) => al.id === itemData?.id);
           if (idx !== -1) {
-            db.masterAllergies[idx] = {
-              ...db.masterAllergies[idx],
-              name,
-              category,
-              severity,
-              updatedAt: todayISO(),
-            };
+            db.masterAllergies[idx] = { ...db.masterAllergies[idx], code, name, updatedAt: todayISO() };
           }
         } else {
-          db.masterAllergies.unshift({
-            id: `al_${Date.now()}`,
-            name,
-            category,
-            severity,
-            createdAt: todayISO(),
-          });
+          db.masterAllergies.unshift({ id: `al_${Date.now()}`, code, name, createdAt: todayISO() });
         }
 
-        if (!db.customAllergies) db.customAllergies = [];
-        if (!db.customAllergies.includes(name)) db.customAllergies.push(name);
-
         saveLocalDB(db, clinicId);
-        showToast(`✨ Known allergy "${name}" ${isEdit ? 'updated' : 'added'}!`);
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 5: Relation Form Submit (Add / Update)
-    const formRel = container.querySelector('#form-master-rel');
-    if (formRel) {
-      formRel.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = container.querySelector('#rel-name').value.trim();
-        const category = container.querySelector('#rel-category').value;
-        const description = container.querySelector('#rel-desc').value.trim() || `${name} of Head`;
-        if (!name) return;
+        showToast(`✨ Allergy "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'relations') {
+        const code = backdrop.querySelector('#modal-rel-code').value.trim().toUpperCase();
+        const name = backdrop.querySelector('#modal-rel-name').value.trim();
+        if (!code || !name) return;
 
         if (!db.masterRelations) db.masterRelations = [];
-        const isEdit = editItem && editItem.type === 'relations';
-
         if (isEdit) {
-          const idx = db.masterRelations.findIndex((r) => r.id === editItem.data.id);
+          const idx = db.masterRelations.findIndex((r) => r.id === itemData?.id);
           if (idx !== -1) {
-            db.masterRelations[idx] = {
-              ...db.masterRelations[idx],
-              name,
-              category,
-              description,
-              updatedAt: todayISO(),
-            };
+            db.masterRelations[idx] = { ...db.masterRelations[idx], code, name, updatedAt: todayISO() };
           }
         } else {
-          db.masterRelations.unshift({
-            id: `r_${Date.now()}`,
-            name,
-            category,
-            description,
-            createdAt: todayISO(),
-          });
+          db.masterRelations.unshift({ id: `r_${Date.now()}`, code, name, createdAt: todayISO() });
         }
 
-        if (!db.customRelations) db.customRelations = [];
-        if (!db.customRelations.includes(name)) db.customRelations.push(name);
-
         saveLocalDB(db, clinicId);
-        showToast(`✨ Relation "${name}" ${isEdit ? 'updated' : 'added'}!`);
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 6: Society Form Submit (Add / Update)
-    const formSoc = container.querySelector('#form-master-soc');
-    if (formSoc) {
-      formSoc.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = container.querySelector('#soc-name').value.trim();
-        const area = container.querySelector('#soc-area').value.trim() || 'Ahmedabad';
-        if (!name) return;
+        showToast(`✨ Relation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'societies') {
+        const name = backdrop.querySelector('#modal-soc-name').value.trim();
+        const area = backdrop.querySelector('#modal-soc-area').value.trim();
+        if (!name || !area) return;
 
         if (!db.masterSocieties) db.masterSocieties = [];
-        const isEdit = editItem && editItem.type === 'societies';
-
         if (isEdit) {
-          const idx = db.masterSocieties.findIndex((s) => s.id === editItem.data.id);
+          const idx = db.masterSocieties.findIndex((s) => s.id === itemData?.id);
           if (idx !== -1) {
-            db.masterSocieties[idx] = {
-              ...db.masterSocieties[idx],
-              name,
-              area,
-              updatedAt: todayISO(),
-            };
+            db.masterSocieties[idx] = { ...db.masterSocieties[idx], name, area, updatedAt: todayISO() };
           }
         } else {
-          db.masterSocieties.unshift({
-            id: `s_${Date.now()}`,
-            name,
-            area,
-            createdAt: todayISO(),
-          });
+          db.masterSocieties.unshift({ id: `s_${Date.now()}`, name, area, createdAt: todayISO() });
         }
 
-        if (!db.customSocieties) db.customSocieties = [];
-        if (!db.customSocieties.includes(name)) db.customSocieties.push(name);
-
         saveLocalDB(db, clinicId);
-        showToast(`✨ Society "${name}" ${isEdit ? 'updated' : 'added'}!`);
-        editItem = null;
-        renderView();
-      });
-    }
-
-    // Form 7: Shortcut Form Submit (Update)
-    const formSc = container.querySelector('#form-master-shortcut');
-    if (formSc) {
-      formSc.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const key = container.querySelector('#sc-key').value.trim();
-        const title = container.querySelector('#sc-title').value.trim();
-        const desc = container.querySelector('#sc-desc').value.trim();
+        showToast(`✨ Society "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      } else if (type === 'shortcuts') {
+        const key = backdrop.querySelector('#modal-sc-key').value.trim().toUpperCase();
+        const targetSelect = backdrop.querySelector('#modal-sc-target-select');
+        const selectedTarget = targetSelect?.value || '';
+        const title = backdrop.querySelector('#modal-sc-title').value.trim();
+        const category = backdrop.querySelector('#modal-sc-cat').value;
+        const target = selectedTarget || title.toLowerCase().replace(/[^a-z0-9_]/g, '');
         if (!key || !title) return;
 
         if (!db.customShortcuts) db.customShortcuts = [];
-        const isEdit = editItem && editItem.type === 'shortcuts';
-
         if (isEdit) {
-          const idx = db.customShortcuts.findIndex((s) => s.id === editItem.data.id);
+          const idx = db.customShortcuts.findIndex((sc) => sc.id === itemData?.id || sc.key === itemData?.key);
           if (idx !== -1) {
-            db.customShortcuts[idx] = {
-              ...db.customShortcuts[idx],
-              key,
-              title,
-              desc,
-            };
+            db.customShortcuts[idx] = { ...db.customShortcuts[idx], key, target, title, category };
           }
         } else {
           db.customShortcuts.push({
             id: `sc_${Date.now()}`,
             key,
+            target,
             title,
-            desc,
+            category,
           });
         }
 
         saveLocalDB(db, clinicId);
-        showToast(`✨ Shortcut "${key}" updated!`);
-        editItem = null;
-        renderView();
-      });
+        showToast(`✨ Shortcut "${key}" ${isEdit ? 'updated' : 'added'} successfully!`);
+      }
+
+      closeModal();
+      renderView();
+    });
+
+    // Auto-detect key combinations when typing in shortcut key input
+    if (type === 'shortcuts') {
+      const keyInput = backdrop.querySelector('#modal-sc-key');
+      if (keyInput) {
+        keyInput.addEventListener('keydown', (e) => {
+          if (['Tab', 'Enter', 'Escape'].includes(e.key)) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          let combo = [];
+          if (e.ctrlKey) combo.push('Ctrl');
+          if (e.altKey) combo.push('Alt');
+          if (e.shiftKey && e.key.length > 1) combo.push('Shift');
+
+          let k = e.key;
+          if (k === ' ') k = 'Space';
+          if (!['Control', 'Alt', 'Shift'].includes(e.key)) {
+            combo.push(k);
+          }
+          keyInput.value = combo.join('+').toUpperCase();
+        });
+      }
+
+      const targetSelect = backdrop.querySelector('#modal-sc-target-select');
+      if (targetSelect) {
+        targetSelect.addEventListener('change', () => {
+          const opt = targetSelect.selectedOptions[0];
+          if (opt && opt.value) {
+            const titleInput = backdrop.querySelector('#modal-sc-title');
+            const catSelect = backdrop.querySelector('#modal-sc-cat');
+            if (titleInput) titleInput.value = opt.getAttribute('data-title') || opt.textContent;
+            if (catSelect) catSelect.value = opt.getAttribute('data-cat') || 'Navigation';
+          }
+        });
+      }
     }
 
-    // Edit Handlers for All Master Types
-    container.querySelectorAll('.btn-edit-master').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const type = btn.getAttribute('data-type');
-        const id = btn.getAttribute('data-id');
+    document.body.appendChild(backdrop);
 
-        if (type === 'dietary') {
-          const d = db.dietary[id];
-          if (d) {
-            editItem = {
-              type: 'dietary',
-              data: {
-                id: d.id,
-                code: d.code,
-                disease: d.disease || '',
-                eat: d.eat || '',
-                avoid: d.avoid || '',
-                text: d.text || '',
-              },
-            };
-            renderView();
-          }
-        } else if (type === 'areas') {
-          const a = (db.masterAreas || []).find((item) => item.id === id);
-          if (a) {
-            editItem = { type: 'areas', data: { ...a } };
-            renderView();
-          }
-        } else if (type === 'medicines') {
-          const m = (db.masterMedicines || []).find((item) => item.id === id);
-          if (m) {
-            editItem = { type: 'medicines', data: { ...m } };
-            renderView();
-          }
-        } else if (type === 'allergies') {
-          const al = (db.masterAllergies || []).find((item) => item.id === id);
-          if (al) {
-            editItem = { type: 'allergies', data: { ...al } };
-            renderView();
-          }
-        } else if (type === 'relations') {
-          const r = (db.masterRelations || []).find((item) => item.id === id);
-          if (r) {
-            editItem = { type: 'relations', data: { ...r } };
-            renderView();
-          }
-        } else if (type === 'societies') {
-          const s = (db.masterSocieties || []).find((item) => item.id === id);
-          if (s) {
-            editItem = { type: 'societies', data: { ...s } };
-            renderView();
-          }
-        } else if (type === 'shortcuts') {
-          const sc = (db.customShortcuts || []).find((item) => item.id === id);
-          if (sc) {
-            editItem = { type: 'shortcuts', data: { ...sc } };
-            renderView();
-          }
-        }
-      });
-    });
-
-    // Delete Handlers for All Master Types
-    container.querySelectorAll('.btn-del-master').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const type = btn.getAttribute('data-type');
-        const id = btn.getAttribute('data-id');
-
-        if (type === 'dietary') {
-          if (confirm(`Delete dietary suggestion template "${id}"?`)) {
-            delete db.dietary[id];
-            saveLocalDB(db, clinicId);
-            showToast(`Deleted dietary template "${id}"`, 'error');
-            if (editItem && editItem.data?.code === id) editItem = null;
-            renderView();
-          }
-        } else if (type === 'areas') {
-          db.masterAreas = (db.masterAreas || []).filter((a) => a.id !== id);
-          saveLocalDB(db, clinicId);
-          showToast('Deleted area from master list', 'error');
-          if (editItem && editItem.data?.id === id) editItem = null;
-          renderView();
-        } else if (type === 'medicines') {
-          db.masterMedicines = (db.masterMedicines || []).filter((m) => m.id !== id);
-          saveLocalDB(db, clinicId);
-          showToast('Deleted medicine from catalogue', 'error');
-          if (editItem && editItem.data?.id === id) editItem = null;
-          renderView();
-        } else if (type === 'allergies') {
-          db.masterAllergies = (db.masterAllergies || []).filter((al) => al.id !== id);
-          saveLocalDB(db, clinicId);
-          showToast('Deleted allergy from master list', 'error');
-          if (editItem && editItem.data?.id === id) editItem = null;
-          renderView();
-        } else if (type === 'relations') {
-          db.masterRelations = (db.masterRelations || []).filter((r) => r.id !== id);
-          saveLocalDB(db, clinicId);
-          showToast('Deleted relation from master list', 'error');
-          if (editItem && editItem.data?.id === id) editItem = null;
-          renderView();
-        } else if (type === 'societies') {
-          db.masterSocieties = (db.masterSocieties || []).filter((s) => s.id !== id);
-          saveLocalDB(db, clinicId);
-          showToast('Deleted society from master list', 'error');
-          if (editItem && editItem.data?.id === id) editItem = null;
-          renderView();
-        }
-      });
-    });
+    // Auto-focus first interactive input
+    setTimeout(() => {
+      const firstInput = backdrop.querySelector('input:not([readonly]), textarea:not([readonly]), select');
+      if (firstInput) firstInput.focus();
+    }, 50);
   }
 
-  // Initial render
+  // ==========================================
+  // ATTACH EVENT LISTENERS
+  // ==========================================
+  // ==========================================
+  // ATTACH EVENT LISTENERS (Container-Level Delegation)
+  // ==========================================
+  function attachTabEventListeners() {
+    // 1. Container-level Click Delegation
+    container.onclick = (e) => {
+      // (a) Sub-tab switching
+      const tabBtn = e.target.closest('.cms-master-tab-btn');
+      if (tabBtn) {
+        const tab = tabBtn.getAttribute('data-tab');
+        if (tab && tab !== activeTab) {
+          activeTab = tab;
+          searchQuery = '';
+          currentPage = 1;
+          renderView();
+        }
+        return;
+      }
+
+      // (b) Open "+ Add New ..." Modal Buttons
+      const addModalBtn = e.target.closest('.btn-open-add-modal');
+      if (addModalBtn) {
+        const type = addModalBtn.getAttribute('data-type');
+        openMasterFormModal(type, false, null);
+        return;
+      }
+
+      // (c) Edit Item button
+      const editBtn = e.target.closest('.btn-edit-item');
+      if (editBtn) {
+        const type = editBtn.getAttribute('data-type');
+        const code = editBtn.getAttribute('data-code');
+        const id = editBtn.getAttribute('data-id');
+        const rawName = editBtn.getAttribute('data-name');
+        const name = rawName ? decodeURIComponent(rawName) : '';
+
+        let itemData = null;
+        if (type === 'dietary') {
+          itemData = db.dietary?.[code] || Object.values(db.dietary || {}).find((d) => d.id === id || d.code === code);
+        } else if (type === 'complaints') {
+          itemData = (db.masterComplaints || []).find((c) => (id && c.id === id) || (code && c.code === code) || (name && c.name === name));
+        } else if (type === 'investigations') {
+          itemData = (db.masterInvestigations || []).find((inv) => (id && inv.id === id) || (code && inv.code === code) || (name && inv.name === name));
+        } else if (type === 'areas') {
+          itemData = (db.masterAreas || []).find((a) => (id && a.id === id) || (name && a.name === name));
+        } else if (type === 'medicines') {
+          itemData = (db.masterMedicines || []).find((m) => (id && m.id === id) || (code && m.code === code) || (name && m.name === name));
+        } else if (type === 'allergies') {
+          itemData = (db.masterAllergies || []).find((al) => (id && al.id === id) || (code && al.code === code) || (name && al.name === name));
+        } else if (type === 'relations') {
+          itemData = (db.masterRelations || []).find((r) => (id && r.id === id) || (code && r.code === code) || (name && r.name === name));
+        } else if (type === 'societies') {
+          itemData = (db.masterSocieties || []).find((s) => (id && s.id === id) || (name && s.name === name));
+        } else if (type === 'shortcuts') {
+          itemData = (db.customShortcuts || []).find((sc) => (id && sc.id === id) || (code && sc.key === code));
+        }
+
+        if (itemData) {
+          openMasterFormModal(type, true, itemData);
+        }
+        return;
+      }
+
+      // (d) Delete Record Action Buttons
+      const delBtn = e.target.closest('.btn-delete-item');
+      if (delBtn) {
+        const type = delBtn.getAttribute('data-type');
+        const code = delBtn.getAttribute('data-code');
+        const id = delBtn.getAttribute('data-id');
+        const rawName = delBtn.getAttribute('data-name');
+        const name = rawName ? decodeURIComponent(rawName) : '';
+
+        const recordTitle = code || name || id || 'record';
+        if (!confirm(`Are you sure you want to delete ${recordTitle}?`)) return;
+
+        if (type === 'dietary') {
+          if (code && db.dietary?.[code]) {
+            delete db.dietary[code];
+          } else {
+            Object.entries(db.dietary || {}).forEach(([k, v]) => {
+              if (v.id === id || v.code === code || k === code) delete db.dietary[k];
+            });
+          }
+          showToast(`🗑️ Dietary template "${recordTitle}" deleted.`);
+        } else if (type === 'complaints') {
+          db.masterComplaints = (db.masterComplaints || []).filter((c) => {
+            if (id && c.id === id) return false;
+            if (code && c.code && c.code.toLowerCase() === code.toLowerCase()) return false;
+            if (name && c.name && c.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Complaint "${recordTitle}" deleted.`);
+        } else if (type === 'investigations') {
+          db.masterInvestigations = (db.masterInvestigations || []).filter((inv) => {
+            if (id && inv.id === id) return false;
+            if (code && inv.code && inv.code.toLowerCase() === code.toLowerCase()) return false;
+            if (name && inv.name && inv.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Investigation "${recordTitle}" deleted.`);
+        } else if (type === 'areas') {
+          db.masterAreas = (db.masterAreas || []).filter((a) => {
+            if (id && a.id === id) return false;
+            if (name && a.name && a.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Area "${recordTitle}" deleted.`);
+        } else if (type === 'medicines') {
+          db.masterMedicines = (db.masterMedicines || []).filter((m) => {
+            if (id && m.id === id) return false;
+            if (code && m.code && m.code.toLowerCase() === code.toLowerCase()) return false;
+            if (name && m.name && m.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Medicine "${recordTitle}" deleted.`);
+        } else if (type === 'allergies') {
+          db.masterAllergies = (db.masterAllergies || []).filter((al) => {
+            if (id && al.id === id) return false;
+            if (code && al.code && al.code.toLowerCase() === code.toLowerCase()) return false;
+            if (name && al.name && al.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Allergy "${recordTitle}" deleted.`);
+        } else if (type === 'relations') {
+          db.masterRelations = (db.masterRelations || []).filter((r) => {
+            if (id && r.id === id) return false;
+            if (code && r.code && r.code.toLowerCase() === code.toLowerCase()) return false;
+            if (name && r.name && r.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Relation "${recordTitle}" deleted.`);
+        } else if (type === 'societies') {
+          db.masterSocieties = (db.masterSocieties || []).filter((s) => {
+            if (id && s.id === id) return false;
+            if (name && s.name && s.name.toLowerCase() === name.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Society "${recordTitle}" deleted.`);
+        } else if (type === 'shortcuts') {
+          db.customShortcuts = (db.customShortcuts || []).filter((sc) => {
+            if (id && sc.id === id) return false;
+            if (code && sc.key && sc.key.toLowerCase() === code.toLowerCase()) return false;
+            return true;
+          });
+          showToast(`🗑️ Shortcut "${recordTitle}" deleted.`);
+        }
+
+        saveLocalDB(db, clinicId);
+        renderView();
+        return;
+      }
+
+      // (e) Prev Pagination Button
+      const prevBtn = e.target.closest('#btn-master-prev');
+      if (prevBtn && currentPage > 1) {
+        currentPage--;
+        renderView();
+        return;
+      }
+
+      // (f) Next Pagination Button
+      const nextBtn = e.target.closest('#btn-master-next');
+      if (nextBtn) {
+        currentPage++;
+        renderView();
+        return;
+      }
+    };
+
+    // 2. Search Bar Input
+    const searchInput = container.querySelector('#master-search-input');
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        searchQuery = e.target.value;
+        currentPage = 1;
+        const contentMount = container.querySelector('#master-tab-content');
+        if (contentMount) {
+          contentMount.innerHTML = renderActiveTabContent();
+          const restoredInput = container.querySelector('#master-search-input');
+          if (restoredInput) {
+            restoredInput.focus();
+            const len = restoredInput.value.length;
+            restoredInput.setSelectionRange(len, len);
+          }
+        }
+      };
+    }
+
+    // 3. Page Size Selector
+    const pageSizeSelect = container.querySelector('#master-page-size');
+    if (pageSizeSelect) {
+      pageSizeSelect.onchange = (e) => {
+        pageSize = e.target.value;
+        currentPage = 1;
+        renderView();
+      };
+    }
+  }
+
+  // Initial View Render
   renderView();
 }
