@@ -57,8 +57,8 @@
 .admin-table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 12px; }
 .admin-table th { color: var(--text-muted); font-size: 11px; text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: .4px; }
 .admin-table td { color: var(--text-main); padding: 12px 8px; border-bottom: 1px solid var(--border-color); }
-.admin-table tbody tr[data-clinic-id], .admin-table tbody tr[data-doctor-name] { cursor: pointer; }
-.admin-table tbody tr[data-clinic-id]:hover, .admin-table tbody tr[data-doctor-name]:hover { background: var(--primary-teal-light); }
+.admin-table tbody tr[data-clinic-id], .admin-table tbody tr[data-doctor-name], .admin-table tbody tr[data-patient-id] { cursor: pointer; }
+.admin-table tbody tr[data-clinic-id]:hover, .admin-table tbody tr[data-doctor-name]:hover, .admin-table tbody tr[data-patient-id]:hover { background: var(--primary-teal-light); }
 .admin-table tr:last-child td { border-bottom: 0; }
 .status-pill { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 700; background: var(--primary-teal-light); color: var(--primary-teal); }
 .status-pill.paused { background: #fff7ed; color: #c2410c; }
