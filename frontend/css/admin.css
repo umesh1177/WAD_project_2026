@@ -1,0 +1,55 @@
+.admin-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: -2px 0 8px 44px;
+  border-left: 1px solid var(--border-color);
+  padding-left: 10px;
+}
+.admin-subnav-link {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 5px 8px;
+  text-decoration: none;
+  border-radius: 5px;
+}
+.admin-subnav-link:hover, .admin-subnav-link.active { color: var(--primary-teal); background: var(--primary-teal-light); }
+.admin-user-chip { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.admin-user-chip i { font-size: 10px; }
+.admin-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-teal); color: #fff; font-weight: 800; }
+.admin-page { display: flex; flex-direction: column; gap: 16px; max-width: 1400px; margin: 0 auto; }
+.admin-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.admin-heading h1 { color: var(--text-main); font-size: 23px; letter-spacing: -.5px; }
+.admin-heading p { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
+.admin-actions, .admin-filter-row { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+.admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+.admin-stat { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm); }
+.admin-stat-top { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+.admin-stat-icon { color: var(--primary-teal); background: var(--primary-teal-light); border-radius: 8px; padding: 8px; }
+.admin-stat strong { display: block; color: var(--text-main); font-size: 25px; margin-top: 8px; }
+.admin-stat small { color: #059669; font-size: 11px; }
+.admin-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; align-items: start; }
+.admin-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
+.admin-card-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+.admin-card h2 { color: var(--text-main); font-size: 15px; }
+.admin-card-header span { color: var(--text-muted); font-size: 12px; }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 12px; }
+.admin-table th { color: var(--text-muted); font-size: 11px; text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: .4px; }
+.admin-table td { color: var(--text-main); padding: 12px 8px; border-bottom: 1px solid var(--border-color); }
+.admin-table tr:last-child td { border-bottom: 0; }
+.status-pill { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 700; background: var(--primary-teal-light); color: var(--primary-teal); }
+.status-pill.paused { background: #fff7ed; color: #c2410c; }
+.metric-bar { height: 7px; border-radius: 99px; background: var(--border-color); overflow: hidden; min-width: 90px; }
+.metric-bar i { display: block; height: 100%; background: var(--primary-teal); border-radius: inherit; }
+.empty-results { padding: 28px; text-align: center; color: var(--text-muted); }
+.analysis-toolbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.analysis-toolbar .form-group { min-width: 150px; margin: 0; }
+.analysis-toolbar .form-input, .analysis-toolbar .form-select { padding: 8px 10px; }
+.modal-overlay.active { display: flex; }
+.clinic-modal-card { width: min(520px, calc(100vw - 30px)); background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.clinic-modal-card .modal-header, .clinic-modal-card .modal-body, .clinic-modal-card .modal-footer { padding: 17px 20px; }
+.clinic-modal-card .modal-body { border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+.modal-footer { display: flex; justify-content: flex-end; gap: 9px; }
+@media (max-width: 1000px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } .admin-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } }

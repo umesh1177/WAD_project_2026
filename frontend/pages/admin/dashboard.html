@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Dhyey Clinic</title>
+  <link rel="stylesheet" href="../../css/receptionist.css">
+  <link rel="stylesheet" href="../../css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="brand-logo"><i class="fa-solid fa-heart-pulse"></i></div>
+          <div class="brand-title">Dhyey Clinic</div>
+        </div>
+        <nav class="sidebar-nav" aria-label="Admin navigation">
+          <a class="nav-item active" href="#overview" data-view="overview">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>Overview</span>
+            <span class="badge-key">1</span>
+          </a>
+          <a class="nav-item" href="#clinics" data-view="clinics">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-hospital"></i></span>Clinics</span>
+            <span class="badge-key">2</span>
+          </a>
+          <a class="nav-item" href="#analysis-clinic" data-view="analysis-clinic">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></span>Analysis</span>
+            <span class="badge-key">3</span>
+          </a>
+          <div class="admin-subnav" aria-label="Analysis views">
+            <a href="#analysis-clinic" data-view="analysis-clinic" class="admin-subnav-link active">Clinic wise</a>
+            <a href="#analysis-doctor" data-view="analysis-doctor" class="admin-subnav-link">Doctor wise</a>
+            <a href="#analysis-patient" data-view="analysis-patient" class="admin-subnav-link">Patient wise</a>
+          </div>
+          <a class="nav-item" href="#staff" data-view="staff">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-user-doctor"></i></span>Staff</span>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-footer-guide">
+        <h6><i class="fa-regular fa-lightbulb"></i> Admin workspace</h6>
+        Manage clinics, monitor activity, and compare performance from one place.
+      </div>
+    </aside>
+
+    <main class="main-wrapper">
+      <header class="top-navbar">
+        <div class="top-navbar-left">
+          <button class="menu-toggle-btn" id="menuToggle" aria-label="Toggle navigation"><i class="fa-solid fa-bars"></i></button>
+          <div class="page-title-group">
+            <div class="page-header-title"><i class="fa-solid fa-shield-heart"></i> Admin workspace</div>
+            <div class="page-header-date" id="todayLabel"></div>
+          </div>
+        </div>
+        <div class="top-navbar-right">
+          <div class="admin-user-chip"><span class="admin-avatar">A</span><span>Administrator</span><i class="fa-solid fa-chevron-down"></i></div>
+          <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
+        </div>
+      </header>
+
+      <section class="content-body" id="adminContent" aria-live="polite"></section>
+      <footer class="bottom-ticker-bar">
+        <div class="ticker-shortcuts"><span class="ticker-item"><kbd>1</kbd> Overview</span><span class="ticker-item"><kbd>2</kbd> Clinics</span><span class="ticker-item"><kbd>3</kbd> Analysis</span></div>
+        <div class="ticker-time" id="liveClock"></div>
+      </footer>
+    </main>
+  </div>
+  <div class="modal-overlay" id="clinicModal" aria-hidden="true"></div>
+  <div class="toast-container" id="toastContainer"></div>
+  <script src="../../js/admin.js"></script>
+</body>
+</html>
