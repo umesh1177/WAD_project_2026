@@ -3,586 +3,479 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Receptionist Dashboard - Dhyey Clinic</title>
+  <title>Receptionist Desk - Dhyey Clinic Management System</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Receptionist Stylesheet -->
   <link rel="stylesheet" href="../css/receptionist.css" />
 </head>
 <body>
   <div class="app-container">
+    <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
       <div>
         <div class="sidebar-header">
           <div class="brand-logo" style="background: var(--primary-teal);">
             <i class="fa-solid fa-clipboard-user"></i>
           </div>
-          <span class="brand-title">Dhyey Clinic</span>
+          <div>
+            <span class="brand-title">Dhyey Clinic</span>
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Reception OPD Desk</div>
+          </div>
         </div>
 
         <nav class="sidebar-nav">
           <a class="nav-item active" id="nav-f1" href="javascript:void(0)" onclick="switchView('regView')">
             <div class="nav-item-left">
-              <i class="fa-solid fa-user-plus nav-icon"></i>
-              <span>Family / Patient Reg</span>
+              <i class="fa-solid fa-id-card nav-icon"></i>
+              <span>Family Registration</span>
             </div>
             <span class="badge-key">F1</span>
           </a>
 
-          <a class="nav-item" id="nav-f2" href="javascript:void(0)" onclick="switchView('regView'); openAddMemberModal();">
+          <a class="nav-item" id="nav-f2" href="javascript:void(0)" onclick="switchView('patientsView')">
             <div class="nav-item-left">
               <i class="fa-solid fa-users nav-icon"></i>
-              <span>Add Member</span>
+              <span>Patient Directory</span>
             </div>
             <span class="badge-key">F2</span>
           </a>
 
-          <a class="nav-item" id="nav-f3" href="javascript:void(0)" onclick="switchView('recordView')">
+          <a class="nav-item" id="nav-f3" href="javascript:void(0)" onclick="switchView('queueView')">
             <div class="nav-item-left">
-              <i class="fa-solid fa-folder-open nav-icon"></i>
-              <span>Patient Record</span>
+              <i class="fa-solid fa-stethoscope nav-icon"></i>
+              <span>Consultation Queue</span>
             </div>
-            <span class="badge-key">F3</span>
-          </a>
-
-          <a class="nav-item" id="nav-f4" href="javascript:void(0)" onclick="switchView('dashboardView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-grid-2 nav-icon"></i>
-              <span>Dashboard</span>
-            </div>
-            <span class="badge-key">F4</span>
-          </a>
-
-          <a class="nav-item" id="nav-f5" href="javascript:void(0)" onclick="switchView('reportsView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-chart-column nav-icon"></i>
-              <span>Reports</span>
-            </div>
-            <span class="badge-key">F5</span>
-          </a>
-
-          <a class="nav-item" id="nav-f6" href="javascript:void(0)" onclick="switchView('recordView'); openNewVisitModal();">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-notes-medical nav-icon"></i>
-              <span>New Visit</span>
-            </div>
-            <span class="badge-key">F6</span>
-          </a>
-
-          <a class="nav-item" id="nav-f7" href="javascript:void(0)" onclick="switchView('billingView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-money-bill-wave nav-icon"></i>
-              <span>Billing</span>
-            </div>
-            <span class="badge-key">F7</span>
-          </a>
-
-          <a class="nav-item" id="nav-f8" href="javascript:void(0)" onclick="switchView('appointmentsView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-calendar-check nav-icon"></i>
-              <span>Appointments</span>
-            </div>
-            <span class="badge-key">F8</span>
-          </a>
-
-          <a class="nav-item" id="nav-f9" href="javascript:void(0)" onclick="document.getElementById('globalSearchInput').focus();">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-magnifying-glass nav-icon"></i>
-              <span>Global Search</span>
-            </div>
-            <span class="badge-key">F9</span>
+            <span class="badge-key" id="queueCountBadge" style="background: #0284c7; color:#fff;">2</span>
           </a>
         </nav>
       </div>
 
       <div class="sidebar-footer-guide">
         <h6>Reception Quick Keys</h6>
-        <div>F1 Register</div>
-        <div>F2 Add Member</div>
-        <div>F3 Patient Record</div>
-        <div>F4 Dashboard</div>
+        <div><kbd class="badge-key">F1</kbd> Family Reg</div>
+        <div><kbd class="badge-key">F2</kbd> Patients / Arrival</div>
+        <div><kbd class="badge-key">F3</kbd> Doctor Queue</div>
+        <div><kbd class="badge-key">/</kbd> Instant Search</div>
       </div>
     </aside>
 
+    <!-- Main Content Area -->
     <main class="main-wrapper">
+      <!-- Top Navbar Header -->
       <header class="top-navbar">
         <div class="top-navbar-left">
-          <button class="menu-toggle-btn" aria-label="Toggle menu">
+          <button class="menu-toggle-btn" aria-label="Toggle menu" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">
             <i class="fa-solid fa-bars"></i>
           </button>
           <div class="page-title-group">
             <h1 class="page-header-title">
-              <i class="fa-solid fa-clipboard-user"></i> Receptionist Desk
+              <i class="fa-solid fa-clipboard-user"></i> Receptionist & Patient Check-in
             </h1>
-            <span class="page-header-date">Clinic OPD · 01/10/2026</span>
+            <span class="page-header-date" id="headerDateText">Clinic OPD · 01/10/2026</span>
           </div>
         </div>
 
         <div class="top-navbar-right">
-          <form class="top-search-form" onsubmit="event.preventDefault(); searchPatientRecord(document.getElementById('globalSearchInput').value);">
+          <!-- Global Live Search -->
+          <div class="top-search-form">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input id="globalSearchInput" class="top-search-input" type="text" placeholder="Search patient / family / UHID" />
+            <input id="globalSearchInput" class="top-search-input" type="text" placeholder="Search patient, family head, UHID or mobile..." oninput="globalSearch(this.value)" />
             <span class="search-shortcut-tag">/</span>
-            <button class="btn-search-go" type="submit">
-              <i class="fa-solid fa-arrow-right"></i>
-              Search
-            </button>
-          </form>
+          </div>
+
+          <!-- Doctor Portal Shortcut -->
+          <a href="../doctor/dashboard.html" class="btn-secondary" style="font-size:12px; padding: 7px 12px; border-color: #0284c7; color: #0284c7; text-decoration:none;" title="Switch to Clinical Desk">
+            <i class="fa-solid fa-user-doctor"></i> Doctor Desk
+          </a>
+
+          <!-- Theme Toggle -->
           <button class="btn-icon" type="button" title="Toggle theme" onclick="toggleTheme();">
             <i class="fa-regular fa-moon"></i>
           </button>
-          <a href="../login.html" class="btn-icon" title="Logout" style="text-decoration:none; color: var(--badge-red-text);">
+
+          <!-- Logout -->
+          <a href="../login.html" class="btn-icon" title="Logout" style="text-decoration:none; color: var(--danger-text);">
             <i class="fa-solid fa-right-from-bracket"></i>
           </a>
         </div>
       </header>
 
+      <!-- Main Body Container -->
       <div class="content-body">
+        <!-- Quick View Tabs Pills -->
         <div class="tab-pills-bar">
-          <button class="btn-pill active" type="button" onclick="switchView('regView')">
-            <i class="fa-solid fa-user-plus"></i>
-            Family Registration
+          <button class="btn-pill active" id="pill-reg" type="button" onclick="switchView('regView')">
+            <i class="fa-solid fa-id-card"></i>
+            1. Family & Patient Registration
             <span class="badge-key">F1</span>
           </button>
-          <button class="btn-pill" type="button" onclick="switchView('recordView')">
-            <i class="fa-solid fa-file-medical"></i>
-            Patient Record
+          <button class="btn-pill" id="pill-patients" type="button" onclick="switchView('patientsView')">
+            <i class="fa-solid fa-users"></i>
+            2. Patient Directory & Arrival
+            <span class="badge-key">F2</span>
           </button>
-          <button class="btn-pill" type="button" onclick="switchView('dashboardView')">
-            <i class="fa-solid fa-chart-simple"></i>
-            Dashboard
-          </button>
-          <button class="btn-pill" type="button" onclick="switchView('appointmentsView')">
-            <i class="fa-solid fa-calendar-days"></i>
-            Appointments
+          <button class="btn-pill" id="pill-queue" type="button" onclick="switchView('queueView')">
+            <i class="fa-solid fa-stethoscope"></i>
+            3. Live Consultation Queue
+            <span class="badge-key">F3</span>
           </button>
         </div>
 
-        <section id="dashboardView" style="display:none;">
-          <div id="statsGrid" class="stats-grid"></div>
-
-          <div class="grid-split-2">
-            <div class="card">
-              <div class="section-header-row">
-                <h3 class="card-title"><i class="fa-solid fa-people-group" style="color: var(--primary-teal);"></i> Queue Overview</h3>
-                <button class="btn-secondary small-btn" type="button" onclick="switchView('appointmentsView')">View all</button>
-              </div>
-              <div id="queueList" class="family-list-container" style="margin-top:20px;"></div>
-            </div>
-
-            <div class="card">
-              <div class="section-header-row">
-                <h3 class="card-title"><i class="fa-solid fa-clock" style="color: var(--primary-teal);"></i> Live Activity</h3>
-                <button class="btn-secondary small-btn" type="button" onclick="switchView('dashboardView')">Refresh</button>
-              </div>
-              <div id="activityList" style="margin-top:18px; display:flex; flex-direction:column; gap:12px;"></div>
-            </div>
-          </div>
-        </section>
-
+        <!-- ====================================================
+             1. FAMILY & PATIENT REGISTRATION (F1)
+             ==================================================== -->
         <section id="regView" style="display:block;">
           <div class="grid-split-2">
+            <!-- Left: Family Head Registration Form -->
             <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <div>
-                  <h3 class="card-title"><i class="fa-solid fa-id-card" style="color: var(--primary-teal);"></i> Family Registration</h3>
-                  <p class="card-subtitle">Create new family ledger and first member</p>
+                  <h3 class="card-title"><i class="fa-solid fa-user-plus" style="color: var(--primary-teal);"></i> Register Family Head</h3>
+                  <p class="card-subtitle">Auto-creates Family ID and registers Head as first patient</p>
                 </div>
-                <span class="badge-key">Auto Family ID</span>
+                <span class="badge-key" style="background:#e8f7f4; color:#095c54; font-size:11px;">Auto Family ID</span>
               </div>
 
               <form id="familyRegistrationForm" onsubmit="handleGenerateFamilyId(event)">
                 <div class="form-group">
-                  <label class="form-label" for="familyHeadName">Family Head Name <span class="req">*</span></label>
-                  <input id="familyHeadName" class="form-input" type="text" placeholder="e.g. Patel Rameshbhai Govindbhai" />
+                  <label class="form-label" for="familyHeadName">Family Head Full Name <span class="req">*</span></label>
+                  <input id="familyHeadName" class="form-input" type="text" placeholder="e.g. PATEL RAMESHBHAI GOVINDBHAI" required />
                 </div>
 
                 <div class="form-row-2">
                   <div class="form-group">
-                    <label class="form-label" for="familyArea">Area</label>
-                    <input id="familyArea" class="form-input" type="text" placeholder="e.g. Vastrapur" />
+                    <label class="form-label" for="familyPhone">Mobile Number <span class="req">*</span></label>
+                    <input id="familyPhone" class="form-input" type="tel" placeholder="9876543210" required />
                   </div>
                   <div class="form-group">
-                    <label class="form-label" for="familyPhone">Phone</label>
-                    <input id="familyPhone" class="form-input" type="text" placeholder="9876543210" />
+                    <label class="form-label" for="familyArea">Area / Colony <span class="req">*</span></label>
+                    <input id="familyArea" class="form-input" type="text" placeholder="e.g. Vastrapur" required />
                   </div>
                 </div>
 
-                <div class="form-row-2">
+                <div class="form-row-3">
                   <div class="form-group">
-                    <label class="form-label" for="familyYear">Year</label>
-                    <input id="familyYear" class="form-input" type="text" value="2026" />
+                    <label class="form-label" for="familyHeadAge">Age</label>
+                    <input id="familyHeadAge" class="form-input" type="number" value="45" min="1" max="120" />
                   </div>
                   <div class="form-group">
-                    <label class="form-label" for="registeredBy">Registered By</label>
-                    <select id="registeredBy" class="form-select">
-                      <option>Self</option>
-                      <option>Relative</option>
-                      <option>Walk-in</option>
-                      <option>Reference</option>
+                    <label class="form-label" for="familyHeadGender">Gender</label>
+                    <select id="familyHeadGender" class="form-select">
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="familyHeadBlood">Blood Group</label>
+                    <select id="familyHeadBlood" class="form-select">
+                      <option value="B+">B+</option>
+                      <option value="A+">A+</option>
+                      <option value="O+">O+</option>
+                      <option value="AB+">AB+</option>
+                      <option value="O-">O-</option>
+                      <option value="A-">A-</option>
+                      <option value="B-">B-</option>
+                      <option value="AB-">AB-</option>
                     </select>
                   </div>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label" for="familyAddress">Address</label>
-                  <textarea id="familyAddress" class="form-textarea" rows="3" placeholder="Flat / Society / Road / Landmark"></textarea>
+                  <label class="form-label" for="familyAddress">Residential Address</label>
+                  <textarea id="familyAddress" class="form-textarea" rows="2" placeholder="House/Flat No, Apartment, Road, Landmark..."></textarea>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
                   <button class="btn-secondary" type="reset">
-                    <i class="fa-solid fa-rotate-left"></i> Reset
+                    <i class="fa-solid fa-rotate-left"></i> Reset Form
                   </button>
                   <button class="btn-primary" type="submit">
-                    <i class="fa-solid fa-check"></i> Generate Family ID
+                    <i class="fa-solid fa-check"></i> Generate Family ID & Register
                   </button>
                 </div>
               </form>
             </div>
 
+            <!-- Right: Registered Families Directory -->
             <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <div>
-                  <h3 class="card-title"><i class="fa-solid fa-users" style="color: var(--primary-teal);"></i> Family Directory</h3>
-                  <p class="card-subtitle">Latest registrations and family heads</p>
+                  <h3 class="card-title"><i class="fa-solid fa-people-roof" style="color: var(--primary-teal);"></i> Registered Families</h3>
+                  <p class="card-subtitle">Click on any family to view members or add new member</p>
                 </div>
-                <span class="badge-key">Live</span>
+                <button class="btn-secondary" style="font-size:11px; padding:5px 10px;" onclick="openAddMemberModal()">
+                  <i class="fa-solid fa-user-plus"></i> + Add Member
+                </button>
               </div>
 
-              <div id="familyListContainer" class="family-list-container"></div>
+              <div id="familyListContainer" class="family-list-container" style="max-height: 480px; overflow-y: auto;"></div>
             </div>
           </div>
         </section>
 
-        <section id="recordView" style="display:none;">
+        <!-- ====================================================
+             2. ALL PATIENTS DIRECTORY & ARRIVAL (F2)
+             ==================================================== -->
+        <section id="patientsView" style="display:none;">
           <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
               <div>
-                <h3 class="card-title"><i class="fa-solid fa-id-badge" style="color: var(--primary-teal);"></i> Patient Record Search</h3>
-                <p class="card-subtitle">Patient details, visit history, and payment summary</p>
+                <h3 class="card-title"><i class="fa-solid fa-users" style="color: var(--primary-teal);"></i> Patient Lookup & Arrival Desk</h3>
+                <p class="card-subtitle">Search registered patients and click "Patient Arrived" to send them to the Doctor's Queue</p>
               </div>
-              <div class="top-search-form" style="width: 360px;">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input id="patientSearchInput" class="top-search-input" type="text" placeholder="Search by name, family head, or patient ID" onkeydown="if(event.key==='Enter'){searchPatientRecord(this.value);}" />
-                <button class="btn-search-go" type="button" onclick="searchPatientRecord(document.getElementById('patientSearchInput').value)">
-                  Search
+              <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="openAddMemberModal()">
+                  <i class="fa-solid fa-user-plus"></i> + Add Family Member
+                </button>
+                <button class="btn-primary" onclick="switchView('regView')">
+                  <i class="fa-solid fa-plus"></i> Register New Family
                 </button>
               </div>
             </div>
 
-            <div id="patientCardContainer"></div>
-            <div id="visitHistoryContainer" class="visit-history-card" style="margin-top:18px;"></div>
+            <div id="patientDirectoryList" class="patient-directory-list" style="display:flex; flex-direction:column; gap:12px;"></div>
           </div>
         </section>
 
-        <section id="appointmentsView" style="display:none;">
-          <div class="grid-split-2">
-            <div class="card">
-              <h3 class="card-title"><i class="fa-solid fa-calendar-check" style="color: var(--primary-teal);"></i> Today's Appointments</h3>
-              <div class="family-list-container" style="margin-top:18px;">
-                <div class="family-item-card">
-                  <div class="family-item-info">
-                    <h5>Dr. Shah · 10:15 AM</h5>
-                    <p>PATEL RAMESHBHAI · Follow-up consultation</p>
-                  </div>
-                  <span class="family-id-tag">Confirmed</span>
-                </div>
-                <div class="family-item-card">
-                  <div class="family-item-info">
-                    <h5>Dr. Mehta · 11:00 AM</h5>
-                    <p>SHARMA AMITBHAI · New case review</p>
-                  </div>
-                  <span class="family-id-tag">Pending</span>
-                </div>
-                <div class="family-item-card">
-                  <div class="family-item-info">
-                    <h5>Dr. Shah · 11:30 AM</h5>
-                    <p>DESAI SUNITABEN · Lab result review</p>
-                  </div>
-                  <span class="family-id-tag">Confirmed</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-              <h3 class="card-title"><i class="fa-solid fa-plus" style="color: var(--primary-teal);"></i> Book New Appointment</h3>
-              <div class="form-group" style="margin-top:18px;">
-                <label class="form-label">Patient Name</label>
-                <input class="form-input" type="text" placeholder="e.g. PATEL HITESHBHAI" />
-              </div>
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label class="form-label">Doctor</label>
-                  <select class="form-select">
-                    <option>Dr. Shah</option>
-                    <option>Dr. Mehta</option>
-                    <option>Dr. Patel</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Date</label>
-                  <input class="form-input" type="date" value="2026-10-01" />
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Time Slot</label>
-                <input class="form-input" type="time" value="10:15" />
-              </div>
-              <button class="btn-primary" type="button">
-                <i class="fa-solid fa-calendar-plus"></i> Save Appointment
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section id="billingView" style="display:none;">
+        <!-- ====================================================
+             3. LIVE DOCTOR CONSULTATION QUEUE (F3)
+             ==================================================== -->
+        <section id="queueView" style="display:none;">
           <div class="card">
-            <h3 class="card-title"><i class="fa-solid fa-receipt" style="color: var(--primary-teal);"></i> Billing & Payment Center</h3>
-            <div class="grid-split-2" style="margin-top:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
               <div>
-                <div class="family-item-card">
-                  <div class="family-item-info">
-                    <h5>SHAH RAHULBHAI</h5>
-                    <p>Consultation + Medication · Due: ₹850</p>
-                  </div>
-                  <span class="family-id-tag">₹850</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <h3 class="card-title"><i class="fa-solid fa-stethoscope" style="color: #0284c7;"></i> Live Doctor Consultation Queue</h3>
+                  <span class="badge-key" style="background:#0284c7; color:#fff;">Live Realtime Sync</span>
                 </div>
-                <div class="family-item-card" style="margin-top:10px;">
-                  <div class="family-item-info">
-                    <h5>PATEL RAMESHBHAI</h5>
-                    <p>Follow-up visit · Due: ₹300</p>
-                  </div>
-                  <span class="family-id-tag">₹300</span>
-                </div>
+                <p class="card-subtitle">Arrived patients automatically appear on the Doctor's Clinical Dashboard screen</p>
               </div>
-              <div class="card" style="padding: 18px; background: var(--primary-teal-light); border-color: var(--primary-teal-border);">
-                <div class="card-title">Quick Payment Summary</div>
-                <div class="form-group" style="margin-top:12px;">
-                  <label class="form-label">Amount Received</label>
-                  <input class="form-input" type="text" value="₹1,500" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Mode</label>
-                  <select class="form-select">
-                    <option>Cash</option>
-                    <option>UPI</option>
-                    <option>Card</option>
-                  </select>
-                </div>
-                <button class="btn-primary" type="button">
-                  <i class="fa-solid fa-money-bill"></i> Record Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section id="reportsView" style="display:none;">
-          <div class="card">
-            <h3 class="card-title"><i class="fa-solid fa-chart-line" style="color: var(--primary-teal);"></i> Clinic Performance Summary</h3>
-            <div class="grid-split-2" style="margin-top:18px;">
-              <div class="card" style="padding:18px; background:#f8fafc;">
-                <div class="card-title">Monthly Visit Count</div>
-                <div style="font-size:32px; font-weight:800; color:var(--primary-teal); margin-top:10px;">3,420</div>
-                <div class="card-subtitle">+8.7% compared to last month</div>
-              </div>
-              <div class="card" style="padding:18px; background:#f8fafc;">
-                <div class="card-title">Collection Efficiency</div>
-                <div style="font-size:32px; font-weight:800; color:var(--primary-teal); margin-top:10px;">92%</div>
-                <div class="card-subtitle">Average collection from OPD bills</div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" onclick="switchView('patientsView')">
+                  <i class="fa-solid fa-hospital-user"></i> + Check-in Arriving Patient
+                </button>
+                <a href="../doctor/dashboard.html" class="btn-primary" style="background:#0284c7; text-decoration:none;">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Doctor Desk
+                </a>
               </div>
             </div>
+
+            <div id="liveQueueContainer" class="live-queue-container" style="display:flex; flex-direction:column; gap:14px;"></div>
           </div>
         </section>
       </div>
 
+      <!-- Bottom Ticker Bar -->
       <footer class="bottom-ticker-bar">
         <div class="ticker-shortcuts">
-          <span class="ticker-item"><i class="fa-solid fa-circle"></i> Dhyey Clinic Reception Desk</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> F1 Register</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> F2 Add Member</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> F3 Record</span>
+          <span class="ticker-item"><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> Dhyey Clinic Management</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F1</kbd> Family Reg</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F2</kbd> Patients</span>
+          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F3</kbd> Queue</span>
+          <span class="ticker-item"><i class="fa-solid fa-magnifying-glass"></i> <kbd>/</kbd> Search</span>
         </div>
-        <div id="tickerClock" class="ticker-time">00:00:00</div>
+        <div id="tickerClock" class="ticker-clock">10:00:00 AM</div>
       </footer>
     </main>
   </div>
 
+  <!-- ====================================================
+       MODALS
+       ==================================================== -->
+
+  <!-- Modal: Add Family Member (F2) -->
   <div id="addMemberModal" class="modal-overlay">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 540px;">
       <div class="modal-header">
-        <div id="modalFamilyTitle" class="modal-title">Add Member</div>
-        <button class="modal-close-btn" type="button" onclick="closeAddMemberModal()" aria-label="Close">×</button>
+        <h3 class="modal-title"><i class="fa-solid fa-user-plus" style="color:var(--primary-teal);"></i> Add Family Member</h3>
+        <button class="modal-close-btn" onclick="closeModal('addMemberModal')">&times;</button>
       </div>
-      <form class="modal-body" onsubmit="handleAddMemberSubmit(event)">
-        <input id="targetFamilyId" type="hidden" />
+
+      <form id="addMemberForm" onsubmit="handleAddMemberSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Link to Family <span class="req">*</span></label>
+          <select id="memberFamilySelect" class="form-select" required></select>
+        </div>
 
         <div class="form-group">
-          <label class="form-label" for="memberName">Member Name <span class="req">*</span></label>
-          <input id="memberName" class="form-input" type="text" placeholder="Enter full member name" />
+          <label class="form-label">Member Full Name <span class="req">*</span></label>
+          <input id="memberName" class="form-input" type="text" placeholder="e.g. PATEL DHRUV RAMESHBHAI" required>
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="memberRelation">Relation</label>
-            <select id="memberRelation" class="form-select">
-              <option>Wife</option>
-              <option>Son</option>
-              <option>Daughter</option>
-              <option>Father</option>
-              <option>Mother</option>
-              <option>Brother</option>
-              <option>Sister</option>
+            <label class="form-label">Relationship to Head <span class="req">*</span></label>
+            <select id="memberRelation" class="form-select" required>
+              <option value="Spouse">Spouse</option>
+              <option value="Son">Son</option>
+              <option value="Daughter">Daughter</option>
+              <option value="Father">Father</option>
+              <option value="Mother">Mother</option>
+              <option value="Brother">Brother</option>
+              <option value="Sister">Sister</option>
+              <option value="Other">Other</option>
             </select>
           </div>
+
           <div class="form-group">
-            <label class="form-label" for="memberAge">Age</label>
-            <input id="memberAge" class="form-input" type="number" value="30" />
+            <label class="form-label">Age <span class="req">*</span></label>
+            <input id="memberAge" class="form-input" type="number" min="0" max="120" value="22" required>
           </div>
         </div>
 
         <div class="form-row-2">
           <div class="form-group">
-            <label class="form-label" for="memberGender">Gender</label>
+            <label class="form-label">Gender</label>
             <select id="memberGender" class="form-select">
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
             </select>
           </div>
+
           <div class="form-group">
-            <label class="form-label" for="memberBlood">Blood Group</label>
+            <label class="form-label">Blood Group</label>
             <select id="memberBlood" class="form-select">
-              <option>A+</option>
-              <option>A-</option>
-              <option>B+</option>
-              <option>B-</option>
-              <option>O+</option>
-              <option>O-</option>
-              <option>AB+</option>
-              <option>AB-</option>
+              <option value="B+">B+</option>
+              <option value="A+">A+</option>
+              <option value="O+">O+</option>
+              <option value="AB+">AB+</option>
+              <option value="O-">O-</option>
+              <option value="A-">A-</option>
+              <option value="B-">B-</option>
+              <option value="AB-">AB-</option>
             </select>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn-secondary" type="button" onclick="closeAddMemberModal()">Cancel</button>
+        <div class="form-group">
+          <label class="form-label">Personal Phone (Optional)</label>
+          <input id="memberPhone" class="form-input" type="tel" placeholder="Leave blank to use Family phone">
+        </div>
+
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button class="btn-secondary" type="button" onclick="closeModal('addMemberModal')">Cancel</button>
           <button class="btn-primary" type="submit">
-            <i class="fa-solid fa-user-plus"></i> Add Member
+            <i class="fa-solid fa-user-check"></i> Save Family Member
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="newVisitModal" class="modal-overlay">
-    <div class="modal-card">
+  <!-- Modal: Patient Arrival & Send to Doctor Queue -->
+  <div id="sendToDoctorModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 560px;">
       <div class="modal-header">
-        <div class="modal-title">New Visit for <span id="visitPatientName"></span></div>
-        <button class="modal-close-btn" type="button" onclick="closeNewVisitModal()" aria-label="Close">×</button>
+        <div>
+          <h3 class="modal-title"><i class="fa-solid fa-hospital-user" style="color:#0284c7;"></i> Patient Arrival Check-In</h3>
+          <p style="margin:2px 0 0; font-size:12px; color:var(--text-muted);">Send patient directly into the Doctor's Consultation queue</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('sendToDoctorModal')">&times;</button>
       </div>
-      <form class="modal-body" onsubmit="handleNewVisitSubmit(event)">
-        <div class="form-group">
-          <label class="form-label" for="visitDoctor">Consulting Doctor</label>
-          <select id="visitDoctor" class="form-select">
-            <option>Dr. Shah</option>
-            <option>Dr. Mehta</option>
-            <option>Dr. Patel</option>
-          </select>
+
+      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h4 id="modalArrivePatientName" style="margin:0; font-size:15px; font-weight:800; color:#0369a1;">PATIENT NAME</h4>
+            <div id="modalArrivePatientInfo" style="font-size:12px; color:#0284c7; margin-top:2px;">PAT-0000 · Family Info</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px; font-weight:700; color:#0369a1;">ASSIGNED TOKEN</div>
+            <div id="arriveTokenPreview" style="font-size:18px; font-weight:900; color:#0284c7;">T-03</div>
+          </div>
+        </div>
+      </div>
+
+      <form id="sendToDoctorForm" onsubmit="handleSendToDoctorSubmit(event)">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Consulting Doctor <span class="req">*</span></label>
+            <select id="arriveDoctorSelect" class="form-select" required>
+              <option value="Dr. Shah (General Medicine)">Dr. Shah (General Medicine - Room 04)</option>
+              <option value="Dr. Mehta (Family Physician)">Dr. Mehta (Family Physician - Room 02)</option>
+              <option value="Dr. Patel (Pediatrics)">Dr. Patel (Pediatrics - Room 01)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Visit Priority</label>
+            <select id="arrivePriority" class="form-select">
+              <option value="Normal">Normal</option>
+              <option value="Urgent">Urgent / Emergency</option>
+              <option value="Follow-up">Follow-up Visit</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">BP (mmHg)</label>
+            <input id="arriveBP" class="form-input" type="text" placeholder="120/80" value="120/80">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pulse (bpm)</label>
+            <input id="arrivePulse" class="form-input" type="number" placeholder="72" value="72">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Temp (°F)</label>
+            <input id="arriveTemp" class="form-input" type="text" placeholder="98.6" value="98.6">
+          </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="visitComplaint">Complaint / Notes</label>
-          <textarea id="visitComplaint" class="form-textarea" rows="4" placeholder="Chief complaint and diagnosis notes"></textarea>
+          <label class="form-label">Weight (kg)</label>
+          <input id="arriveWeight" class="form-input" type="number" placeholder="65" value="65">
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="visitFee">Consultation Fee</label>
-          <input id="visitFee" class="form-input" type="text" value="₹500" />
+          <label class="form-label">Chief Complaint / Symptoms</label>
+          <textarea id="arriveComplaints" class="form-textarea" rows="2" placeholder="e.g. Mild fever, dry cough for 2 days"></textarea>
         </div>
 
-        <div class="modal-footer">
-          <button class="btn-secondary" type="button" onclick="closeNewVisitModal()">Cancel</button>
-          <button class="btn-primary" type="submit">
-            <i class="fa-solid fa-notes-medical"></i> Save Visit
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+          <button class="btn-secondary" type="button" onclick="closeModal('sendToDoctorModal')">Cancel</button>
+          <button class="btn-primary" type="submit" style="background:#0284c7;">
+            <i class="fa-solid fa-paper-plane"></i> Send to Doctor Consultation
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Post Family Registration Action Prompt -->
+  <div id="postRegActionModal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 460px; text-align:center;">
+      <div style="width:50px; height:50px; background:#dcfce7; color:#15803d; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 12px;">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--text-main);">Registration Successful!</h3>
+      <p style="margin:6px 0 0; font-size:13px; color:var(--text-muted);" id="postRegFamName">Patel Family (FAM-0001)</p>
+      <div style="font-size:12px; color:var(--primary-teal); font-weight:700; margin-top:2px;" id="postRegPatientName">Head registered as PAT-0101</div>
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:24px;">
+        <button id="btnPromptSendDoctor" class="btn-primary" style="justify-content:center; padding:12px; background:#0284c7;">
+          <i class="fa-solid fa-hospital-user"></i> Patient Arrived · Send Head to Doctor
+        </button>
+        <button id="btnPromptAddMember" class="btn-secondary" style="justify-content:center; padding:12px;">
+          <i class="fa-solid fa-user-plus"></i> + Add Another Family Member
+        </button>
+        <button class="btn-secondary" style="justify-content:center; border:none; background:transparent; color:var(--text-muted);" onclick="closeModal('postRegActionModal')">
+          Done / Close
+        </button>
+      </div>
     </div>
   </div>
 
   <div id="toastContainer" class="toast-container"></div>
 
+  <!-- Application Logic -->
   <script src="../js/receptionist.js"></script>
-  <script>
-    const overviewData = {
-      stats: [
-        { label: 'Today\'s Patients', value: '184', trend: '+12.4% vs yesterday', tone: 'teal' },
-        { label: 'Pending Dues', value: '₹18,450', trend: '23 family accounts', tone: 'amber' },
-        { label: 'Appointments', value: '46', trend: '18 confirmed', tone: 'blue' },
-        { label: 'New Registrations', value: '19', trend: '4 added this hour', tone: 'green' }
-      ],
-      queue: [
-        { name: 'Token #07 · PATEL RAMESHBHAI', meta: 'Dr. Shah · 10:15 AM', status: 'Consulting' },
-        { name: 'Token #08 · SHARMA AMITBHAI', meta: 'Dr. Shah · 10:35 AM', status: 'Queued' },
-        { name: 'Token #09 · DESAI SUNITABEN', meta: 'Dr. Mehta · 10:45 AM', status: 'Queued' }
-      ],
-      activity: [
-        { title: 'Family Registration', detail: 'FAM 0007 created for PATEL BHAVNABEN', time: '2 min ago' },
-        { title: 'Payment Received', detail: '₹850 cleared for SHAH RAHULBHAI', time: '8 min ago' },
-        { title: 'Follow-up Scheduled', detail: 'Next appointment booked for 04/10/2026', time: '15 min ago' }
-      ]
-    };
-
-    function renderOverviewCards() {
-      const statsGrid = document.getElementById('statsGrid');
-      if (!statsGrid) return;
-
-      statsGrid.innerHTML = overviewData.stats.map(item => `
-        <div class="stat-card ${item.tone}">
-          <div class="stat-label">${item.label}</div>
-          <div class="stat-value">${item.value}</div>
-          <div class="stat-trend">${item.trend}</div>
-        </div>
-      `).join('');
-
-      const queueList = document.getElementById('queueList');
-      if (queueList) {
-        queueList.innerHTML = overviewData.queue.map(item => `
-          <div class="family-item-card">
-            <div class="family-item-info">
-              <h5>${item.name}</h5>
-              <p>${item.meta}</p>
-            </div>
-            <span class="family-id-tag">${item.status}</span>
-          </div>
-        `).join('');
-      }
-
-      const activityList = document.getElementById('activityList');
-      if (activityList) {
-        activityList.innerHTML = overviewData.activity.map(item => `
-          <div class="family-item-card">
-            <div class="family-item-info">
-              <h5>${item.title}</h5>
-              <p>${item.detail}</p>
-            </div>
-            <span class="family-id-tag">${item.time}</span>
-          </div>
-        `).join('');
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      renderOverviewCards();
-      updateLiveClock();
-      setInterval(updateLiveClock, 1000);
-    });
-
-    function updateLiveClock() {
-      const clockEl = document.getElementById('tickerClock');
-      if (!clockEl) return;
-      const now = new Date();
-      clockEl.textContent = now.toLocaleTimeString('en-GB');
-    }
-  </script>
 </body>
 </html>
