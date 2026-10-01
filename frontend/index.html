@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dhyey Clinic · Family-Based Personal Clinic Management System</title>
+  
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  
+  <!-- Google Fonts & Remix Icon CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg sticky-top custom-navbar">
+    <div class="container">
+      <a href="#" class="navbar-brand brand-logo">
+        <div class="logo-icon">
+          <i class="ri-heart-pulse-fill"></i>
+        </div>
+        <span class="brand-name">Dhyey Clinic</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navContent">
+        <ul class="navbar-nav mx-auto mb-2 mb-lg-0 nav-links">
+          <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+          <li class="nav-item"><a class="nav-link" href="#modules">Modules</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contact">Contact Us</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <a href="#signin" class="btn btn-primary-custom">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-5 hero-content mb-4 mb-lg-0">
+          <div class="pill-badge">
+            <span class="badge-dot"></span> Family-Based Personal Clinic Platform
+          </div>
+          
+          <h1 class="hero-title">
+            Smart Clinic Management, <span class="highlight">Centered Around Families.</span>
+          </h1>
+          
+          <p class="hero-subtitle">
+            Dhyey Clinic digitizes patient treatment history, standardized prescriptions, family ID grouping, and pending dues tracking into a single 100% offline-capable platform.
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="#signin" class="btn btn-primary-custom btn-lg">
+              Sign In to App <i class="ri-arrow-right-line"></i>
+            </a>
+            <a href="#modules" class="btn btn-outline-custom btn-lg">
+              Explore Modules
+            </a>
+          </div>
+        </div>
+
+        <!-- Dashboard UI Mockup (From Screenshot media_1790855662445.png) -->
+        <div class="col-lg-7 hero-visual">
+          <div class="ui-window-card">
+            <div class="ui-window-topbar">
+              <div class="ui-brand"><i class="ri-stethoscope-line"></i> Dhyey Clinic · Patient Management</div>
+              <div class="ui-date">01/10/2026</div>
+              <div class="ui-search-box">
+                <i class="ri-search-line"></i>
+                <input type="text" placeholder="Search family name, patient ID, : " readonly />
+                <button class="ui-go-btn">Go</button>
+              </div>
+              <div class="ui-mode-icon"><i class="ri-moon-line"></i></div>
+            </div>
+
+            <div class="ui-window-body">
+              <!-- Sidebar -->
+              <div class="ui-sidebar d-none d-md-block">
+                <div class="ui-nav-item active"><i class="ri-dashboard-line"></i> Dashboard <span class="shortcut">F4</span></div>
+                <div class="ui-nav-item"><i class="ri-user-add-line"></i> Family / Patient Reg. <span class="shortcut">F1</span></div>
+                <div class="ui-nav-item"><i class="ri-folder-user-line"></i> Patient Record <span class="shortcut">F3</span></div>
+                <div class="ui-nav-item"><i class="ri-bar-chart-box-line"></i> Reports <span class="shortcut">F5</span></div>
+              </div>
+
+              <!-- Main Content Area -->
+              <div class="ui-main-panel">
+                <div class="ui-filter-bar">
+                  <i class="ri-calendar-line"></i> <strong>Dashboard Filter Date:</strong>
+                  <input type="text" value="01-10-2026" readonly class="ui-date-input" />
+                </div>
+
+                <!-- Stat Cards Grid -->
+                <div class="ui-stats-grid">
+                  <div class="ui-stat-card active-border">
+                    <div class="stat-num">6</div>
+                    <div class="stat-label">Registered Families</div>
+                  </div>
+                  <div class="ui-stat-card">
+                    <div class="stat-num">12</div>
+                    <div class="stat-label">Total Patients</div>
+                  </div>
+                  <div class="ui-stat-card">
+                    <div class="stat-num">0</div>
+                    <div class="stat-label">Date's Visits</div>
+                  </div>
+                  <div class="ui-stat-card">
+                    <div class="stat-num">₹0</div>
+                    <div class="stat-label">Date's Collection</div>
+                  </div>
+                  <div class="ui-stat-card">
+                    <div class="stat-num danger-text">₹900</div>
+                    <div class="stat-label">Total Dues</div>
+                  </div>
+                </div>
+
+                <!-- Data Panels -->
+                <div class="ui-content-split">
+                  <div class="ui-panel-left">
+                    <h4>All Registered Families</h4>
+                    <div class="ui-table-header">
+                      <span>FAM ID</span><span>HEAD NAME</span><span>AREA</span><span>MEMBERS</span>
+                    </div>
+                    <div class="ui-table-row"><span>0006</span><span>PATEL PANKAJBHAI BALLUBHAI</span><span>valsad</span><span>2</span></div>
+                    <div class="ui-table-row"><span>0001</span><span>PATEL RAMESHBHAI GOVINDBHAI</span><span>VASTRAPUR</span><span>2</span></div>
+                    <div class="ui-table-row"><span>0002</span><span>SHARMA AMITBHAI DINESHBHAI</span><span>NAVRANGPURA</span><span>3</span></div>
+                    <div class="ui-table-row"><span>0003</span><span>SHAH RAHULBHAI RAJENDRABHAI</span><span>SATELLITE</span><span>2</span></div>
+                    <div class="ui-table-row"><span>0004</span><span>DESAI SUNITABEN MAHESHBHAI</span><span>BOPAL</span><span>1</span></div>
+                    <div class="ui-table-row"><span>0005</span><span>MEHTA VIKRAMBHAI SANJAYBHAI</span><span>THALTEJ</span><span>2</span></div>
+                  </div>
+
+                  <div class="ui-panel-right">
+                    <h4>Top Outstanding Dues</h4>
+                    <div class="due-item">
+                      <div class="due-info">
+                        <strong>SHAH KINJALBEN RAHULBHAI</strong>
+                        <small>SHAH RAHULBHAI · Fam 0003</small>
+                      </div>
+                      <span class="due-badge">₹600</span>
+                    </div>
+                    <div class="due-item">
+                      <div class="due-info">
+                        <strong>PATEL RAMESHBHAI GOVINDBHAI</strong>
+                        <small>PATEL RAMESHBHAI · Fam 0001</small>
+                      </div>
+                      <span class="due-badge">₹300</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="ui-statusbar">
+              <span>Dhyey Clinic</span>
+              <span>F1 Family Reg</span>
+              <span>F2 Patient Reg</span>
+              <span>F3 Record</span>
+              <span>F4 Dashboard</span>
+              <span>F5 Reports</span>
+              <span class="status-time">17:18</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- User Statistics Counter Banner -->
+  <section class="stats-banner-section">
+    <div class="container">
+      <div class="row text-center align-items-center">
+        <div class="col-md-2 col-4 stat-col">
+          <div class="stat-counter">10+</div>
+          <div class="stat-counter-label">CLINICS</div>
+        </div>
+        <div class="col-md-3 col-4 stat-col">
+          <div class="stat-counter">2500+</div>
+          <div class="stat-counter-label">REGISTERED PATIENTS</div>
+        </div>
+        <div class="col-md-2 col-4 stat-col">
+          <div class="stat-counter">1000+</div>
+          <div class="stat-counter-label">FAMILIES</div>
+        </div>
+        <div class="col-md-2 col-6 stat-col mt-3 mt-md-0">
+          <div class="stat-counter">15+</div>
+          <div class="stat-counter-label">DOCTORS</div>
+        </div>
+        <div class="col-md-3 col-6 stat-col mt-3 mt-md-0">
+          <div class="stat-counter">25K+</div>
+          <div class="stat-counter-label">PRESCRIPTIONS</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Section -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-header text-center mb-5">
+        <span class="section-subtitle">CORE CAPABILITIES</span>
+        <h2 class="section-title">Built for Modern Family Clinics</h2>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-wifi-off-line"></i></div>
+            <h3>100% Offline Capability</h3>
+            <p>Operates flawlessly without active internet connectivity. All family records, billing, and prescription data remain instantly accessible.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-parent-line"></i></div>
+            <h3>Family ID Grouping</h3>
+            <p>Links household members under a single Family Head ID, preventing duplicate registrations and providing a full family health ledger.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-file-list-3-line"></i></div>
+            <h3>Standardized Prescriptions</h3>
+            <p>Generates clear, patient-friendly digital prescriptions with precise dosage, frequency, and attached disease-wise dietary charts.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-search-eye-line"></i></div>
+            <h3>Instant Record Search</h3>
+            <p>Search patient records by name, family head, or mobile number within seconds. Displays active allergy profiles and pending balances.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-wallet-3-line"></i></div>
+            <h3>Payment & Dues Tracking</h3>
+            <p>Tracks consultation charges, partial payments, and outstanding balances with automated payment receipt generation.</p>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card feature-card h-100">
+            <div class="card-icon primary"><i class="ri-pie-chart-2-line"></i></div>
+            <h3>Area-Wise Reports</h3>
+            <p>Analyzes clinic growth by area (Navrangpura, Vastrapur, Satellite, Thaltej, Bopal), doctor-wise consultations, and daily revenue.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Carousel Section for Key Modules -->
+  <section class="carousel-showcase-section" id="modules">
+    <div class="container">
+      <div class="text-center mb-5">
+        <span class="section-subtitle">APPLICATION WALKTHROUGH</span>
+        <h2 class="section-title">Explore Key Modules</h2>
+        <p class="text-muted">Interactive slideshow showcasing actual system screens.</p>
+      </div>
+
+      <div id="dhyeyModulesCarousel" class="carousel slide custom-carousel shadow-lg" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="0" class="active"></button>
+          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="1"></button>
+          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="2"></button>
+          <button type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide-to="3"></button>
+        </div>
+
+        <div class="carousel-inner p-4 p-md-5">
+          
+          <!-- Slide 1: Dashboard Overview -->
+          <div class="carousel-item active">
+            <div class="row align-items-center">
+              <div class="col-lg-5 mb-4 mb-lg-0">
+                <div class="module-badge">Dashboard</div>
+                <h3 class="module-title">Dashboard Overview</h3>
+                <p class="module-desc">Central dashboard displaying key clinic metrics: total registered families, patient count, date collection, and top outstanding dues list.</p>
+                <ul class="module-bullets">
+                  <li><i class="ri-checkbox-circle-line"></i> Real-time date filtering</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Outstanding dues alert box</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Registered family directory</li>
+                </ul>
+              </div>
+              <div class="col-lg-7">
+                <div class="screen-preview-card">
+                  <div class="preview-card-header">
+                    <span>Dashboard · All Registered Families</span>
+                    <span>Date: 01-10-2026</span>
+                  </div>
+                  <div class="preview-card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                      <div class="m-stat"><strong>6</strong><small>Families</small></div>
+                      <div class="m-stat"><strong>12</strong><small>Patients</small></div>
+                      <div class="m-stat danger"><strong>₹900</strong><small>Total Dues</small></div>
+                    </div>
+                    <div class="mini-table">
+                      <div class="mt-head"><span>FAM ID</span><span>HEAD NAME</span><span>AREA</span></div>
+                      <div class="mt-row"><span>0006</span><span>PATEL PANKAJBHAI</span><span>valsad</span></div>
+                      <div class="mt-row"><span>0001</span><span>PATEL RAMESHBHAI</span><span>VASTRAPUR</span></div>
+                      <div class="mt-row"><span>0002</span><span>SHARMA AMITBHAI</span><span>NAVRANGPURA</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 2: Family / Patient Registration -->
+          <div class="carousel-item">
+            <div class="row align-items-center">
+              <div class="col-lg-5 mb-4 mb-lg-0">
+                <div class="module-badge">Registration</div>
+                <h3 class="module-title">Family / Patient Registration</h3>
+                <p class="module-desc">Step-by-step registration for Family Heads with instant numeric Family ID generation, followed by member addition under the same ID.</p>
+                <ul class="module-bullets">
+                  <li><i class="ri-checkbox-circle-line"></i> Numeric Family ID creation</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Phone & Area association</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Registered family directory with member counts</li>
+                </ul>
+              </div>
+              <div class="col-lg-7">
+                <div class="screen-preview-card">
+                  <div class="preview-card-header">
+                    <span>Step 1 · Register Family Head</span>
+                    <span>Registered Families & Patients</span>
+                  </div>
+                  <div class="preview-card-body">
+                    <p class="mb-2"><strong>FORM:</strong> (SURNAME NAME FATHER'S NAME)</p>
+                    <div class="mini-fam-list">
+                      <div class="f-row"><span>PATEL PANKAJBHAI BALLUBHAI</span> <small>FAM 0006 (valsad · 2 members)</small></div>
+                      <div class="f-row"><span>PATEL RAMESHBHAI GOVINDBHAI</span> <small>FAM 0001 (VASTRAPUR · 2 members)</small></div>
+                      <div class="f-row"><span>SHARMA AMITBHAI DINESHBHAI</span> <small>FAM 0002 (NAVRANGPURA · 3 members)</small></div>
+                      <div class="f-row"><span>SHAH RAHULBHAI RAJENDRABHAI</span> <small>FAM 0003 (SATELLITE · 2 members)</small></div>
+                      <div class="f-row"><span>DESAI SUNITABEN MAHESHBHAI</span> <small>FAM 0004 (BOPAL · 1 member)</small></div>
+                      <div class="f-row"><span>MEHTA VIKRAMBHAI SANJAYBHAI</span> <small>FAM 0005 (THALTEJ · 2 members)</small></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 3: Patient Record Search -->
+          <div class="carousel-item">
+            <div class="row align-items-center">
+              <div class="col-lg-5 mb-4 mb-lg-0">
+                <div class="module-badge">Search</div>
+                <h3 class="module-title">Patient Record Search</h3>
+                <p class="module-desc">Instant search bar allowing doctors to find patients by typing names or family IDs, displaying allergy tags and pending due balances.</p>
+                <ul class="module-bullets">
+                  <li><i class="ri-checkbox-circle-line"></i> Search "patel" instant matches</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Visual DUE badges (e.g. DUE: ₹300)</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Allergy alerts (e.g. ALLERGY: DUST)</li>
+                </ul>
+              </div>
+              <div class="col-lg-7">
+                <div class="screen-preview-card">
+                  <div class="preview-card-header">
+                    <span>FIND PATIENT BY NAME OR PATIENT ID</span>
+                    <span>Search: patel</span>
+                  </div>
+                  <div class="preview-card-body">
+                    <div class="p-search-item">
+                      <div>
+                        <strong>PATEL RAMESHBHAI GOVINDBHAI</strong>
+                        <small class="d-block text-muted">Family: PATEL RAMESHBHAI GOVINDBHAI · VASTRAPUR</small>
+                      </div>
+                      <span class="badge-danger">DUE: ₹300</span>
+                    </div>
+                    <div class="p-search-item">
+                      <div>
+                        <strong>PATEL SHARDABEN RAMESHBHAI</strong>
+                        <small class="d-block text-muted">Family: PATEL RAMESHBHAI GOVINDBHAI · VASTRAPUR</small>
+                      </div>
+                      <span class="badge-warning">ALLERGY: DUST</span>
+                    </div>
+                    <div class="p-search-item">
+                      <div>
+                        <strong>PATEL PANKAJBHAI BALLUBHAI</strong>
+                        <small class="d-block text-muted">Family: PATEL PANKAJBHAI BALLUBHAI · valsad</small>
+                      </div>
+                    </div>
+                    <div class="p-search-item">
+                      <div>
+                        <strong>AASTHA PATEL</strong>
+                        <small class="d-block text-muted">Family: PATEL PANKAJBHAI BALLUBHAI · valsad</small>
+                      </div>
+                      <span class="badge-neutral">ALLERGY: na</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide 4: Reports & Analysis -->
+          <div class="carousel-item">
+            <div class="row align-items-center">
+              <div class="col-lg-5 mb-4 mb-lg-0">
+                <div class="module-badge">Analytics</div>
+                <h3 class="module-title">Reports & Analysis</h3>
+                <p class="module-desc">Analytical reporting filters including Area-wise breakdown, Daily Income, Monthly revenue, Patient Dues, Diagnosis-wise, and Medical Certificates.</p>
+                <ul class="module-bullets">
+                  <li><i class="ri-checkbox-circle-line"></i> Area-wise patient density tracking</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Diagnosis & Doctor-wise summaries</li>
+                  <li><i class="ri-checkbox-circle-line"></i> Payment & Due export tools</li>
+                </ul>
+              </div>
+              <div class="col-lg-7">
+                <div class="screen-preview-card">
+                  <div class="preview-card-header">
+                    <span>Reports · Area-wise Breakdown</span>
+                    <span>Filter: Area-wise</span>
+                  </div>
+                  <div class="preview-card-body">
+                    <div class="area-report-table">
+                      <div class="area-head"><span>AREA</span><span>FAMILIES</span><span>PATIENTS</span><span>TOTAL VISITS</span></div>
+                      <div class="area-row"><span>NAVRANGPURA</span><span>1</span><span>3</span><span>1</span></div>
+                      <div class="area-row"><span>VASTRAPUR</span><span>1</span><span>2</span><span>1</span></div>
+                      <div class="area-row"><span>SATELLITE</span><span>1</span><span>2</span><span>1</span></div>
+                      <div class="area-row"><span>THALTEJ</span><span>1</span><span>2</span><span>1</span></div>
+                      <div class="area-row"><span>valsad</span><span>1</span><span>2</span><span>1</span></div>
+                      <div class="area-row"><span>BOPAL</span><span>1</span><span>1</span><span>0</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="carousel-control-prev" type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#dhyeyModulesCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon"></span>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Contact Us Section -->
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <div class="section-header text-center mb-5">
+        <span class="section-subtitle">CONNECT WITH US</span>
+        <h2 class="section-title">Contact Us</h2>
+        <p class="text-muted">Interested in setting up Dhyey Clinic for your practice? Reach out to our team.</p>
+      </div>
+
+      <div class="contact-card-box">
+        <div class="row align-items-center">
+          <div class="col-lg-5 mb-4 mb-lg-0">
+            <div class="c-item">
+              <i class="ri-mail-line"></i>
+              <div>
+                <strong>Email Us</strong>
+                <p class="mb-0 text-muted">support@dhyeyclinic.com</p>
+              </div>
+            </div>
+            <div class="c-item">
+              <i class="ri-phone-line"></i>
+              <div>
+                <strong>Call Us</strong>
+                <p class="mb-0 text-muted">+91 98765 43210</p>
+              </div>
+            </div>
+            <div class="c-item">
+              <i class="ri-map-pin-line"></i>
+              <div>
+                <strong>Location</strong>
+                <p class="mb-0 text-muted">Gujarat, India</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <form class="contact-form" onsubmit="event.preventDefault(); alert('Thank you! Message submitted.');">
+              <div class="mb-3">
+                <label class="form-label">DOCTOR / CLINIC NAME</label>
+                <input type="text" placeholder="Dr. Sharma / City Health Clinic" required class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">EMAIL ADDRESS</label>
+                <input type="email" placeholder="doctor@clinic.com" required class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">MESSAGE</label>
+                <textarea placeholder="Write your message here..." rows="3" class="form-control"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary-custom w-100">Send Message</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dark Footer -->
+  <footer class="custom-footer">
+    <div class="container">
+      <div class="row footer-columns g-4">
+        <!-- Brand Column -->
+        <div class="col-lg-5 col-md-12 brand-col">
+          <div class="footer-logo">
+            <i class="ri-heart-pulse-fill"></i>
+            <span>Dhyey Clinic</span>
+          </div>
+          <p class="footer-desc">
+            The Family-Based Personal Clinic Management System designed for doctors and clinics to digitize treatment history, digital prescriptions, and billing.
+          </p>
+        </div>
+
+        <!-- Column 1 -->
+        <div class="col-lg-2 col-md-4 footer-col">
+          <h4>PLATFORM</h4>
+          <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#modules">Modules</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 2 -->
+        <div class="col-lg-2 col-md-4 footer-col">
+          <h4>LEGAL & CONTACT</h4>
+          <ul>
+            <li><a href="#contact">Contact Us</a></li>
+            <li><a href="#terms">Terms & Conditions</a></li>
+          </ul>
+        </div>
+
+        <!-- Column 3 -->
+        <div class="col-lg-3 col-md-4 footer-col">
+          <h4>CLINIC APP</h4>
+          <ul>
+            <li><a href="#signin" class="highlight-link">Sign In</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom text-center mt-5">
+        <p class="mb-0">&copy; 2026 Dhyey Clinic Management System. All rights reserved.</p>
+        <p class="terms-link-footer"><a href="#terms">Terms & Conditions</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap 5 JS Bundle CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
