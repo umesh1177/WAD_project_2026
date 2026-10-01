@@ -21,10 +21,12 @@ const patients = [
 ];
 
 let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultClinics;
+let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || doctors.map(doctor => ({ ...doctor, email: `${doctor.name.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`, status: 'Active' }));
 const content = document.getElementById('adminContent');
 
 function money(value) { return `₹${value.toLocaleString('en-IN')}`; }
 function saveClinics() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clinics)); }
+function saveDoctors() { localStorage.setItem('dhyey-admin-doctors', JSON.stringify(clinicDoctors)); }
 function clinicOptions() { return clinics.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); }
 function page(title, subtitle, body, actions = '') {
   content.innerHTML = `<div class="admin-page"><div class="admin-heading"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="admin-actions">${actions}</div></div>${body}</div>`;
@@ -42,15 +44,20 @@ function stats() {
   </div>`;
 }
 function renderOverview() {
-  const rows = clinics.map(c => `<tr><td><strong>${c.name}</strong><br><small>${c.id} · ${c.city}</small></td><td>${c.doctors}</td><td>${c.patients.toLocaleString()}</td><td>${c.visits}</td><td><span class="status-pill ${c.status === 'Paused' ? 'paused' : ''}">${c.status}</span></td></tr>`).join('');
+  const rows = clinics.map(c => `<tr data-clinic-id="${c.id}"><td><strong>${c.name}</strong><br><small>${c.id} · ${c.city}</small></td><td>${c.doctors}</td><td>${c.patients.toLocaleString()}</td><td>${c.visits}</td><td><span class="status-pill ${c.status === 'Paused' ? 'paused' : ''}">${c.status}</span></td></tr>`).join('');
   page('Good evening, Administrator', 'Here is the latest snapshot across your clinic network.', stats(), `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic</button>`);
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `<div class="admin-grid"><section class="admin-card"><div class="admin-card-header"><div><h2>Clinic performance</h2><span>Live network summary</span></div><a class="btn-secondary" href="#clinics" data-view="clinics">View all</a></div>${table(['Clinic', 'Doctors', 'Patients', 'Visits', 'Status'], rows)}</section><section class="admin-card"><div class="admin-card-header"><div><h2>Quick analysis</h2><span>Compare operational activity</span></div></div><div class="quick-links"><a class="admin-quick-link" href="#analysis-clinic" data-view="analysis-clinic"><i class="fa-solid fa-hospital"></i><span><strong>Clinic wise</strong><small>Collections and visits by location</small></span><i class="fa-solid fa-arrow-right"></i></a><a class="admin-quick-link" href="#analysis-doctor" data-view="analysis-doctor"><i class="fa-solid fa-user-doctor"></i><span><strong>Doctor wise</strong><small>Workload and patient outcomes</small></span><i class="fa-solid fa-arrow-right"></i></a><a class="admin-quick-link" href="#analysis-patient" data-view="analysis-patient"><i class="fa-solid fa-user-injured"></i><span><strong>Patient wise</strong><small>Visit history and follow-ups</small></span><i class="fa-solid fa-arrow-right"></i></a></div></section></div>`);
 }
 function renderClinics() {
   page('Clinic management', 'Add, search, and monitor every location in your network.', '', `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic</button>`);
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `<section class="admin-card"><div class="admin-filter-row"><div class="form-group" style="flex:1;min-width:220px;margin:0"><input class="form-input" id="clinicSearch" placeholder="Search by clinic, city, or ID"></div><select class="form-select" id="clinicStatus"><option value="">All statuses</option><option>Active</option><option>Paused</option></select></div><div id="clinicTable" style="margin-top:16px"></div></section>`);
-  const update = () => { const term = document.getElementById('clinicSearch').value.toLowerCase(); const status = document.getElementById('clinicStatus').value; const filtered = clinics.filter(c => `${c.name} ${c.city} ${c.id}`.toLowerCase().includes(term) && (!status || c.status === status)); document.getElementById('clinicTable').innerHTML = table(['Clinic', 'City', 'Doctors', 'Patients', 'Status', 'Updated'], filtered.map(c => `<tr><td><strong>${c.name}</strong><br><small>${c.id}</small></td><td>${c.city}</td><td>${c.doctors}</td><td>${c.patients.toLocaleString()}</td><td><span class="status-pill ${c.status === 'Paused' ? 'paused' : ''}">${c.status}</span></td><td>${c.updated}</td></tr>`).join('')); };
+  const update = () => { const term = document.getElementById('clinicSearch').value.toLowerCase(); const status = document.getElementById('clinicStatus').value; const filtered = clinics.filter(c => `${c.name} ${c.city} ${c.id}`.toLowerCase().includes(term) && (!status || c.status === status)); document.getElementById('clinicTable').innerHTML = table(['Clinic', 'City', 'Doctors', 'Patients', 'Status', 'Updated'], filtered.map(c => `<tr data-clinic-id="${c.id}"><td><strong>${c.name}</strong><br><small>${c.id}</small></td><td>${c.city}</td><td>${c.doctors}</td><td>${c.patients.toLocaleString()}</td><td><span class="status-pill ${c.status === 'Paused' ? 'paused' : ''}">${c.status}</span></td><td>${c.updated}</td></tr>`).join('')); renderDoctorManagement(); };
   document.getElementById('clinicSearch').addEventListener('input', update); document.getElementById('clinicStatus').addEventListener('change', update); update();
+}
+function renderDoctorManagement() {
+  const pageRoot = content.querySelector('.admin-page');
+  if (!pageRoot || pageRoot.querySelector('#doctorManagement')) return;
+  pageRoot.insertAdjacentHTML('beforeend', `<section class="admin-card" id="doctorManagement"><div class="admin-card-header"><div><h2>Doctor management</h2><span>Every doctor is mapped to a registered clinic.</span></div><span>${clinicDoctors.length} accounts</span></div>${table(['Doctor', 'Clinic', 'Email', 'Specialty', 'Status', 'Action'], clinicDoctors.map(doctor => `<tr data-doctor-name="${doctor.name}"><td><strong>${doctor.name}</strong><br><small>${doctor.registration || 'Credential on file'}</small></td><td>${doctor.clinic}</td><td>${doctor.email || 'Not provided'}</td><td>${doctor.specialty}</td><td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td><td><button class="btn-secondary suspend-button" data-action="toggle-doctor" data-doctor="${doctor.name}">${doctor.status === 'Suspended' ? 'Restore account' : 'Suspend account'}</button></td></tr>`).join(''))}</section>`);
 }
 function renderAnalysis(type) {
   const isClinic = type === 'clinic'; const isDoctor = type === 'doctor';
@@ -64,9 +71,17 @@ function renderAnalysis(type) {
   ['analysisClinic', 'analysisRange', 'analysisActivity', 'analysisSort', 'analysisSearch'].forEach(id => document.getElementById(id).addEventListener(id === 'analysisSearch' ? 'input' : 'change', update));
   content.querySelectorAll('[data-quick-filter]').forEach(button => button.addEventListener('click', () => { quickFilter = button.dataset.quickFilter; content.querySelectorAll('[data-quick-filter]').forEach(item => item.classList.toggle('active', item === button)); update(); })); update();
 }
-function renderStaff() { page('Staff overview', 'Manage the people who keep your clinics running.', '', `<button class="btn-primary" data-action="toast"><i class="fa-solid fa-user-plus"></i> Invite staff</button>`); content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `<section class="admin-card">${table(['Name', 'Specialty', 'Primary clinic', 'Patients', 'Visits', 'Status'], doctors.map(d => `<tr><td><strong>${d.name}</strong></td><td>${d.specialty}</td><td>${d.clinic}</td><td>${d.patients}</td><td>${d.visits}</td><td><span class="status-pill">Active</span></td>`).join(''))}</section>`); }
+function openClinicDetails(clinicId) {
+  const clinic = clinics.find(item => item.id === clinicId);
+  if (!clinic) return;
+  const assignedDoctors = clinicDoctors.filter(doctor => doctor.clinic === clinic.name);
+  const modal = document.getElementById('detailsModal');
+  modal.innerHTML = `<div class="detail-modal-card"><div class="modal-header"><h2 class="modal-title">${clinic.name}</h2><button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button></div><div class="detail-section"><div class="detail-grid"><div class="detail-item"><small>Clinic ID</small><strong>${clinic.id}</strong></div><div class="detail-item"><small>Registration number</small><strong>${clinic.registration || 'Not provided'}</strong></div><div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.status}</span></strong></div><div class="detail-item"><small>Last updated</small><strong>${clinic.updated}</strong></div><div class="detail-item"><small>City</small><strong>${clinic.city}</strong></div><div class="detail-item"><small>Phone</small><strong>${clinic.phone || 'Not provided'}</strong></div><div class="detail-item"><small>Email</small><strong>${clinic.email || 'Not provided'}</strong></div><div class="detail-item"><small>Operating days</small><strong>${clinic.days || 'Not provided'}</strong></div><div class="detail-item"><small>Working hours</small><strong>${clinic.hours || 'Not provided'}</strong></div><div class="detail-item"><small>Registered doctors</small><strong>${clinic.doctors}</strong></div><div class="detail-item"><small>Verified documents</small><strong>${clinic.verifiedDocuments || 'On file'}</strong></div><div class="detail-item"><small>Patients</small><strong>${clinic.patients.toLocaleString()}</strong></div><div class="detail-item"><small>Visits</small><strong>${clinic.visits}</strong></div><div class="detail-item"><small>Specialties</small><strong>${clinic.specialties || 'Not specified'}</strong></div><div class="detail-item"><small>Facilities</small><strong>${clinic.facilities || 'Not specified'}</strong></div></div></div><div class="detail-section"><h3><i class="fa-solid fa-location-dot"></i> Address</h3><div class="detail-item"><strong>${clinic.address || 'Not provided'}</strong></div></div><div class="detail-section"><h3><i class="fa-solid fa-user-doctor"></i> Doctors mapped to this clinic</h3>${assignedDoctors.length ? table(['Doctor', 'Email', 'Specialty', 'Status'], assignedDoctors.map(doctor => `<tr><td>${doctor.name}</td><td>${doctor.email || 'Not provided'}</td><td>${doctor.specialty}</td><td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td></tr>`).join('')) : '<div class="empty-results">No doctor accounts are mapped yet.</div>'}</div><div class="modal-footer"><button class="btn-secondary" data-action="close-details">Close</button><button class="btn-secondary suspend-button" data-action="toggle-clinic" data-clinic="${clinic.id}">${clinic.status === 'Suspended' ? 'Restore membership' : 'Suspend membership'}</button></div></div>`;
+  modal.classList.add('active'); modal.setAttribute('aria-hidden', 'false');
+}
+function closeDetails() { const modal = document.getElementById('detailsModal'); modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
 function doctorEntry(index) {
-  return `<div class="doctor-entry"><div class="doctor-entry-header"><strong>Doctor ${index}</strong><button type="button" class="remove-doctor">Remove</button></div><div class="clinic-form-grid"><div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input doctor-name" required placeholder="Dr. Full Name"></div><div class="form-group"><label class="form-label">Specialization <span class="req">*</span></label><input class="form-input doctor-specialty" required placeholder="e.g. Cardiology"></div><div class="form-group"><label class="form-label">Registration number <span class="req">*</span></label><input class="form-input doctor-reg" required></div><div class="form-group"><label class="form-label">Medical certificate <span class="req">*</span></label><input class="file-input doctor-certificate" type="file" accept=".pdf,.jpg,.jpeg,.png" required><small class="clinic-form-help">PDF, JPG or PNG</small></div></div></div>`;
+  return `<div class="doctor-entry"><div class="doctor-entry-header"><strong>Doctor ${index}</strong><button type="button" class="remove-doctor">Remove</button></div><div class="clinic-form-grid"><div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input doctor-name" required placeholder="Dr. Full Name"></div><div class="form-group"><label class="form-label">Specialization <span class="req">*</span></label><input class="form-input doctor-specialty" required placeholder="e.g. Cardiology"></div><div class="form-group"><label class="form-label">Registration number <span class="req">*</span></label><input class="form-input doctor-reg" required></div><div class="form-group"><label class="form-label">Doctor email <span class="req">*</span></label><input class="form-input doctor-email" type="email" required placeholder="doctor@example.com"></div><div class="form-group"><label class="form-label">Initial login password <span class="req">*</span></label><input class="form-input doctor-password" type="password" minlength="8" required placeholder="At least 8 characters"></div><div class="form-group"><label class="form-label">Medical certificate <span class="req">*</span></label><input class="file-input doctor-certificate" type="file" accept=".pdf,.jpg,.jpeg,.png" required><small class="clinic-form-help">PDF, JPG or PNG</small></div></div></div>`;
 }
 function openClinicModal() {
   const modal = document.getElementById('clinicModal');
@@ -82,9 +97,23 @@ function openClinicModal() {
   document.getElementById('clinicForm').addEventListener('submit', event => {
     event.preventDefault();
     const data = new FormData(event.target);
+    const phone = String(data.get('phone')).replace(/\D/g, '');
+    const registration = String(data.get('registration')).trim();
+    const email = String(data.get('email')).trim();
+    const address = String(data.get('address')).trim();
+    const clinicName = data.get('name').trim();
+    if (clinicName.length < 3) { showToast('Clinic name must contain at least 3 characters.'); return; }
+    if (!/^[6-9]\d{9}$/.test(phone)) { showToast('Enter a valid 10-digit Indian clinic phone number.'); return; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9/-]{3,29}$/.test(registration)) { showToast('Enter a valid clinic registration number.'); return; }
+    if (!email.includes('@') || !email.includes('.')) { showToast('Enter a valid clinic email address.'); return; }
+    if (address.length < 10) { showToast('Enter the clinic address in sufficient detail.'); return; }
+    const newDoctors = [...entries.querySelectorAll('.doctor-entry')].map(entry => ({ name: entry.querySelector('.doctor-name').value.trim(), specialty: entry.querySelector('.doctor-specialty').value.trim(), registration: entry.querySelector('.doctor-reg').value.trim(), email: entry.querySelector('.doctor-email').value.trim(), password: entry.querySelector('.doctor-password').value, certificate: entry.querySelector('.doctor-certificate').files[0]?.name || '', status: 'Active', patients: 0, visits: 0 }));
+    if (newDoctors.some(doctor => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(doctor.email) || doctor.password.length < 8 || !doctor.certificate)) { showToast('Check every doctor email, password, and certificate.'); return; }
+    if (newDoctors.some(doctor => clinicDoctors.some(existing => existing.email === doctor.email))) { showToast('Each doctor email must be unique.'); return; }
     const doctorCount = entries.children.length;
-    clinics.unshift({ id: `CLN-${String(clinics.length + 1).padStart(3, '0')}`, name: data.get('name').trim(), city: data.get('address').split(',').pop().trim() || 'Not specified', doctors: doctorCount, patients: 0, visits: 0, status: 'Active', updated: 'Just now', specialties: data.get('specialties'), verifiedDocuments: doctorCount + 1 });
-    saveClinics(); closeModal(); showToast('Clinic submitted with certificates for verification'); renderClinics();
+    newDoctors.forEach(doctor => { doctor.clinic = clinicName; clinicDoctors.unshift(doctor); });
+    clinics.unshift({ id: `CLN-${String(clinics.length + 1).padStart(3, '0')}`, name: clinicName, city: address.split(',').pop().trim() || 'Not specified', doctors: doctorCount, patients: 0, visits: 0, status: 'Active', updated: 'Just now', specialties: data.get('specialties'), facilities: data.get('facilities'), phone, email, registration, address, days: data.get('days'), hours: data.get('hours'), verifiedDocuments: doctorCount + 1 });
+    saveClinics(); saveDoctors(); closeModal(); showToast('Clinic and doctor accounts submitted for verification'); renderClinics();
   });
 }
 function closeModal() { const modal = document.getElementById('clinicModal'); modal.classList.remove('active'); modal.setAttribute('aria-hidden', 'true'); }
@@ -100,15 +129,18 @@ function exportVisibleTable() {
   URL.revokeObjectURL(link.href);
   showToast('Analysis CSV downloaded.');
 }
-function navigate(view = location.hash.slice(1) || 'overview') { document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === view)); document.querySelectorAll('.admin-subnav-link').forEach(item => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); else if (view === 'clinics') renderClinics(); else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', '')); else renderStaff(); }
+function navigate(view = location.hash.slice(1) || 'overview') { document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === view)); document.querySelectorAll('.admin-subnav-link').forEach(item => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); else if (view === 'clinics') renderClinics(); else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', '')); else renderOverview(); }
 document.addEventListener('click', event => {
   const viewLink = event.target.closest('[data-view]');
   if (viewLink) { event.preventDefault(); location.hash = viewLink.dataset.view; navigate(viewLink.dataset.view); }
   const action = event.target.closest('[data-action]')?.dataset.action;
   if (action === 'add-clinic') openClinicModal();
   if (action === 'close-modal') closeModal();
+  if (action === 'close-details') closeDetails();
   if (action === 'toast') showToast('Staff invitations will be available soon.');
   if (action === 'export') exportVisibleTable();
+  if (action === 'toggle-clinic') { const clinic = clinics.find(item => item.id === event.target.closest('[data-clinic]')?.dataset.clinic); if (clinic) { clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended'; saveClinics(); closeDetails(); showToast(`Clinic membership ${clinic.status === 'Suspended' ? 'suspended' : 'restored'}.`); renderClinics(); } }
+  if (action === 'toggle-doctor') { const name = event.target.closest('[data-doctor]')?.dataset.doctor; const doctor = clinicDoctors.find(item => item.name === name); if (doctor) { doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended'; saveDoctors(); showToast(`Doctor account ${doctor.status === 'Suspended' ? 'suspended' : 'restored'}.`); renderClinics(); } }
   if (action === 'account-info') showToast('Administrator account · Full system access');
   if (action === 'logout') { sessionStorage.clear(); window.location.href = '../login.html'; }
   if (!event.target.closest('.admin-account')) closeAccountMenu();
@@ -132,7 +164,8 @@ document.getElementById('themeToggle').addEventListener('click', event => {
   localStorage.setItem('dhyey-admin-theme', dark ? 'dark' : 'light');
   event.currentTarget.innerHTML = `<i class="fa-solid fa-${dark ? 'sun' : 'moon'}"></i>`;
 });
-document.getElementById('menuToggle').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('is-open'));
+document.getElementById('menuToggle').addEventListener('click', () => document.querySelector('.sidebar').classList.toggle('is-collapsed'));
+document.addEventListener('click', event => { const clinicRow = event.target.closest('[data-clinic-id]'); if (clinicRow && !event.target.closest('button')) openClinicDetails(clinicRow.dataset.clinicId); });
 document.addEventListener('keydown', event => {
   if (event.key === 'F1') { event.preventDefault(); location.hash = 'overview'; navigate('overview'); }
   if (event.key === 'F2') { event.preventDefault(); location.hash = 'clinics'; navigate('clinics'); }

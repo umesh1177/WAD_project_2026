@@ -34,14 +34,10 @@
             <a href="#analysis-doctor" data-view="analysis-doctor" class="admin-subnav-link">Doctor wise</a>
             <a href="#analysis-patient" data-view="analysis-patient" class="admin-subnav-link">Patient wise</a>
           </div>
-          <a class="nav-item" href="#staff" data-view="staff">
-            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-user-doctor"></i></span>Staff</span>
-          </a>
         </nav>
       </div>
       <div class="sidebar-footer-guide">
-        <h6><i class="fa-regular fa-lightbulb"></i> Admin workspace</h6>
-        Manage clinics, monitor activity, and compare performance from one place.
+        <button class="sidebar-logout" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
       </div>
     </aside>
 
@@ -75,6 +71,7 @@
     </main>
   </div>
   <div class="modal-overlay" id="clinicModal" aria-hidden="true"></div>
+  <div class="modal-overlay" id="detailsModal" aria-hidden="true"></div>
   <div class="toast-container" id="toastContainer"></div>
   <script src="../../js/admin.js"></script>
 </body>
