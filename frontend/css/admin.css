@@ -122,3 +122,311 @@
 @media (max-width: 1000px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } .admin-grid { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } .clinic-form-grid { grid-template-columns: 1fr; } .clinic-form-grid .full-width { grid-column: auto; } .detail-grid { grid-template-columns: 1fr; } }
+
+/* =========================================
+   Services Catalog & Modular Feature Styling
+   ========================================= */
+.services-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+.service-catalog-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  position: relative;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.service-catalog-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-teal-border);
+  box-shadow: var(--shadow-md);
+}
+.service-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.service-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
+}
+.service-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+}
+.service-badge-pill.primary {
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
+}
+.service-card-body h3 {
+  font-size: 15px;
+  color: var(--text-main);
+  margin: 6px 0 4px;
+}
+.service-card-body p {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+.service-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.service-feature-list li {
+  font-size: 11.5px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.service-feature-list li i {
+  color: #059669;
+  font-size: 10px;
+}
+.service-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.service-card-footer strong {
+  color: var(--text-main);
+}
+
+/* Services selection inside Add Clinic Modal */
+.services-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+.service-select-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all .15s ease;
+  user-select: none;
+}
+.service-select-item:hover {
+  border-color: var(--primary-teal-border);
+  background: var(--primary-teal-light);
+}
+.service-select-item.is-selected {
+  border-color: var(--primary-teal);
+  background: var(--primary-teal-light);
+}
+.service-select-item.is-disabled {
+  opacity: 0.55;
+  background: var(--surface-alt, #f8fafc);
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.service-select-item.is-disabled:hover {
+  border-color: var(--border-color);
+  background: var(--surface-alt, #f8fafc);
+}
+.service-select-item input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-teal);
+  cursor: pointer;
+}
+.service-select-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.service-select-info strong {
+  font-size: 12.5px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.service-select-info small {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Receptionist Staff Section */
+.receptionist-form-container {
+  background: #f0fdfa;
+  border: 1.5px solid #99f6e4;
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-top: 12px;
+  transition: all .2s ease;
+}
+[data-theme="dark"] .receptionist-form-container {
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.35);
+}
+.receptionist-form-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 700;
+}
+.receptionist-notice-box {
+  background: #ffffff;
+  border: 1px solid #ccfbf1;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #115e59;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+[data-theme="dark"] .receptionist-notice-box {
+  background: #0f172a;
+  border-color: #134e4a;
+  color: #5eead4;
+}
+
+/* Service Pills & Tags */
+.service-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.service-pill-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+.service-pill-mini.active {
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
+  border-color: var(--primary-teal-border);
+}
+.service-pill-mini.receptionist-active {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.service-pill-mini.prescription-active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.role-badge-doctor {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.role-badge-receptionist {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.role-badge-admin {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+/* ---- Form Select (Edit modal) ---- */
+.form-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+.form-select:focus {
+  border-color: var(--primary-teal);
+  box-shadow: 0 0 0 2px var(--primary-teal-light);
+}
+
+/* ---- Toast Error Variant ---- */
+.toast.error {
+  border-left: 3px solid #ef4444;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+.toast.error i { color: #ef4444; }
+
+/* ---- Modal close button ---- */
+.modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--border-color); color: var(--text-main); }
+
+/* ---- Confirm dialog ---- */
+#adminConfirmDialog * { box-sizing: border-box; }

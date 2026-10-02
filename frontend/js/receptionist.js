@@ -1,7 +1,8 @@
 /**
  * ==========================================================================
- * DHYEY CLINIC - RECEPTIONIST PORTAL & PATIENT QUEUE DISPATCHER
- * Fully integrated with Clinic Database, Family IDs, and Doctor Workspace
+ * DHYEY CLINIC - RECEPTIONIST PORTAL
+ * Reuses exact same family.js + patient.js forms as Doctor Dashboard.
+ * Only difference: submit callback pushes patient into OPD consultation queue.
  * ==========================================================================
  */
 
@@ -13,1113 +14,751 @@ import {
   todayISO,
   nowTime,
   fmtDate,
-  pad,
-  generateFamilyId
+  pad
 } from './api.js';
 
-// Global state
+import { renderFamilyRegistration } from './family.js';
+import { renderPatientRegistration } from './patient.js';
+
+// ---- Global State ----
 let session = null;
 let clinicId = 'demo';
+let clinicData = null;    // full admin-clinic object
 let db = null;
-let currentView = 'dashboard'; // 'dashboard' | 'reg' | 'member' | 'queue' | 'search'
-let selectedFamilyForMember = null;
-let queueSearchQuery = '';
+let currentView = 'dashboard';
+let currentSelection = { familyId: null, patientId: null };
 let globalSearchQuery = '';
 
-// Storage Keys
-const QUEUE_STORAGE_KEY = 'clinic_consultation_queue';
+const QUEUE_KEY = 'clinic_consultation_queue';
 
-// Initialization
+// ---- Boot ----
 document.addEventListener('DOMContentLoaded', () => {
-  initReceptionistApp();
+  boot();
 });
 
-export function initReceptionistApp() {
+function boot() {
   session = getAuthSession();
-  clinicId = session?.profile?.activeClinicId || 'demo';
-
-  // Check clinic receptionist service authorization
-  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-  const matchedClinic = adminClinics.find(c => c.id === clinicId || c.name === session?.profile?.clinicName);
-  const services = matchedClinic?.services || session?.profile?.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
-
-  if (!services.includes('receptionist')) {
-    alert('This clinic has not enabled the Receptionist Service. Please contact your clinic administrator.');
-    window.location.href = '../login.html';
+  if (!session || !session.profile) {
+    window.location.replace('../login.html');
     return;
   }
 
-  loadClinicData();
-  setupUIHeader();
-  setupKeyboardShortcuts();
-  setupLiveClock();
+  clinicId = session.profile.activeClinicId || 'demo';
 
-  // Initial render
-  switchView('dashboard');
+  // Resolve full clinic object from admin store (merging with session profile data)
+  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+  const adminClinic = adminClinics.find(c => c.id === clinicId || c.name === session.profile.clinicName);
+  clinicData = {
+    id: clinicId,
+    name: session.profile.clinicName || adminClinic?.name || 'Dhyey Clinic',
+    address: adminClinic?.address || adminClinic?.location || session.profile.clinicAddress || '',
+    phone: adminClinic?.phone || adminClinic?.contact || session.profile.clinicPhone || '',
+    city: adminClinic?.city || adminClinic?.district || session.profile.clinicCity || '',
+    services: adminClinic?.services || session.profile.services || []
+  };
 
-  // Multi-tab synchronization listener
-  window.addEventListener('storage', (e) => {
-    if (e.key === QUEUE_STORAGE_KEY || e.key?.startsWith('clinic_db_')) {
-      loadClinicData();
-      updateBadgeCounts();
-      if (currentView === 'queue' || currentView === 'dashboard') {
-        renderCurrentView();
-      }
-    }
-  });
-}
+  // Guard: receptionist service must be enabled
+  const services = clinicData.services || [];
+  if (!services.includes('receptionist')) {
+    alert('This clinic has not enabled the Receptionist Service. Contact your administrator.');
+    window.location.replace('../login.html');
+    return;
+  }
 
-function loadClinicData() {
   db = getLocalDB(clinicId);
   if (!db.patientQueue) {
-    db.patientQueue = getQueueFromLocalStorage() || [];
+    try { db.patientQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { db.patientQueue = []; }
     saveLocalDB(db, clinicId);
   }
+
+  setupHeader();
+  setupInteractions();
+  applyTheme();
+  startClock();
+  navigateTo('dashboard');
+
+  // Cross-tab sync
+  window.addEventListener('storage', e => {
+    if (e.key === QUEUE_KEY || (e.key || '').startsWith('clinic_db_')) {
+      db = getLocalDB(clinicId);
+      updateQueueBadge();
+      if (currentView === 'dashboard' || currentView === 'queue') renderView();
+    }
+  });
 }
 
-function getQueueFromLocalStorage() {
-  try {
-    const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return [];
+// ---- Clinic Header Setup ----
+function setupHeader() {
+  const cName = clinicData.name || 'Dhyey Clinic';
+  const cAddress = clinicData.address || clinicData.location || '';
+  const cPhone = clinicData.phone || clinicData.contact || '';
+  const cCity = clinicData.city || clinicData.district || '';
+
+  // Sidebar brand
+  setEl('rec-clinic-name', cName);
+
+  // Topbar
+  setEl('rec-topbar-title', cName + ' — Reception Desk');
+  setEl('rec-topbar-date', fmtDate(todayISO()));
+
+  // Statusbar
+  setEl('rec-statusbar-clinic', `<b>${cName}</b>`);
+
+  // Page title
+  document.title = `Reception Desk — ${cName}`;
+
+  // Clinic details in sidebar footer
+  const detailsEl = document.getElementById('rec-clinic-details');
+  if (detailsEl) {
+    detailsEl.innerHTML = [
+      `<b><i class="fa-solid fa-hospital"></i> ${cName}</b>`,
+      cAddress ? `<i class="fa-solid fa-location-dot"></i> ${cAddress}${cCity ? ', ' + cCity : ''}` : '',
+      cPhone ? `<i class="fa-solid fa-phone"></i> ${cPhone}` : '',
+    ].filter(Boolean).join('<br>');
+  }
+
+  // Profile dropdown
+  const uName = session.profile.name || 'Front Desk';
+  setEl('rec-user-name', uName);
+  setEl('rec-dropdown-name', uName);
+  setEl('rec-dropdown-clinic', cName);
+  const addrEl = document.getElementById('rec-dropdown-address');
+  if (addrEl) addrEl.textContent = [cAddress, cCity].filter(Boolean).join(', ');
+  const phoneEl = document.getElementById('rec-dropdown-phone');
+  if (phoneEl) phoneEl.textContent = cPhone ? `📞 ${cPhone}` : '';
+}
+
+function setEl(id, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (html.includes('<')) el.innerHTML = html; else el.textContent = html;
+}
+
+// ---- Theme ----
+function applyTheme() {
+  const theme = localStorage.getItem('clinic_theme') || 'light';
+  if (theme === 'dark') document.body.classList.add('dark');
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const btn = document.getElementById('rec-theme-toggle');
+  if (btn) btn.innerHTML = document.body.classList.contains('dark') ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+}
+
+// ---- Clock ----
+function startClock() {
+  const tick = () => setEl('rec-statusbar-clock', nowTime());
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ---- Queue Badge ----
+function updateQueueBadge() {
+  const waiting = (db.patientQueue || []).filter(q => !q.status || q.status === 'Waiting').length;
+  const kbd = document.getElementById('rec-queue-kbd');
+  if (!kbd) return;
+  if (waiting > 0) {
+    kbd.innerHTML = `<span style="background:#d32f2f;color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:800;">${waiting}</span>`;
+  } else {
+    kbd.innerHTML = `<i class="fa-solid fa-clock"></i>`;
   }
 }
 
-function saveQueueData(queueList) {
-  db.patientQueue = queueList;
-  saveLocalDB(db, clinicId);
-  localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queueList));
-  // Broadcast update
-  window.dispatchEvent(new CustomEvent('clinic-queue-updated', { detail: { queue: queueList } }));
-  updateBadgeCounts();
-}
+// ---- Interactions ----
+function setupInteractions() {
+  // Sidebar toggle
+  document.getElementById('rec-toggle-sidebar')?.addEventListener('click', () =>
+    document.getElementById('rec-sidebar')?.classList.toggle('collapsed'));
 
-function getNextTokenNumber() {
-  const today = todayISO();
-  const queue = db.patientQueue || [];
-  const todayQueue = queue.filter(q => (q.date || q.arrivedDate || todayISO()) === today);
-  const nextNum = todayQueue.length + 1;
-  return `T-${pad(nextNum, 2)}`;
-}
+  // Theme toggle
+  document.getElementById('rec-theme-toggle')?.addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    const t = document.body.classList.contains('dark') ? 'dark' : 'light';
+    localStorage.setItem('clinic_theme', t);
+    updateThemeIcon();
+  });
 
-function setupUIHeader() {
-  const clinicNameEl = document.getElementById('sb-clinic-name');
-  const clinicFooterEl = document.getElementById('sb-clinic-footer');
-  const headerDateEl = document.getElementById('headerDate');
-
-  const name = session?.profile?.clinicName || session?.profile?.clinics?.[0]?.name || 'Dhyey Clinic & Nursing Home';
-  if (clinicNameEl) clinicNameEl.textContent = name;
-  if (clinicFooterEl) clinicFooterEl.textContent = `${name} · Reception OPD Desk`;
-  if (headerDateEl) headerDateEl.textContent = fmtDate(todayISO());
-
-  updateBadgeCounts();
-}
-
-function updateBadgeCounts() {
-  const queue = db.patientQueue || [];
-  const waitingCount = queue.filter(q => q.status === 'Waiting' || !q.status).length;
-  const badge = document.getElementById('queue-count-badge');
-  if (badge) {
-    badge.textContent = waitingCount > 0 ? `${waitingCount} Waiting` : 'F3';
-    badge.style.background = waitingCount > 0 ? '#dc2626' : 'rgba(255,255,255,0.15)';
-    badge.style.color = '#ffffff';
+  // Profile dropdown
+  const profileBtn = document.getElementById('rec-profile-btn');
+  const dropdown = document.getElementById('rec-profile-dropdown');
+  if (profileBtn && dropdown) {
+    profileBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', () => { dropdown.style.display = 'none'; });
   }
-}
 
-function setupLiveClock() {
-  const clockEl = document.getElementById('receptionClock');
-  if (!clockEl) return;
-  const update = () => {
-    const d = new Date();
-    clockEl.textContent = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-  update();
-  setInterval(update, 1000);
-}
+  // Logout
+  document.getElementById('rec-logout-btn')?.addEventListener('click', () => {
+    localStorage.removeItem('clinic-auth-session');
+    sessionStorage.clear();
+    showToast('Signed out');
+    setTimeout(() => window.location.replace('../login.html?logout=true'), 200);
+  });
 
-function setupKeyboardShortcuts() {
-  window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-      if (e.key === 'Escape') {
-        e.target.blur();
-      }
-      return;
+  // Nav items
+  document.querySelectorAll('#rec-nav .cms-nav-item').forEach(item => {
+    item.addEventListener('click', () => navigateTo(item.dataset.view));
+  });
+
+  // Global search
+  document.getElementById('rec-global-search-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const q = document.getElementById('rec-top-search')?.value?.trim() || '';
+    if (!q) return;
+    globalSearchQuery = q;
+    navigateTo('search');
+  });
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', e => {
+    const el = document.activeElement;
+    const isInput = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+
+    if (e.key === 'Escape') {
+      const modal = document.querySelector('.cms-overlay') || document.querySelector('.cms-modal-backdrop');
+      if (modal) { e.preventDefault(); modal.remove(); return; }
+      if (isInput) { el.blur(); return; }
     }
 
-    if (e.key === 'F1') { e.preventDefault(); switchView('reg'); }
-    else if (e.key === 'F2') { e.preventDefault(); switchView('member'); }
-    else if (e.key === 'F3') { e.preventDefault(); switchView('queue'); }
-    else if (e.key === 'F4') { e.preventDefault(); switchView('dashboard'); }
-    else if (e.key === 'F5') { e.preventDefault(); switchView('search'); }
-    else if (e.key === '/') {
+    if (isInput && !e.key.startsWith('F')) return;
+
+    if (e.key === 'F1') { e.preventDefault(); navigateTo('family'); }
+    if (e.key === 'F2') { e.preventDefault(); navigateTo('member'); }
+    if (e.key === 'F3') { e.preventDefault(); navigateTo('queue'); }
+    if (e.key === 'F4') { e.preventDefault(); navigateTo('dashboard'); }
+    if (e.key === 'F5') { e.preventDefault(); navigateTo('search'); }
+    if (e.key === '/' && !isInput) {
       e.preventDefault();
-      const s = document.getElementById('globalSearchInput');
-      if (s) s.focus();
+      document.getElementById('rec-top-search')?.focus();
     }
   });
 }
 
-// Global View Switcher
-window.switchView = function(viewName, params = null) {
-  currentView = viewName;
-  loadClinicData();
+// ---- Navigation ----
+function navigateTo(view, selection = null) {
+  currentView = view;
+  if (selection) currentSelection = selection;
 
-  // Update sidebar active links
-  document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => item.classList.remove('active'));
-  const activeNav = document.getElementById(
-    viewName === 'dashboard' ? 'nav-dashboard' :
-    viewName === 'reg' ? 'nav-reg' :
-    viewName === 'member' ? 'nav-member' :
-    viewName === 'queue' ? 'nav-queue-mgmt' :
-    'nav-search'
-  );
-  if (activeNav) activeNav.classList.add('active');
+  // Update nav active state
+  document.querySelectorAll('#rec-nav .cms-nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.view === view);
+  });
 
-  // Update top title
-  const titleEl = document.getElementById('view-title');
-  if (titleEl) {
-    if (viewName === 'dashboard') titleEl.innerHTML = '<i class="fa-solid fa-gauge-high"></i> Reception OPD Overview';
-    else if (viewName === 'reg') titleEl.innerHTML = '<i class="fa-solid fa-id-card"></i> Register New Family Head';
-    else if (viewName === 'member') titleEl.innerHTML = '<i class="fa-solid fa-user-plus"></i> Add Family Member';
-    else if (viewName === 'queue') titleEl.innerHTML = '<i class="fa-solid fa-list-check"></i> Patient Consultation Queue';
-    else if (viewName === 'search') titleEl.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Find Patient & Push to Queue';
-  }
+  db = getLocalDB(clinicId);
+  updateQueueBadge();
+  renderView();
+}
 
-  renderCurrentView(params);
-};
-
-function renderCurrentView(params = null) {
-  const container = document.getElementById('mainContent');
+// ---- View Router ----
+function renderView() {
+  const container = document.getElementById('rec-view-container');
   if (!container) return;
+  container.innerHTML = '';
 
-  if (currentView === 'dashboard') renderDashboardView(container);
-  else if (currentView === 'reg') renderFamilyRegView(container);
-  else if (currentView === 'member') renderAddMemberView(container, params);
-  else if (currentView === 'queue') renderPatientQueueView(container);
-  else if (currentView === 'search') renderSearchPatientView(container);
-}
-
-// =========================================================
-// 1. DASHBOARD OVERVIEW VIEW
-// =========================================================
-function renderDashboardView(container) {
-  const families = Object.values(db.families || {});
-  let totalPatientsCount = 0;
-  families.forEach(f => {
-    totalPatientsCount += Object.keys(f.patients || {}).length;
-  });
-
-  const queue = db.patientQueue || [];
-  const waitingPatients = queue.filter(q => q.status === 'Waiting' || !q.status);
-  const inConsultationPatients = queue.filter(q => q.status === 'In Consultation');
-  const completedPatients = queue.filter(q => q.status === 'Completed' || q.status === 'Done');
-
-  container.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 20px;">
-      
-      <!-- Top KPI Row -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-        
-        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(20,107,92,0.1); color: var(--primary-teal, #146B5C); display: flex; align-items: center; justify-content: center; font-size: 20px;">
-            <i class="fa-solid fa-people-roof"></i>
-          </div>
-          <div>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b); font-weight: 600;">Registered Families</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--text-main, #0f172a);">${families.length}</div>
-          </div>
-        </div>
-
-        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(2,132,199,0.1); color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-            <i class="fa-solid fa-users"></i>
-          </div>
-          <div>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b); font-weight: 600;">Total Patients</div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--text-main, #0f172a);">${totalPatientsCount}</div>
-          </div>
-        </div>
-
-        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(220,38,38,0.1); color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-            <i class="fa-solid fa-clock"></i>
-          </div>
-          <div>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b); font-weight: 600;">Waiting in Queue</div>
-            <div style="font-size: 24px; font-weight: 800; color: #dc2626;">${waitingPatients.length}</div>
-          </div>
-        </div>
-
-        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(16,185,129,0.1); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-            <i class="fa-solid fa-circle-check"></i>
-          </div>
-          <div>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b); font-weight: 600;">Today Completed</div>
-            <div style="font-size: 24px; font-weight: 800; color: #059669;">${completedPatients.length}</div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Quick Action Shortcuts -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
-        <button type="button" onclick="switchView('reg')" style="background: linear-gradient(135deg, #146B5C, #0d7e74); color: white; border: none; border-radius: var(--radius-md, 8px); padding: 16px; text-align: left; cursor: pointer; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 15px; font-weight: 800;"><i class="fa-solid fa-id-card"></i> Register Family Head</div>
-            <div style="font-size: 11.5px; opacity: 0.85; margin-top: 2px;">Create new family file &amp; auto-generate ID</div>
-          </div>
-          <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">F1</span>
-        </button>
-
-        <button type="button" onclick="switchView('member')" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: none; border-radius: var(--radius-md, 8px); padding: 16px; text-align: left; cursor: pointer; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 15px; font-weight: 800;"><i class="fa-solid fa-user-plus"></i> Add Family Member</div>
-            <div style="font-size: 11.5px; opacity: 0.85; margin-top: 2px;">Add member to existing family</div>
-          </div>
-          <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">F2</span>
-        </button>
-
-        <button type="button" onclick="switchView('search')" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; border-radius: var(--radius-md, 8px); padding: 16px; text-align: left; cursor: pointer; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 15px; font-weight: 800;"><i class="fa-solid fa-magnifying-glass"></i> Find Patient &amp; Queue</div>
-            <div style="font-size: 11.5px; opacity: 0.85; margin-top: 2px;">Search patient and push to doctor queue</div>
-          </div>
-          <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">F5</span>
-        </button>
-      </div>
-
-      <!-- Live Queue Panel -->
-      <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 20px; box-shadow: var(--shadow-sm);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-          <div>
-            <h3 style="font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main, #0f172a);">
-              <i class="fa-solid fa-list-check" style="color: var(--primary-teal, #146B5C);"></i> Live OPD Consultation Queue
-            </h3>
-            <span style="font-size: 12px; color: var(--text-muted, #64748b);">Pushed patients waiting for doctor consultation</span>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" onclick="switchView('queue')" class="btn-start-consult" style="padding: 6px 14px;">
-              Manage Full Queue (F3)
-            </button>
-          </div>
-        </div>
-
-        ${renderQueueListHTML(queue)}
-      </div>
-
-    </div>
-  `;
-}
-
-// =========================================================
-// 2. REGISTER FAMILY HEAD VIEW (F1)
-// =========================================================
-function renderFamilyRegView(container) {
-  const year = new Date().getFullYear();
-  const nextFamId = generateFamilyId(clinicId, year, Object.keys(db.families || {}).length + 1);
-
-  container.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 24px; box-shadow: var(--shadow-sm);">
-      
-      <div style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 14px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main, #0f172a); margin: 0;">
-            <i class="fa-solid fa-id-card" style="color: var(--primary-teal, #146B5C);"></i> Register New Family Head
-          </h2>
-          <p style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 3px;">
-            Creates a unified family record. The Head is automatically enrolled as the first patient member.
-          </p>
-        </div>
-        <div style="background: rgba(20,107,92,0.1); border: 1px dashed var(--primary-teal, #146B5C); border-radius: 6px; padding: 6px 14px; text-align: right;">
-          <span style="font-size: 11px; font-weight: 700; color: var(--primary-teal, #146B5C); display: block;">AUTO-ASSIGNED FAMILY ID</span>
-          <span class="font-mono" style="font-size: 14px; font-weight: 900; color: #111;">${nextFamId}</span>
-        </div>
-      </div>
-
-      <form id="form-receptionist-family-reg" style="display: flex; flex-direction: column; gap: 16px;">
-        
-        <!-- Row 1: Surname, Head Name, Father/Husband -->
-        <div style="display: grid; grid-template-columns: 1fr 1.5fr 1.2fr; gap: 14px;">
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Surname *</label>
-            <input type="text" id="reg-surname" class="top-search-input" required placeholder="e.g. PATEL" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 700;" autofocus />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Head First Name *</label>
-            <input type="text" id="reg-head-name" class="top-search-input" required placeholder="e.g. RAMESHBHAI" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 700;" />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Father / Husband Name</label>
-            <input type="text" id="reg-father-name" class="top-search-input" placeholder="e.g. GOVINDBHAI" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-          </div>
-        </div>
-
-        <!-- Row 2: Phone, Area, Address -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 14px;">
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Primary Mobile Phone *</label>
-            <input type="tel" id="reg-phone" class="top-search-input" required placeholder="10-digit Mobile" maxlength="10" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 700;" />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Area / Locality *</label>
-            <input type="text" id="reg-area" class="top-search-input" required placeholder="e.g. VASTRAPUR" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Full Address</label>
-            <input type="text" id="reg-address" class="top-search-input" placeholder="House No, Society / Apt" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-          </div>
-        </div>
-
-        <!-- Row 3: Age, Gender, Blood Group for Head Patient Profile -->
-        <div style="background: rgba(20,107,92,0.04); border: 1px solid rgba(20,107,92,0.15); border-radius: 8px; padding: 14px;">
-          <span style="font-size: 12px; font-weight: 800; color: var(--primary-teal, #146B5C); display: block; margin-bottom: 8px;">
-            <i class="fa-solid fa-user"></i> Head Patient Profile Details
-          </span>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
-            <div>
-              <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-muted, #64748b); margin-bottom: 3px;">Age</label>
-              <input type="number" id="reg-age" class="top-search-input" min="1" max="120" placeholder="e.g. 45" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-            </div>
-            <div>
-              <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-muted, #64748b); margin-bottom: 3px;">Gender</label>
-              <select id="reg-gender" class="top-search-input" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;">
-                <option value="Male" selected>Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-muted, #64748b); margin-bottom: 3px;">Blood Group</label>
-              <select id="reg-blood" class="top-search-input" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;">
-                <option value="">Unknown</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Optional: Immediately Push Head to Consultation Queue -->
-        <div style="background: rgba(2,132,199,0.05); border: 1px dashed rgba(2,132,199,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-          <input type="checkbox" id="reg-push-queue-check" style="width: 18px; height: 18px; cursor: pointer;" checked />
-          <label for="reg-push-queue-check" style="font-size: 12.5px; font-weight: 700; color: #0369a1; cursor: pointer; margin: 0;">
-            Immediately push this Family Head into Patient Consultation Queue (Doctor OPD)
-          </label>
-        </div>
-
-        <!-- Submit & Actions -->
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 14px;">
-          <button type="button" onclick="switchView('dashboard')" style="background: none; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;">
-            Cancel
-          </button>
-          <button type="submit" class="btn-start-consult" style="padding: 10px 24px; font-size: 13.5px;">
-            <i class="fa-solid fa-floppy-disk"></i> Register Family &amp; Save
-          </button>
-        </div>
-
-      </form>
-
-    </div>
-  `;
-
-  const form = container.querySelector('#form-receptionist-family-reg');
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const surname = container.querySelector('#reg-surname').value.trim().toUpperCase();
-    const headName = container.querySelector('#reg-head-name').value.trim().toUpperCase();
-    const fatherName = container.querySelector('#reg-father-name').value.trim().toUpperCase();
-    const phone = container.querySelector('#reg-phone').value.trim();
-    const area = container.querySelector('#reg-area').value.trim().toUpperCase();
-    const address = container.querySelector('#reg-address').value.trim();
-    const age = container.querySelector('#reg-age').value.trim();
-    const gender = container.querySelector('#reg-gender').value;
-    const bloodGroup = container.querySelector('#reg-blood').value;
-    const pushQueue = container.querySelector('#reg-push-queue-check').checked;
-
-    const fullHeadName = `${surname} ${headName} ${fatherName}`.trim();
-    const famId = nextFamId;
-    const patId = `PAT-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-
-    // Create Head patient record
-    const headPatient = {
-      id: patId,
-      patId: patId,
-      name: fullHeadName,
-      age: age || '35',
-      gender: gender,
-      relation: 'Self',
-      phone: phone,
-      bloodGroup: bloodGroup,
-      allergies: '',
-      visits: []
-    };
-
-    // Create Family Record
-    const newFamily = {
-      id: famId,
-      famId: famId,
-      surname: surname,
-      headName: fullHeadName,
-      fatherName: fatherName,
-      phone: phone,
-      area: area,
-      address: address,
-      createdAt: todayISO(),
-      patients: {
-        [patId]: headPatient
+  if (currentView === 'dashboard') {
+    renderDashboard(container);
+  } else if (currentView === 'family') {
+    // EXACT same form as doctor dashboard — only callback differs
+    renderFamilyRegistration(
+      container,
+      (famId, patId) => {
+        // "Open case" → for receptionist = push to queue
+        openQueueModal(famId, patId);
+      },
+      (famId, patId) => {
+        // "Added family, go add member" → navigate to member view
+        navigateTo('member', { familyId: famId, patientId: patId, isRedirectFromHeadReg: true });
       }
-    };
-
-    if (!db.families) db.families = {};
-    db.families[famId] = newFamily;
-    saveLocalDB(db, clinicId);
-
-    showToast(`✅ Family ${famId} registered successfully!`);
-
-    // Push to queue if requested
-    if (pushQueue) {
-      pushPatientToQueue({
-        patientId: patId,
-        patientName: fullHeadName,
-        familyId: famId,
-        familyHead: fullHeadName,
-        age: age || '35',
-        gender: gender,
-        phone: phone,
-        area: area,
-        complaint: 'New Family OPD Consultation'
-      });
-      switchView('queue');
-    } else {
-      switchView('dashboard');
-    }
-  });
-}
-
-// =========================================================
-// 3. ADD MEMBER TO FAMILY HEAD VIEW (F2)
-// =========================================================
-function renderAddMemberView(container, presetFamilyId = null) {
-  const families = Object.values(db.families || {});
-
-  container.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 24px; box-shadow: var(--shadow-sm);">
-      
-      <div style="border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 14px; margin-bottom: 18px;">
-        <h2 style="font-size: 18px; font-weight: 800; color: var(--text-main, #0f172a); margin: 0;">
-          <i class="fa-solid fa-user-plus" style="color: #0284c7;"></i> Add Member to Family
-        </h2>
-        <p style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 3px;">
-          Attach a new family member (Spouse, Child, Parent) under an existing Family Head record.
-        </p>
-      </div>
-
-      <!-- Step 1: Select Family Head -->
-      <div style="background: rgba(2,132,199,0.04); border: 1px solid rgba(2,132,199,0.2); border-radius: 8px; padding: 14px; margin-bottom: 18px;">
-        <label style="display: block; font-size: 12.5px; font-weight: 800; color: #0369a1; margin-bottom: 6px;">
-          Select Existing Family Head *
-        </label>
-        <select id="member-family-select" class="top-search-input" style="width: 100%; padding: 9px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 700; font-size: 13.5px;">
-          <option value="">-- Choose Family Head / Search --</option>
-          ${families
-            .map(
-              (f) => `
-            <option value="${f.famId || f.id}" ${presetFamilyId === (f.famId || f.id) ? 'selected' : ''}>
-              ${f.famId || f.id} &bull; ${f.headName} &bull; Ph: ${f.phone} (${f.area || 'General'})
-            </option>
-          `
-            )
-            .join('')}
-        </select>
-      </div>
-
-      <!-- Step 2: Member Details Form -->
-      <form id="form-receptionist-add-member" style="display: flex; flex-direction: column; gap: 16px;">
-        
-        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px;">
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Member Full Name *</label>
-            <input type="text" id="member-name" class="top-search-input" required placeholder="(SURNAME NAME FATHER)" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 700;" />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Relation to Head *</label>
-            <select id="member-relation" class="top-search-input" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; font-weight: 600;">
-              <option value="Spouse">Spouse (Wife / Husband)</option>
-              <option value="Son">Son</option>
-              <option value="Daughter">Daughter</option>
-              <option value="Father">Father</option>
-              <option value="Mother">Mother</option>
-              <option value="Brother">Brother</option>
-              <option value="Sister">Sister</option>
-              <option value="Other">Other / Relative</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px;">
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Age *</label>
-            <input type="number" id="member-age" class="top-search-input" required min="0" max="120" placeholder="e.g. 28" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Gender *</label>
-            <select id="member-gender" class="top-search-input" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;">
-              <option value="Female">Female</option>
-              <option value="Male">Male</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Blood Group</label>
-            <select id="member-blood" class="top-search-input" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;">
-              <option value="">Unknown</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B+">B+</option>
-              <option value="B-">B-</option>
-              <option value="O+">O+</option>
-              <option value="O-">O-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-            </select>
-          </div>
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Member Phone (Optional)</label>
-            <input type="tel" id="member-phone" class="top-search-input" placeholder="Individual Mobile" maxlength="10" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-          </div>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 4px;">Known Allergies / Medical Notes</label>
-          <input type="text" id="member-allergies" class="top-search-input" placeholder="e.g. Penicillin allergy, Diabetes, Hypertension" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-        </div>
-
-        <div style="background: rgba(2,132,199,0.05); border: 1px dashed rgba(2,132,199,0.3); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 10px;">
-          <input type="checkbox" id="member-push-queue-check" style="width: 18px; height: 18px; cursor: pointer;" checked />
-          <label for="member-push-queue-check" style="font-size: 12.5px; font-weight: 700; color: #0369a1; cursor: pointer; margin: 0;">
-            Immediately push this member into Patient Consultation Queue (Doctor OPD)
-          </label>
-        </div>
-
-        <!-- Submit & Actions -->
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 14px;">
-          <button type="button" onclick="switchView('dashboard')" style="background: none; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;">
-            Cancel
-          </button>
-          <button type="submit" class="btn-start-consult" style="background: #0284c7; padding: 10px 24px; font-size: 13.5px;">
-            <i class="fa-solid fa-user-plus"></i> Save Member &amp; Add
-          </button>
-        </div>
-
-      </form>
-
-    </div>
-  `;
-
-  const famSelect = container.querySelector('#member-family-select');
-  const form = container.querySelector('#form-receptionist-add-member');
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const famId = famSelect.value;
-    if (!famId) {
-      showToast('Please select a Family Head first', 'error');
-      famSelect.focus();
-      return;
-    }
-
-    const family = db.families[famId] || Object.values(db.families || {}).find(f => f.famId === famId || f.id === famId);
-    if (!family) {
-      showToast('Selected family not found in database', 'error');
-      return;
-    }
-
-    const name = container.querySelector('#member-name').value.trim().toUpperCase();
-    const relation = container.querySelector('#member-relation').value;
-    const age = container.querySelector('#member-age').value.trim();
-    const gender = container.querySelector('#member-gender').value;
-    const blood = container.querySelector('#member-blood').value;
-    const phone = container.querySelector('#member-phone').value.trim() || family.phone;
-    const allergies = container.querySelector('#member-allergies').value.trim();
-    const pushQueue = container.querySelector('#member-push-queue-check').checked;
-
-    const patId = `PAT-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
-
-    const newMember = {
-      id: patId,
-      patId: patId,
-      name: name,
-      age: age,
-      gender: gender,
-      relation: relation,
-      phone: phone,
-      bloodGroup: blood,
-      allergies: allergies,
-      visits: []
-    };
-
-    if (!family.patients) family.patients = {};
-    family.patients[patId] = newMember;
-    saveLocalDB(db, clinicId);
-
-    showToast(`✅ Added ${name} to Family ${family.headName}!`);
-
-    if (pushQueue) {
-      pushPatientToQueue({
-        patientId: patId,
-        patientName: name,
-        familyId: famId,
-        familyHead: family.headName,
-        age: age,
-        gender: gender,
-        phone: phone,
-        area: family.area,
-        complaint: 'Routine OPD Consultation'
-      });
-      switchView('queue');
-    } else {
-      switchView('dashboard');
-    }
-  });
-}
-
-// =========================================================
-// 4. FIND PATIENT IN SYSTEM & PUSH TO QUEUE (F5)
-// =========================================================
-function renderSearchPatientView(container) {
-  const allPatients = [];
-  Object.values(db.families || {}).forEach(f => {
-    Object.values(f.patients || {}).forEach(p => {
-      allPatients.push({
-        ...p,
-        familyId: f.famId || f.id,
-        familyHead: f.headName,
-        familyPhone: f.phone,
-        area: f.area,
-        address: f.address,
-        visitCount: (p.visits || []).length
-      });
-    });
-  });
-
-  container.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 16px;">
-      
-      <!-- Top Search Filter Bar -->
-      <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 280px; position: relative;">
-          <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted, #64748b); font-size: 14px;"></i>
-          <input type="text" id="reception-patient-search" class="top-search-input" style="width: 100%; padding: 10px 14px 10px 40px; border: 1.5px solid var(--border-color, #cbd5e1); border-radius: 8px; font-size: 14px; font-weight: 600;" placeholder="Type Patient Name, Patient ID, Family Head, or Mobile No..." value="${globalSearchQuery}" autofocus />
-        </div>
-        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted, #64748b);">
-          <span id="search-result-count">${allPatients.length}</span> Total Registered Patients
-        </div>
-      </div>
-
-      <!-- Patients Grid / List -->
-      <div id="patient-search-results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
-        ${renderPatientSearchResultsHTML(allPatients, globalSearchQuery)}
-      </div>
-
-    </div>
-  `;
-
-  const searchInput = container.querySelector('#reception-patient-search');
-  searchInput.addEventListener('input', (e) => {
-    globalSearchQuery = e.target.value;
-    const grid = container.querySelector('#patient-search-results-grid');
-    const countEl = container.querySelector('#search-result-count');
-    if (grid) {
-      grid.innerHTML = renderPatientSearchResultsHTML(allPatients, globalSearchQuery);
-      wireSearchPushButtons();
-    }
-  });
-
-  wireSearchPushButtons();
-}
-
-function renderPatientSearchResultsHTML(patientList, query = '') {
-  const q = query.trim().toLowerCase();
-  const filtered = patientList.filter(p => {
-    if (!q) return true;
-    return (
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.patId || p.id || '').toLowerCase().includes(q) ||
-      (p.familyHead || '').toLowerCase().includes(q) ||
-      (p.familyId || '').toLowerCase().includes(q) ||
-      (p.phone || p.familyPhone || '').includes(q) ||
-      (p.area || '').toLowerCase().includes(q)
     );
-  });
-
-  if (filtered.length === 0) {
-    return `
-      <div style="grid-column: 1 / -1; background: #fff; border: 1px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 40px; text-align: center; color: var(--text-muted, #64748b);">
-        <i class="fa-solid fa-user-xmark" style="font-size: 32px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
-        <div style="font-size: 15px; font-weight: 700; color: var(--text-main, #0f172a);">No matching patient found</div>
-        <p style="font-size: 12px; margin-top: 4px;">Click <b>Register Family Head (F1)</b> to create a new record.</p>
-        <button type="button" onclick="switchView('reg')" class="btn-start-consult" style="margin-top: 12px; padding: 8px 18px;">
-          <i class="fa-solid fa-id-card"></i> Register New Family Head (F1)
-        </button>
-      </div>
-    `;
+    // Patch submit button text after render
+    patchSubmitButton(container, 'family');
+  } else if (currentView === 'member') {
+    // EXACT same form as doctor dashboard — only callback differs
+    renderPatientRegistration(
+      container,
+      currentSelection.familyId || null,
+      (famId, patId) => {
+        // "Open case" → for receptionist = push to queue
+        openQueueModal(famId, patId);
+      },
+      currentSelection.isRedirectFromHeadReg || false,
+      () => { navigateTo('family'); },
+      null
+    );
+    // Patch submit button text after render
+    patchSubmitButton(container, 'member');
+  } else if (currentView === 'queue') {
+    renderQueueView(container);
+  } else if (currentView === 'search') {
+    renderSearchView(container);
   }
-
-  return filtered.map(p => `
-    <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 18px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; gap: 12px; transition: transform .15s, box-shadow .15s;">
-      <div>
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-          <div>
-            <span class="token-chip" style="background: rgba(20,107,92,0.1); color: var(--primary-teal, #146B5C); font-size: 11px; padding: 2px 7px;">
-              ${p.patId || p.id}
-            </span>
-            <h4 style="font-size: 15px; font-weight: 800; color: var(--text-main, #0f172a); margin: 6px 0 2px;">${p.name}</h4>
-            <div style="font-size: 12px; color: var(--text-muted, #64748b);">
-              ${p.age ? p.age + ' Yrs' : 'Adult'} &bull; ${p.gender || 'Male'} &bull; Rel: <b>${p.relation || 'Self'}</b>
-            </div>
-          </div>
-          ${p.bloodGroup ? `<span style="font-size: 11px; font-weight: 800; background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px;">${p.bloodGroup}</span>` : ''}
-        </div>
-
-        <div style="background: var(--surface-alt, #f8fafc); border-radius: 6px; padding: 8px 10px; margin-top: 10px; font-size: 11.5px; color: var(--text-muted, #64748b);">
-          <div><i class="fa-solid fa-people-roof" style="color: var(--primary-teal, #146B5C);"></i> Family Head: <b style="color: var(--text-main, #0f172a);">${p.familyHead}</b></div>
-          <div style="margin-top: 2px;"><i class="fa-solid fa-phone"></i> Mobile: ${p.phone || p.familyPhone} &bull; ${p.area || 'General'}</div>
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 8px; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 12px;">
-        <button type="button" class="btn-push-patient-queue btn-start-consult" data-patid="${p.patId || p.id}" data-famid="${p.familyId}" style="flex: 1; text-align: center; padding: 8px 12px; font-size: 12.5px;">
-          <i class="fa-solid fa-arrow-right-to-bracket"></i> Push to Patient Queue
-        </button>
-      </div>
-    </div>
-  `).join('');
 }
 
-function wireSearchPushButtons() {
-  document.querySelectorAll('.btn-push-patient-queue').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const patId = btn.getAttribute('data-patid');
-      const famId = btn.getAttribute('data-famid');
-      openPushToQueueModal(famId, patId);
-    });
-  });
+/**
+ * After the doctor's form renders, change the primary submit button text
+ * from "Save" / "Register" to "Register & Add to Patient Queue"
+ */
+function patchSubmitButton(container, mode) {
+  // Give a tiny tick for the form to be in DOM
+  setTimeout(() => {
+    // Find primary submit button (cms-btn-primary type=submit)
+    const primaryBtn = container.querySelector('button[type="submit"].cms-btn.cms-btn-primary')
+      || container.querySelector('button[type="submit"]');
+    if (primaryBtn) {
+      if (mode === 'family') {
+        primaryBtn.innerHTML = '<i class="fa-solid fa-users-line"></i> Register & Add to Patient Queue';
+      } else {
+        primaryBtn.innerHTML = '<i class="fa-solid fa-users-line"></i> Save Member & Add to Patient Queue';
+      }
+    }
+  }, 50);
 }
 
-// =========================================================
-// 5. PATIENT QUEUE MANAGEMENT VIEW (F3)
-// =========================================================
-function renderPatientQueueView(container) {
+// ---- Dashboard View ----
+function renderDashboard(container) {
+  const families = Object.values(db.families || {});
+  let totalPatients = 0;
+  families.forEach(f => { totalPatients += Object.keys(f.patients || {}).length; });
+
   const queue = db.patientQueue || [];
+  const waiting = queue.filter(q => !q.status || q.status === 'Waiting');
+  const inConsult = queue.filter(q => q.status === 'In Consultation');
+  const completed = queue.filter(q => q.status === 'Completed' || q.status === 'Done');
+  const cName = clinicData.name || 'Dhyey Clinic';
 
   container.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 18px;">
-      
-      <!-- Queue Header & Actions -->
-      <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 14px 20px; box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 10px;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-list-check" style="color: var(--primary-teal, #146B5C); font-size: 18px;"></i>
-            <h2 style="font-size: 17px; font-weight: 800; color: var(--text-main, #0f172a); margin: 0;">
-              Live Patient Consultation Queue
-            </h2>
-          </div>
-          <span style="font-size: 12px; color: var(--text-muted, #64748b);">
-            Assigned token queue synchronized with Doctor's consultation desk
-          </span>
-        </div>
+    <div style="display:flex;flex-direction:column;gap:20px;">
 
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" onclick="switchView('search')" class="btn-start-consult" style="padding: 8px 16px;">
-            <i class="fa-solid fa-user-plus"></i> + Push Patient to Queue
-          </button>
+      <!-- Clinic Banner -->
+      <div class="cms-card" style="background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);border:none;color:#fff;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:20px;font-weight:800;font-family:'Manrope',sans-serif;">${cName}</div>
+          <div style="font-size:12px;opacity:0.85;margin-top:2px;">
+            ${[clinicData.address, clinicData.city].filter(Boolean).join(', ') || 'Reception OPD Desk'}
+            ${clinicData.phone ? ' &bull; ' + clinicData.phone : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div style="text-align:right;">
+            <div style="font-size:11px;opacity:0.8;">Today's Date</div>
+            <div style="font-size:15px;font-weight:800;">${fmtDate(todayISO())}</div>
+          </div>
         </div>
       </div>
 
-      <!-- Queue Cards List -->
-      <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: var(--radius-lg, 12px); padding: 20px; box-shadow: var(--shadow-sm);">
-        ${renderQueueListHTML(queue)}
+      <!-- KPI Cards -->
+      <div class="cms-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+        ${kpiCard('fa-people-roof', families.length, 'Registered Families', 'var(--primary)')}
+        ${kpiCard('fa-users', totalPatients, 'Total Patients', 'var(--info)')}
+        ${kpiCard('fa-clock', waiting.length, 'Waiting in Queue', 'var(--danger)')}
+        ${kpiCard('fa-stethoscope', inConsult.length, 'In Consultation', 'var(--accent)')}
+        ${kpiCard('fa-circle-check', completed.length, 'Completed Today', 'var(--success)')}
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
+        ${quickBtn('family', 'fa-people-roof', 'Register Family Head', 'Create new family file & auto-generate ID', 'F1', 'var(--primary)', 'var(--primary-dark)')}
+        ${quickBtn('member', 'fa-user-plus', 'Add Family Member', 'Add member to an existing family head', 'F2', '#0288d1', '#0277bd')}
+        ${quickBtn('search', 'fa-magnifying-glass', 'Find Patient & Queue', 'Search patient and push to consultation queue', 'F5', '#7c3aed', '#6d28d9')}
+        ${quickBtn('queue', 'fa-list-check', 'Manage Patient Queue', 'View and manage today\'s OPD queue', 'F3', 'var(--accent)', 'var(--accent-dark)')}
+      </div>
+
+      <!-- Live Queue Preview -->
+      <div class="cms-card">
+        <div class="cms-card-header">
+          <div class="cms-card-title"><i class="fa-solid fa-users-line" style="color:var(--primary);"></i> Live OPD Consultation Queue</div>
+          <button type="button" onclick="recNav('queue')" class="cms-btn cms-btn-ghost" style="font-size:12.5px;padding:6px 14px;">
+            Manage Full Queue (F3)
+          </button>
+        </div>
+        ${renderQueueTable(queue)}
       </div>
 
     </div>
   `;
 
-  wireQueueRowActions();
+  // Wire quick action buttons
+  container.querySelectorAll('[data-nav-view]').forEach(btn => {
+    btn.addEventListener('click', () => navigateTo(btn.dataset.navView));
+  });
 }
 
-function renderQueueListHTML(queue) {
+function kpiCard(icon, val, label, color) {
+  return `
+    <div class="cms-stat-card">
+      <div class="cms-stat-top">
+        <div class="cms-stat-icon" style="background:${color}20;color:${color};"><i class="fa-solid ${icon}"></i></div>
+        <div class="cms-stat-value">${val}</div>
+      </div>
+      <div class="cms-stat-label">${label}</div>
+    </div>
+  `;
+}
+
+function quickBtn(view, icon, title, sub, key, bg, bgHover) {
+  return `
+    <button type="button" data-nav-view="${view}"
+      style="background:linear-gradient(135deg,${bg},${bgHover});color:#fff;border:none;border-radius:var(--radius-lg);padding:18px;text-align:left;cursor:pointer;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;transition:transform .15s,box-shadow .15s;"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-lg)'"
+      onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-md)'">
+      <div>
+        <div style="font-size:15px;font-weight:800;"><i class="fa-solid ${icon}"></i> ${title}</div>
+        <div style="font-size:11.5px;opacity:0.85;margin-top:3px;">${sub}</div>
+      </div>
+      <span style="background:rgba(255,255,255,0.2);padding:4px 8px;border-radius:5px;font-size:11px;font-weight:800;">${key}</span>
+    </button>
+  `;
+}
+
+// Global nav shortcut for inline onclick
+window.recNav = (view) => navigateTo(view);
+
+// ---- Queue View ----
+function renderQueueView(container) {
+  const queue = db.patientQueue || [];
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div class="cms-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="cms-card-title"><i class="fa-solid fa-users-line" style="color:var(--primary);"></i> Patient Consultation Queue</div>
+          <div style="font-size:12px;color:var(--text-muted);">Synchronized with Doctor's consultation desk in real-time</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="font-size:12.5px;padding:8px 16px;">
+            <i class="fa-solid fa-user-plus"></i> Add Patient to Queue
+          </button>
+        </div>
+      </div>
+      <div class="cms-card">${renderQueueTable(queue)}</div>
+    </div>
+  `;
+  wireQueueActions(container);
+}
+
+function renderQueueTable(queue) {
   if (!queue || queue.length === 0) {
     return `
-      <div style="text-align: center; padding: 40px 20px; color: var(--text-muted, #64748b);">
-        <i class="fa-solid fa-users-slash" style="font-size: 34px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
-        <div style="font-size: 15px; font-weight: 700; color: var(--text-main, #0f172a);">No patients currently in consultation queue</div>
-        <p style="font-size: 12px; margin-top: 4px;">Find or register a patient and push them into the queue.</p>
-        <button type="button" onclick="switchView('search')" class="btn-start-consult" style="margin-top: 10px; padding: 7px 16px;">
-          <i class="fa-solid fa-magnifying-glass"></i> Find Patient to Queue (F5)
+      <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+        <i class="fa-solid fa-users-slash" style="font-size:34px;display:block;margin-bottom:8px;opacity:0.4;"></i>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">No patients in queue right now</div>
+        <p style="font-size:12px;margin-top:4px;">Register a family or find a patient to push them into the queue.</p>
+        <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="margin-top:12px;padding:8px 18px;font-size:12.5px;">
+          <i class="fa-solid fa-magnifying-glass"></i> Find Patient (F5)
         </button>
       </div>
     `;
   }
 
-  return `
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-      ${queue.map((q, idx) => `
-        <div class="queue-card" style="border-left: 4px solid ${q.status === 'In Consultation' ? '#166534' : q.status === 'Completed' ? '#0369a1' : '#dc2626'};">
-          <div class="queue-token-num">${q.token || 'T-' + pad(idx + 1, 2)}</div>
-          
-          <div class="queue-info">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <strong>${q.patientName || q.name}</strong>
-              <span class="badge-key" style="font-size: 10px;">${q.age ? q.age + 'Y' : ''}/${q.gender || 'M'}</span>
-              <span class="status-pill-${(q.status || 'waiting').toLowerCase().replace(/\s+/g, '-')}" style="padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700;">
-                ${q.status || 'Waiting'}
-              </span>
-            </div>
-            <div style="font-size: 11.5px; color: var(--text-muted, #64748b); margin-top: 3px;">
-              <span><i class="fa-solid fa-people-roof"></i> Head: ${q.familyHead || 'Self'}</span> &bull; 
-              <span><i class="fa-solid fa-clock"></i> Arrived: ${q.arrivedAt || 'Just now'}</span>
-              ${q.complaint ? ` &bull; <span style="color: var(--text-main, #0f172a); font-weight: 600;">Chief Complaint: ${q.complaint}</span>` : ''}
-            </div>
-            ${
-              q.vitals && Object.keys(q.vitals).length > 0
-                ? `
-              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 10.5px; color: var(--primary-teal, #146B5C); font-weight: 700;">
-                ${q.vitals.bp ? `<span>BP: ${q.vitals.bp}</span>` : ''}
-                ${q.vitals.pulse ? `<span>Pulse: ${q.vitals.pulse}</span>` : ''}
-                ${q.vitals.temp ? `<span>Temp: ${q.vitals.temp}</span>` : ''}
-                ${q.vitals.spo2 ? `<span>SpO2: ${q.vitals.spo2}</span>` : ''}
-                ${q.vitals.weight ? `<span>Wt: ${q.vitals.weight}</span>` : ''}
-              </div>
-            `
-                : ''
-            }
-          </div>
+  const statusColor = { 'Waiting': 'var(--danger)', 'In Consultation': 'var(--success)', 'Completed': 'var(--info)', 'Done': 'var(--info)' };
+  const statusBg = { 'Waiting': 'var(--danger-soft)', 'In Consultation': 'var(--success-soft)', 'Completed': 'var(--info-soft)', 'Done': 'var(--info-soft)' };
 
-          <div style="display: flex; gap: 6px; align-items: center;">
-            <button type="button" class="btn-change-status btn-start-consult" data-token="${q.token}" data-status="${q.status || 'Waiting'}" style="padding: 6px 12px; font-size: 11.5px;">
-              ${q.status === 'In Consultation' ? '<i class="fa-solid fa-check"></i> Complete' : '<i class="fa-solid fa-stethoscope"></i> Call to Doctor'}
-            </button>
-            <button type="button" class="btn-remove-queue" data-token="${q.token}" title="Remove from queue">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-          </div>
-        </div>
-      `).join('')}
+  return `
+    <div class="cms-table-wrapper">
+      <table class="cms-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Patient</th>
+            <th>Family Head</th>
+            <th>Chief Complaint</th>
+            <th>Arrived</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${queue.map((q, i) => {
+            const st = q.status || 'Waiting';
+            const col = statusColor[st] || 'var(--text-muted)';
+            const bg = statusBg[st] || 'var(--surface-alt)';
+            return `
+              <tr>
+                <td><span class="cms-pill font-mono" style="background:var(--primary-soft);color:var(--primary-dark);font-weight:800;">${q.token || 'T-' + pad(i+1,2)}</span></td>
+                <td>
+                  <div style="font-weight:700;">${q.patientName || q.name}</div>
+                  <div style="font-size:11px;color:var(--text-muted);">${q.age ? q.age+'Y' : ''}${q.gender ? ' · '+q.gender : ''}</div>
+                </td>
+                <td style="font-size:12.5px;">${q.familyHead || '-'}</td>
+                <td style="font-size:12.5px;max-width:180px;">${q.complaint || 'OPD Consultation'}</td>
+                <td style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;">${q.arrivedAt || '-'}</td>
+                <td>
+                  <span class="cms-pill" style="background:${bg};color:${col};">${st}</span>
+                </td>
+                <td>
+                  <div style="display:flex;gap:6px;">
+                    ${st === 'Waiting' ? `<button type="button" class="cms-btn cms-btn-primary queue-action-btn" data-action="consult" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-stethoscope"></i> Call</button>` : ''}
+                    ${st === 'In Consultation' ? `<button type="button" class="cms-btn cms-btn-ghost queue-action-btn" data-action="complete" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-check"></i> Done</button>` : ''}
+                    <button type="button" class="cms-btn cms-btn-danger queue-action-btn" data-action="remove" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-xmark"></i></button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
     </div>
   `;
 }
 
-function wireQueueRowActions() {
-  document.querySelectorAll('.btn-change-status').forEach(btn => {
+function wireQueueActions(container) {
+  (container || document).querySelectorAll('.queue-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const token = btn.getAttribute('data-token');
-      const curStatus = btn.getAttribute('data-status');
+      const action = btn.dataset.action;
+      const token = btn.dataset.token;
       const queue = db.patientQueue || [];
       const item = queue.find(q => q.token === token);
-      if (item) {
-        if (curStatus === 'Waiting') {
+
+      if (action === 'remove') {
+        db.patientQueue = queue.filter(q => q.token !== token);
+        saveQueue(db.patientQueue);
+        showToast(`Removed token ${token} from queue`);
+      } else if (item) {
+        if (action === 'consult') {
           item.status = 'In Consultation';
-          showToast(`${item.patientName} (${token}) called for Doctor Consultation`);
-        } else if (curStatus === 'In Consultation') {
+          showToast(`${item.patientName} called for consultation`);
+        } else if (action === 'complete') {
           item.status = 'Completed';
-          showToast(`${item.patientName} marked as Completed`);
+          showToast(`${item.patientName} marked as completed`);
         }
-        saveQueueData(queue);
-        renderCurrentView();
+        saveQueue(queue);
       }
-    });
-  });
-
-  document.querySelectorAll('.btn-remove-queue').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const token = btn.getAttribute('data-token');
-      const queue = (db.patientQueue || []).filter(q => q.token !== token);
-      saveQueueData(queue);
-      showToast(`Removed token ${token} from queue`);
-      renderCurrentView();
+      db = getLocalDB(clinicId);
+      renderView();
     });
   });
 }
 
-// =========================================================
-// MODAL: PUSH PATIENT TO CONSULTATION QUEUE
-// =========================================================
-function openPushToQueueModal(familyId, patientId) {
-  const modalRoot = document.getElementById('modalMount');
-  if (!modalRoot) return;
-
-  const family = db.families[familyId] || Object.values(db.families || {}).find(f => f.famId === familyId || f.id === familyId);
-  const patient = family && family.patients ? (family.patients[patientId] || Object.values(family.patients).find(p => p.patId === patientId || p.id === patientId)) : null;
-
-  if (!family || !patient) {
-    showToast('Patient details not found', 'error');
-    return;
-  }
-
-  const tokenNum = getNextTokenNumber();
-
-  modalRoot.innerHTML = `
-    <div class="cms-overlay" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; backdrop-filter: blur(2px);">
-      <div class="cms-modal cms-card" style="width: 100%; max-width: 520px; box-shadow: var(--shadow-xl); border: 1px solid var(--border-color, #e2e8f0); padding: 22px; display: flex; flex-direction: column; gap: 14px; background: #ffffff; border-radius: 14px;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-arrow-right-to-bracket" style="color: var(--primary-teal, #146B5C); font-size: 18px;"></i>
-            <div>
-              <h2 style="font-size: 16px; font-weight: 800; margin: 0; color: var(--text-main, #0f172a);">
-                Push Patient to Consultation Queue
-              </h2>
-              <div style="font-size: 11px; color: var(--text-muted, #64748b);">Token: <b>${tokenNum}</b></div>
-            </div>
-          </div>
-          <button type="button" id="btn-close-queue-modal" style="background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted, #64748b);">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <div style="background: rgba(20,107,92,0.06); border-radius: 8px; padding: 12px; font-size: 12.5px;">
-          <div style="font-weight: 800; color: var(--text-main, #0f172a); font-size: 14px;">${patient.name}</div>
-          <div style="color: var(--text-muted, #64748b); margin-top: 2px;">
-            ${patient.age ? patient.age + ' Yrs' : 'Adult'} &bull; ${patient.gender || 'Male'} &bull; Head: <b>${family.headName}</b> &bull; Ph: ${patient.phone || family.phone}
-          </div>
-        </div>
-
-        <form id="form-do-push-queue" style="display: flex; flex-direction: column; gap: 12px;">
-          
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 3px;">
-              Chief Complaint / Reason for Visit *
-            </label>
-            <input type="text" id="queue-complaint" required placeholder="e.g. Fever, Headache, Routine Checkup" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" autofocus />
-          </div>
-
-          <!-- Vitals -->
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-main, #0f172a); margin-bottom: 3px;">
-              OPD Triage Vitals (Optional)
-            </label>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-              <input type="text" id="vitals-bp" placeholder="BP (120/80)" style="padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-              <input type="text" id="vitals-pulse" placeholder="Pulse (72 bpm)" style="padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-              <input type="text" id="vitals-temp" placeholder="Temp (98.6°F)" style="padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-              <input type="text" id="vitals-spo2" placeholder="SpO2 (99%)" style="padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-              <input type="text" id="vitals-weight" placeholder="Weight (68 kg)" style="padding: 6px 8px; font-size: 12px; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px;" />
-            </div>
-          </div>
-
-          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 10px;">
-            <button type="button" id="btn-cancel-queue-modal" style="background: none; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; padding: 8px 16px; font-size: 12.5px; font-weight: 600; cursor: pointer;">
-              Cancel
-            </button>
-            <button type="submit" class="btn-start-consult" style="padding: 8px 20px; font-size: 13px;">
-              <i class="fa-solid fa-check"></i> Assign ${tokenNum} &amp; Push to Doctor Queue
-            </button>
-          </div>
-        </form>
-
-      </div>
-    </div>
-  `;
-
-  const closeBtn = modalRoot.querySelector('#btn-close-queue-modal');
-  const cancelBtn = modalRoot.querySelector('#btn-cancel-queue-modal');
-  const form = modalRoot.querySelector('#form-do-push-queue');
-
-  const closeModal = () => (modalRoot.innerHTML = '');
-  closeBtn.addEventListener('click', closeModal);
-  cancelBtn.addEventListener('click', closeModal);
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const complaint = modalRoot.querySelector('#queue-complaint').value.trim();
-    const bp = modalRoot.querySelector('#vitals-bp').value.trim();
-    const pulse = modalRoot.querySelector('#vitals-pulse').value.trim();
-    const temp = modalRoot.querySelector('#vitals-temp').value.trim();
-    const spo2 = modalRoot.querySelector('#vitals-spo2').value.trim();
-    const weight = modalRoot.querySelector('#vitals-weight').value.trim();
-
-    const vitalsObj = {};
-    if (bp) vitalsObj.bp = bp;
-    if (pulse) vitalsObj.pulse = pulse;
-    if (temp) vitalsObj.temp = temp;
-    if (spo2) vitalsObj.spo2 = spo2;
-    if (weight) vitalsObj.weight = weight;
-
-    pushPatientToQueue({
-      token: tokenNum,
-      patientId: patient.patId || patient.id,
-      patientName: patient.name,
-      familyId: family.famId || family.id,
-      familyHead: family.headName,
-      age: patient.age,
-      gender: patient.gender,
-      phone: patient.phone || family.phone,
-      area: family.area,
-      complaint: complaint,
-      vitals: vitalsObj
-    });
-
-    closeModal();
-    showToast(`✅ Patient ${patient.name} pushed to Doctor Queue with Token ${tokenNum}`);
-    switchView('queue');
-  });
+function saveQueue(queueArr) {
+  db.patientQueue = queueArr;
+  saveLocalDB(db, clinicId);
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queueArr));
+  updateQueueBadge();
 }
 
-function pushPatientToQueue(data) {
+function pushToQueue(data) {
   const queue = db.patientQueue || [];
-  const token = data.token || getNextTokenNumber();
+  const today = todayISO();
+  const todayQ = queue.filter(q => (q.date || today) === today);
+  const token = 'T-' + pad(todayQ.length + 1, 2);
 
-  const newEntry = {
-    token: token,
+  queue.push({
+    token,
     patientId: data.patientId,
-    name: data.patientName,
     patientName: data.patientName,
+    name: data.patientName,
     familyId: data.familyId,
     familyHead: data.familyHead,
     age: data.age,
     gender: data.gender,
     phone: data.phone,
     area: data.area,
-    arrivedAt: nowTime(),
-    date: todayISO(),
-    vitals: data.vitals || {},
     complaint: data.complaint || 'OPD Consultation',
+    vitals: data.vitals || {},
+    arrivedAt: nowTime(),
+    date: today,
     status: 'Waiting'
-  };
+  });
 
-  queue.push(newEntry);
-  saveQueueData(queue);
+  saveQueue(queue);
+  return token;
 }
 
-// Global Search bar handler
-window.globalSearch = function(val) {
-  globalSearchQuery = val;
-  if (currentView !== 'search') {
-    switchView('search');
-  } else {
-    renderSearchPatientView(document.getElementById('mainContent'));
-  }
-};
+// ---- Search & Push View ----
+function renderSearchView(container) {
+  const allPats = [];
+  Object.values(db.families || {}).forEach(f => {
+    Object.values(f.patients || {}).forEach(p => {
+      allPats.push({ ...p, familyId: f.famId||f.id, familyHead: f.headName, familyPhone: f.phone, area: f.area });
+    });
+  });
 
-window.handleLogout = function() {
-  localStorage.removeItem('clinic-auth-session');
-  sessionStorage.clear();
-  window.location.href = '../login.html?logout=true';
-};
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="cms-card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <form id="rec-search-form" class="cms-search-box" style="flex:1;min-width:280px;">
+          <span class="cms-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input type="text" id="rec-search-input" class="cms-search-input" placeholder="Type patient name, ID, family head, mobile number..." value="${globalSearchQuery}" autofocus />
+        </form>
+        <div style="font-size:13px;font-weight:700;color:var(--text-muted);">
+          <span id="rec-search-count">${allPats.length}</span> registered patients
+        </div>
+      </div>
+      <div id="rec-search-results" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+        ${buildSearchCards(allPats, globalSearchQuery)}
+      </div>
+    </div>
+  `;
 
-window.toggleTheme = function() {
-  document.body.classList.toggle('dark-theme');
-  const isDark = document.body.classList.contains('dark-theme');
-  const icon = document.getElementById('themeIcon');
-  if (icon) {
-    icon.className = isDark ? 'fa-regular fa-sun' : 'fa-regular fa-moon';
+  container.querySelector('#rec-search-input')?.addEventListener('input', e => {
+    globalSearchQuery = e.target.value;
+    const grid = container.querySelector('#rec-search-results');
+    if (grid) {
+      grid.innerHTML = buildSearchCards(allPats, globalSearchQuery);
+      wireSearchPushBtns(container);
+    }
+  });
+  wireSearchPushBtns(container);
+}
+
+function buildSearchCards(list, q) {
+  const ql = (q || '').trim().toLowerCase();
+  const filtered = list.filter(p => {
+    if (!ql) return true;
+    return (p.name||'').toLowerCase().includes(ql)
+      || (p.patId||p.id||'').toLowerCase().includes(ql)
+      || (p.familyHead||'').toLowerCase().includes(ql)
+      || (p.familyId||'').toLowerCase().includes(ql)
+      || (p.phone||p.familyPhone||'').includes(ql)
+      || (p.area||'').toLowerCase().includes(ql);
+  });
+
+  if (!filtered.length) return `
+    <div style="grid-column:1/-1;" class="cms-card" style="text-align:center;padding:40px;">
+      <i class="fa-solid fa-user-xmark" style="font-size:32px;opacity:0.4;display:block;margin-bottom:8px;"></i>
+      <div style="font-size:15px;font-weight:700;color:var(--text);">No matching patient found</div>
+      <p style="font-size:12px;margin-top:4px;color:var(--text-muted);">Register a new family to add this patient.</p>
+      <button type="button" onclick="recNav('family')" class="cms-btn cms-btn-primary" style="margin-top:12px;font-size:12.5px;padding:8px 18px;">
+        <i class="fa-solid fa-id-card"></i> Register Family Head (F1)
+      </button>
+    </div>
+  `;
+
+  return filtered.map(p => `
+    <div class="cms-card" style="display:flex;flex-direction:column;gap:12px;justify-content:space-between;transition:transform .15s,box-shadow .15s;"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-md)'"
+      onmouseout="this.style.transform='';this.style.boxShadow=''">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <span class="cms-pill cms-badge-paid font-mono" style="font-size:10px;">${p.patId||p.id}</span>
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin:5px 0 2px;">${p.name}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${p.age?p.age+' yrs':''} ${p.gender?'· '+p.gender:''} · <b>${p.relation||'Self'}</b></div>
+          </div>
+          ${p.bloodGroup ? `<span class="cms-pill" style="background:var(--danger-soft);color:var(--danger);font-size:10.5px;">${p.bloodGroup}</span>` : ''}
+        </div>
+        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:8px 10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);">
+          <div><i class="fa-solid fa-people-roof" style="color:var(--primary);"></i> Head: <b style="color:var(--text);">${p.familyHead}</b></div>
+          <div style="margin-top:2px;"><i class="fa-solid fa-phone"></i> ${p.phone||p.familyPhone||'-'} &bull; ${p.area||'General'}</div>
+        </div>
+      </div>
+      <button type="button" class="cms-btn cms-btn-primary btn-push-queue"
+        data-patid="${p.patId||p.id}" data-famid="${p.familyId}"
+        style="font-size:12.5px;justify-content:center;">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Add to Patient Queue
+      </button>
+    </div>
+  `).join('');
+}
+
+function wireSearchPushBtns(container) {
+  (container || document).querySelectorAll('.btn-push-queue').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openQueueModal(btn.dataset.famid, btn.dataset.patid);
+    });
+  });
+}
+
+// ---- Queue Push Modal ----
+function openQueueModal(familyId, patientId) {
+  db = getLocalDB(clinicId);
+  const family = db.families[familyId] || Object.values(db.families||{}).find(f => f.famId===familyId || f.id===familyId);
+  const patient = family?.patients
+    ? (family.patients[patientId] || Object.values(family.patients).find(p => p.patId===patientId || p.id===patientId))
+    : null;
+
+  if (!family || !patient) {
+    showToast('Patient data not found', 'error');
+    return;
   }
-};
+
+  const today = todayISO();
+  const q = db.patientQueue || [];
+  const todayQ = q.filter(x => (x.date||today) === today);
+  const previewToken = 'T-' + pad(todayQ.length + 1, 2);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cms-overlay';
+  overlay.innerHTML = `
+    <div class="cms-modal">
+      <div class="cms-modal-header">
+        <div>
+          <div style="font-weight:800;font-size:16px;"><i class="fa-solid fa-users-line" style="color:var(--primary);"></i> Add to Patient Queue</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Token <b>${previewToken}</b> will be assigned</div>
+        </div>
+        <button type="button" id="modal-close-btn" class="cms-btn-ghost cms-btn-icon"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="cms-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="background:var(--primary-soft);border:1.5px solid var(--primary);border-radius:var(--radius-md);padding:12px 16px;">
+          <div style="font-weight:800;font-size:14px;color:var(--text);">${patient.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+            ${patient.age ? patient.age+' yrs' : 'Adult'} &bull; ${patient.gender||'Male'} &bull; 
+            Family Head: <b>${family.headName}</b> &bull; 
+            Ph: ${patient.phone||family.phone}
+          </div>
+        </div>
+        <form id="queue-push-form" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="cms-form-group">
+            <label class="cms-label">Chief Complaint / Reason for Visit *</label>
+            <input type="text" id="q-complaint" class="cms-input" required placeholder="e.g. Fever, Headache, Routine checkup" autofocus />
+          </div>
+          <div class="cms-form-group">
+            <label class="cms-label">OPD Vitals (Optional)</label>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <input type="text" id="q-bp" class="cms-input cms-input-sm" placeholder="BP (120/80)" />
+              <input type="text" id="q-pulse" class="cms-input cms-input-sm" placeholder="Pulse (72 bpm)" />
+              <input type="text" id="q-temp" class="cms-input cms-input-sm" placeholder="Temp (98.6F)" />
+              <input type="text" id="q-spo2" class="cms-input cms-input-sm" placeholder="SpO2 (99%)" />
+              <input type="text" id="q-weight" class="cms-input cms-input-sm" placeholder="Weight (68kg)" />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="cms-modal-footer">
+        <button type="button" id="modal-cancel-btn" class="cms-btn cms-btn-ghost">Cancel</button>
+        <button type="button" id="modal-submit-btn" class="cms-btn cms-btn-primary">
+          <i class="fa-solid fa-users-line"></i> Assign ${previewToken} &amp; Add to Queue
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modal-root').appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-close-btn').addEventListener('click', close);
+  overlay.querySelector('#modal-cancel-btn').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#modal-submit-btn').addEventListener('click', () => {
+    const complaint = overlay.querySelector('#q-complaint')?.value?.trim();
+    if (!complaint) {
+      overlay.querySelector('#q-complaint').focus();
+      showToast('Please enter the chief complaint', 'error');
+      return;
+    }
+    const vitals = {};
+    ['bp','pulse','temp','spo2','weight'].forEach(k => {
+      const v = overlay.querySelector('#q-'+k)?.value?.trim();
+      if (v) vitals[k] = v;
+    });
+    const token = pushToQueue({
+      patientId: patient.patId||patient.id,
+      patientName: patient.name,
+      familyId: family.famId||family.id,
+      familyHead: family.headName,
+      age: patient.age,
+      gender: patient.gender,
+      phone: patient.phone||family.phone,
+      area: family.area,
+      complaint,
+      vitals
+    });
+    showToast(`${patient.name} added to queue — Token ${token}`);
+    close();
+    navigateTo('queue');
+  });
+}
+

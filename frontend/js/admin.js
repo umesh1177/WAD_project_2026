@@ -180,6 +180,94 @@ let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'n
   status: 'Active'
 }));
 
+const STORAGE_KEY_REQUESTS = 'dhyey-clinic-requests';
+const defaultClinicRequests = [
+  {
+    id: 'REQ-101',
+    clinicId: 'CLN-004',
+    name: 'Apollo City Clinic & Diagnostics',
+    city: 'Ahmedabad',
+    registrationNumber: 'REG-GJ-2026-9021',
+    registration: 'REG-GJ-2026-9021',
+    phone: '+91 98250 12345',
+    email: 'info@apollocityclinic.com',
+    address: 'GF-04, Shivalik Plaza, IIM Road, Panjrapole, Ahmedabad - 380015',
+    days: 'Monday - Saturday',
+    hours: '09:00 - 21:00',
+    specialties: 'General Medicine, Cardiology, Orthopedics',
+    facilities: 'Pharmacy, Path Lab, Minor OT, ECG',
+    applicantName: 'Dr. Ramesh S. Parikh',
+    applicantRole: 'Medical Director',
+    doctorsCount: 2,
+    doctors: [
+      { name: 'Dr. Ramesh S. Parikh', specialty: 'Cardiology', registration: 'MCI-88291', email: 'ramesh.parikh@apollocityclinic.com', phone: '+91 98250 12345' },
+      { name: 'Dr. Sunita K. Sharma', specialty: 'General Medicine', registration: 'MCI-91024', email: 'sunita.sharma@apollocityclinic.com', phone: '+91 98250 54321' }
+    ],
+    status: 'Pending',
+    submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+    formattedDate: 'Today, 09:30 AM',
+    submittedFrom: 'Landing Page'
+  },
+  {
+    id: 'REQ-102',
+    clinicId: 'CLN-005',
+    name: 'Aura Health & Skin Clinic',
+    city: 'Ahmedabad',
+    registrationNumber: 'REG-GJ-2026-7841',
+    registration: 'REG-GJ-2026-7841',
+    phone: '+91 98790 54321',
+    email: 'contact@auraskinclinic.com',
+    address: '2nd Floor, Safal Pegasuss, Prahlad Nagar, Ahmedabad',
+    days: 'Monday - Saturday',
+    hours: '10:00 - 19:00',
+    specialties: 'Dermatology, Cosmetology',
+    facilities: 'Laser Treatment, Minor OT',
+    applicantName: 'Dr. Ananya Roy',
+    applicantRole: 'Clinic Owner',
+    doctorsCount: 1,
+    doctors: [
+      { name: 'Dr. Ananya Roy', specialty: 'Dermatology', registration: 'MCI-76543', email: 'ananya.roy@auraskinclinic.com', phone: '+91 98790 54321' }
+    ],
+    status: 'Approved',
+    submittedAt: new Date(Date.now() - 86400000).toISOString(),
+    formattedDate: 'Yesterday, 04:15 PM',
+    submittedFrom: 'Landing Page'
+  }
+];
+
+let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || defaultClinicRequests;
+let currentClinicTab = 'active';
+
+function saveClinicRequests() {
+  localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
+}
+
+async function syncClinicRequestsFromAPI() {
+  try {
+    const res = await fetch('/api/clinics/requests');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const localMap = new Map(clinicRequests.map(r => [r.id, r]));
+        json.data.forEach(apiReq => {
+          if (!localMap.has(apiReq.id)) {
+            clinicRequests.unshift(apiReq);
+          } else {
+            const existing = localMap.get(apiReq.id);
+            if (existing.status !== 'Pending') {
+              apiReq.status = existing.status;
+            }
+          }
+        });
+        saveClinicRequests();
+      }
+    }
+  } catch (err) {
+    // API server fallback to local storage
+  }
+}
+syncClinicRequestsFromAPI();
+
 const content = document.getElementById('adminContent');
 
 function money(value) { return `₹${value.toLocaleString('en-IN')}`; }
@@ -224,6 +312,7 @@ function stats() {
 }
 
 function renderOverview() {
+  const pendingRequests = clinicRequests.filter(r => r.status === 'Pending');
   const rows = clinics.map(c => `
     <tr data-clinic-id="${c.id}">
       <td><strong>${c.name}</strong><br><small>${c.id} · ${c.city}</small></td>
@@ -237,7 +326,25 @@ function renderOverview() {
 
   page('Good day, Administrator', 'Here is the latest snapshot across your clinic network and provisioned service roles.', stats(), `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic</button>`);
   
+  const pendingBanner = pendingRequests.length > 0 ? `
+    <div class="pending-requests-banner">
+      <div class="banner-left">
+        <div class="banner-bell"><i class="fa-solid fa-bell"></i></div>
+        <div>
+          <strong>${pendingRequests.length} Clinic Registration Application${pendingRequests.length > 1 ? 's' : ''} Pending Review</strong>
+          <p>New clinic applications submitted via the Public Landing Page require administrative approval.</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-primary" data-action="view-requests-tab" style="padding:7px 15px;font-size:12px">
+          <i class="fa-solid fa-clipboard-check"></i> Review Applications (${pendingRequests.length})
+        </button>
+      </div>
+    </div>
+  ` : '';
+
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    ${pendingBanner}
     <div class="admin-grid">
       <section class="admin-card">
         <div class="admin-card-header">
@@ -279,10 +386,140 @@ function renderOverview() {
   `);
 }
 
-function renderClinics() {
-  page('Clinic management', 'Add, search, and monitor every location and its provisioned services in your network.', '', `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic</button>`);
-  
+function renderClinics(tab = currentClinicTab) {
+  currentClinicTab = tab;
+  const pendingCount = clinicRequests.filter(r => r.status === 'Pending').length;
+  const totalRequestsCount = clinicRequests.length;
+  const activeClinicsCount = clinics.length;
+
+  page(
+    'Clinic Management & Network Onboarding',
+    'Manage authorized clinics, inspect registered doctors, and review clinic applications submitted from the landing page.',
+    '',
+    `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic</button>`
+  );
+
+  const tabBarHtml = `
+    <div class="clinic-tab-bar">
+      <button class="clinic-tab-btn ${currentClinicTab === 'active' ? 'active' : ''}" data-action="switch-clinic-tab" data-tab="active">
+        <i class="fa-solid fa-hospital"></i> Active Network Clinics
+        <span class="badge-count">${activeClinicsCount}</span>
+      </button>
+      <button class="clinic-tab-btn ${currentClinicTab === 'requests' ? 'active' : ''}" data-action="switch-clinic-tab" data-tab="requests">
+        <i class="fa-solid fa-file-signature"></i> Landing Page Requests
+        <span class="badge-count ${pendingCount > 0 ? 'pending-alert' : ''}">${pendingCount > 0 ? pendingCount + ' Pending' : totalRequestsCount}</span>
+      </button>
+    </div>
+  `;
+
+  if (currentClinicTab === 'requests') {
+    content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+      ${tabBarHtml}
+      <section class="admin-card">
+        <div class="admin-card-header" style="margin-bottom:14px">
+          <div>
+            <h2>Incoming Clinic Registration Requests</h2>
+            <span>Applications received directly through the public landing page "Add Clinic" portal.</span>
+          </div>
+          <span class="badge-count ${pendingCount > 0 ? 'pending-alert' : ''}">${pendingCount} Pending</span>
+        </div>
+        <div class="admin-filter-row">
+          <div class="form-group" style="flex:1;min-width:240px;margin:0">
+            <input class="form-input" id="reqSearch" placeholder="Search by clinic name, applicant, city, or Request ID...">
+          </div>
+          <select class="form-select" id="reqStatusFilter">
+            <option value="">All statuses</option>
+            <option value="Pending" selected>Pending Review</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+        </div>
+        <div id="requestsTable" style="margin-top:16px"></div>
+      </section>
+    `);
+
+    const updateRequests = () => {
+      const term = (document.getElementById('reqSearch')?.value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('reqStatusFilter')?.value || '';
+
+      const filtered = clinicRequests.filter(r => {
+        const docNames = (r.doctors || []).map(d => d.name || '').join(' ');
+        const matchesTerm = `${r.id} ${r.name} ${r.city} ${r.applicantName || ''} ${r.email || ''} ${r.phone || ''} ${docNames}`.toLowerCase().includes(term);
+        const matchesStatus = !statusFilter || r.status === statusFilter;
+        return matchesTerm && matchesStatus;
+      });
+
+      const rows = filtered.map(r => {
+        let statusBadge = '';
+        if (r.status === 'Pending') {
+          statusBadge = `<span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending Review</span>`;
+        } else if (r.status === 'Approved') {
+          statusBadge = `<span class="status-pill" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0"><i class="fa-solid fa-circle-check"></i> Approved</span>`;
+        } else {
+          statusBadge = `<span class="status-pill" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>`;
+        }
+
+        let actionBtns = '';
+        if (r.status === 'Pending') {
+          actionBtns = `
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn-action-approve" data-action="approve-request" data-req-id="${r.id}" title="Approve and add clinic to network"><i class="fa-solid fa-check"></i> Approve</button>
+              <button class="btn-action-reject" data-action="reject-request" data-req-id="${r.id}" title="Reject application"><i class="fa-solid fa-xmark"></i> Reject</button>
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}" title="Review complete application packet"><i class="fa-solid fa-eye"></i> Details</button>
+            </div>
+          `;
+        } else if (r.status === 'Approved') {
+          actionBtns = `
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}"><i class="fa-solid fa-eye"></i> View</button>
+              <span style="font-size:11px;color:#059669;font-weight:600"><i class="fa-solid fa-check-double"></i> In Network</span>
+            </div>
+          `;
+        } else {
+          actionBtns = `
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}"><i class="fa-solid fa-eye"></i> View</button>
+              <button class="btn-action-approve" style="background:#64748b;border-color:#64748b" data-action="approve-request" data-req-id="${r.id}" title="Re-evaluate & approve"><i class="fa-solid fa-rotate-left"></i> Re-Approve</button>
+            </div>
+          `;
+        }
+
+        const docCount = (r.doctors && r.doctors.length) ? r.doctors.length : Number(r.doctorsCount || 1);
+
+        return `
+          <tr data-request-id="${r.id}">
+            <td><strong>${r.id}</strong><br><small style="color:var(--text-muted)">${r.formattedDate || r.submittedAt?.slice(0, 10) || 'Recent'}</small></td>
+            <td><strong>${r.name}</strong><br><small><i class="fa-solid fa-location-dot" style="color:#0284c7"></i> ${r.city}</small></td>
+            <td><strong>${r.applicantName || 'Applicant'}</strong><br><small style="color:var(--text-muted)">${r.phone || r.email || 'N/A'}</small></td>
+            <td>
+              <span><i class="fa-solid fa-user-doctor" style="color:var(--primary-teal)"></i> ${docCount} Doctor${docCount > 1 ? 's' : ''}</span>
+              <br><small style="color:var(--text-muted);display:block;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.specialties || ''}">${r.specialties || 'General'}</small>
+            </td>
+            <td>${statusBadge}</td>
+            <td>${actionBtns}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const tableContainer = document.getElementById('requestsTable');
+      if (tableContainer) {
+        tableContainer.innerHTML = table(
+          ['App ID & Date', 'Clinic & City', 'Applicant & Contact', 'Doctors & Specialties', 'Status', 'Actions'],
+          rows,
+          'No registration requests found matching these filters.'
+        );
+      }
+    };
+
+    document.getElementById('reqSearch')?.addEventListener('input', updateRequests);
+    document.getElementById('reqStatusFilter')?.addEventListener('change', updateRequests);
+    updateRequests();
+    return;
+  }
+
+  // Active network clinics view
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    ${tabBarHtml}
     <section class="admin-card">
       <div class="admin-filter-row">
         <div class="form-group" style="flex:1;min-width:220px;margin:0">
@@ -366,6 +603,244 @@ function renderDoctorManagement() {
       `).join(''))}
     </section>
   `);
+}
+
+function openRequestDetailsModal(reqId) {
+  const req = clinicRequests.find(r => r.id === reqId);
+  if (!req) return;
+
+  const modal = document.getElementById('detailsModal');
+  const docs = Array.isArray(req.doctors) ? req.doctors : [];
+
+  let statusBadge = '';
+  if (req.status === 'Pending') {
+    statusBadge = `<span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending Review</span>`;
+  } else if (req.status === 'Approved') {
+    statusBadge = `<span class="status-pill" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0"><i class="fa-solid fa-circle-check"></i> Approved</span>`;
+  } else {
+    statusBadge = `<span class="status-pill" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>`;
+  }
+
+  const doctorsListHtml = docs.length ? table(
+    ['Doctor Name', 'Specialty', 'MCI / Registration', 'Email', 'Phone'],
+    docs.map(d => `
+      <tr>
+        <td><strong>${d.name || 'Doctor'}</strong></td>
+        <td>${d.specialty || 'General Medicine'}</td>
+        <td>${d.registration || 'Document verified'}</td>
+        <td>${d.email || req.email || 'N/A'}</td>
+        <td>${d.phone || req.phone || 'N/A'}</td>
+      </tr>
+    `).join('')
+  ) : '<div class="empty-results">No individual doctor entries were attached with this application.</div>';
+
+  modal.innerHTML = `
+    <div class="detail-modal-card" style="max-width:760px">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">${req.name}</h2>
+          <small style="color:var(--text-muted)">Application: <strong>${req.id}</strong> · Submitted: ${req.formattedDate || req.submittedAt?.slice(0, 10) || 'Recent'}</small>
+        </div>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="detail-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h3 style="margin:0"><i class="fa-solid fa-hospital"></i> Clinic Application Packet</h3>
+          <div>${statusBadge}</div>
+        </div>
+
+        <div class="request-detail-grid">
+          <div class="request-detail-item"><small>Legal Clinic Name</small><strong>${req.name}</strong></div>
+          <div class="request-detail-item"><small>Registration Number</small><strong>${req.registration || req.registrationNumber || 'Pending verification'}</strong></div>
+          <div class="request-detail-item"><small>City / District</small><strong>${req.city || 'Ahmedabad'}</strong></div>
+          <div class="request-detail-item"><small>Applicant Name & Role</small><strong>${req.applicantName || 'Applicant'} (${req.applicantRole || 'Director'})</strong></div>
+          <div class="request-detail-item"><small>Official Phone</small><strong>${req.phone || 'N/A'}</strong></div>
+          <div class="request-detail-item"><small>Official Email</small><strong>${req.email || 'N/A'}</strong></div>
+          <div class="request-detail-item"><small>Operating Days</small><strong>${req.days || req.operatingDays || 'Monday - Saturday'}</strong></div>
+          <div class="request-detail-item"><small>Working Hours</small><strong>${req.hours || req.workingHours || '09:00 - 20:00'}</strong></div>
+        </div>
+
+        <div class="request-detail-item" style="margin-bottom:12px">
+          <small>Premises Address</small>
+          <strong>${req.address || 'Address on record'}</strong>
+        </div>
+
+        <div class="request-detail-grid">
+          <div class="request-detail-item"><small>Specialties Offered</small><strong>${req.specialties || 'General Medicine'}</strong></div>
+          <div class="request-detail-item"><small>Available Facilities</small><strong>${req.facilities || 'Consultation, Pharmacy, Diagnostics'}</strong></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3><i class="fa-solid fa-user-doctor"></i> Registered Doctors (${docs.length || req.doctorsCount || 1})</h3>
+        ${doctorsListHtml}
+      </div>
+
+      <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+        ${req.status === 'Pending' ? `
+          <button class="btn-action-reject" style="padding:7px 16px;font-size:13px" data-action="reject-request" data-req-id="${req.id}">
+            <i class="fa-solid fa-ban"></i> Reject Request
+          </button>
+          <button class="btn-action-approve" style="padding:7px 16px;font-size:13px" data-action="approve-request" data-req-id="${req.id}">
+            <i class="fa-solid fa-circle-check"></i> Approve & Activate Clinic
+          </button>
+        ` : req.status === 'Rejected' ? `
+          <button class="btn-action-approve" style="padding:7px 16px;font-size:13px" data-action="approve-request" data-req-id="${req.id}">
+            <i class="fa-solid fa-rotate-left"></i> Re-Approve Clinic
+          </button>
+        ` : `
+          <button class="btn-primary" style="padding:7px 16px;font-size:13px" onclick="closeDetails(); renderClinics('active');">
+            <i class="fa-solid fa-arrow-right"></i> View in Active Clinics
+          </button>
+        `}
+      </div>
+    </div>
+  `;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+async function approveClinicRequest(reqId) {
+  const req = clinicRequests.find(r => r.id === reqId);
+  if (!req) return;
+
+  req.status = 'Approved';
+  req.approvedAt = new Date().toISOString();
+  saveClinicRequests();
+
+  // Find or create clinic
+  const existingClinic = clinics.find(c => c.name.toLowerCase() === req.name.toLowerCase() || (req.clinicId && c.id === req.clinicId));
+  const newClinicId = req.clinicId || `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
+  const docCount = (req.doctors && req.doctors.length) ? req.doctors.length : Number(req.doctorsCount || 1);
+
+  if (!existingClinic) {
+    const newClinic = {
+      id: newClinicId,
+      name: req.name,
+      city: req.city || 'Ahmedabad',
+      doctors: docCount,
+      patients: 0,
+      visits: 0,
+      status: 'Active',
+      updated: 'Just now (Approved)',
+      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
+      receptionist: {
+        name: `${req.name.split(' ')[0]} Front Desk`,
+        email: `reception.${req.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@dhyeyclinic.com`,
+        phone: req.phone || '9876543210',
+        shift: 'General Shift (08:30 AM - 08:30 PM)',
+        status: 'Active'
+      },
+      specialties: req.specialties || 'General Medicine',
+      facilities: req.facilities || 'Consultation, Pharmacy, Diagnostics',
+      phone: req.phone || '',
+      email: req.email || '',
+      registration: req.registration || req.registrationNumber || 'REG-PENDING',
+      address: req.address || '',
+      days: req.days || req.operatingDays || 'Monday - Saturday',
+      hours: req.hours || req.workingHours || '09:00 AM - 08:00 PM',
+      verifiedDocuments: docCount + 1
+    };
+    clinics.unshift(newClinic);
+    saveClinics();
+
+    // Initialize clinic database
+    const cleanClinicKey = `clinic-db-${newClinicId}`;
+    if (!localStorage.getItem(cleanClinicKey)) {
+      const cleanDB = {
+        counters: { family: 0, patient: 0, visit: 0 },
+        families: {},
+        appointments: [],
+        certificates: [],
+        bills: [],
+        feedbacks: [],
+        dietary: {},
+        clinicShortcuts: {
+          medicines: {},
+          complaints: {},
+          investigations: {},
+          allergies: {},
+          relations: {},
+          areas: {},
+          societies: {},
+        },
+        _shortcutsCleanedV2: true,
+        customShortcuts: [],
+        masterMedicines: [],
+        masterComplaints: [],
+        masterInvestigations: [],
+        masterAreas: [],
+        masterSocieties: [],
+        masterAllergies: [],
+        masterRelations: []
+      };
+      localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
+    }
+  }
+
+  // Add submitted doctors
+  if (Array.isArray(req.doctors) && req.doctors.length) {
+    req.doctors.forEach(doc => {
+      const docName = doc.name ? (doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`) : 'Dr. Medical Officer';
+      const exists = clinicDoctors.some(d => d.name.toLowerCase() === docName.toLowerCase() && d.clinic === req.name);
+      if (!exists) {
+        clinicDoctors.push({
+          name: docName,
+          specialty: doc.specialty || 'General Medicine',
+          clinic: req.name,
+          email: doc.email || `${docName.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`,
+          phone: doc.phone || req.phone || '',
+          registration: doc.registration || 'MCI-PENDING',
+          patients: 0,
+          visits: 0,
+          rating: 95,
+          status: 'Active'
+        });
+      }
+    });
+    saveDoctors();
+  }
+
+  // Update backend API
+  try {
+    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Approved' })
+    });
+  } catch (err) {
+    console.warn('Backend API update skipped:', err);
+  }
+
+  closeDetails();
+  showToast(`Clinic "${req.name}" approved and activated into the network!`);
+  renderClinics(currentClinicTab);
+}
+
+async function rejectClinicRequest(reqId) {
+  const req = clinicRequests.find(r => r.id === reqId);
+  if (!req) return;
+
+  req.status = 'Rejected';
+  req.rejectedAt = new Date().toISOString();
+  saveClinicRequests();
+
+  // Update backend API
+  try {
+    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'Rejected' })
+    });
+  } catch (err) {
+    console.warn('Backend API update skipped:', err);
+  }
+
+  closeDetails();
+  showToast(`Registration request for "${req.name}" rejected.`);
+  renderClinics(currentClinicTab);
 }
 
 function renderServices() {
@@ -1397,7 +1872,18 @@ function exportVisibleTable() {
   URL.revokeObjectURL(link.href);
   showToast('Analysis CSV downloaded.');
 }
-function navigate(view = location.hash.slice(1) || 'overview') { document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === view)); document.querySelectorAll('.admin-subnav-link').forEach(item => item.classList.toggle('active', item.dataset.view === view)); if (view === 'overview') renderOverview(); else if (view === 'clinics') renderClinics(); else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', '')); else renderOverview(); }
+
+function navigate(view = location.hash.slice(1) || 'overview') {
+  document.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('active', item.dataset.view === view));
+  document.querySelectorAll('.admin-subnav-link').forEach(item => item.classList.toggle('active', item.dataset.view === view));
+  
+  if (view === 'overview') renderOverview();
+  else if (view === 'clinics') renderClinics();
+  else if (view === 'services') renderServices();
+  else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', ''));
+  else renderOverview();
+}
+
 document.addEventListener('click', event => {
   const viewLink = event.target.closest('[data-view]');
   if (viewLink) {
@@ -1411,10 +1897,71 @@ document.addEventListener('click', event => {
   if (action === 'close-modal') closeModal();
   if (action === 'close-details') closeDetails();
   if (action === 'export') exportVisibleTable();
-  if (action === 'toggle-clinic') { const clinic = clinics.find(item => item.id === event.target.closest('[data-clinic]')?.dataset.clinic); if (clinic) { clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended'; saveClinics(); closeDetails(); showToast(`Clinic membership ${clinic.status === 'Suspended' ? 'suspended' : 'restored'}.`); renderClinics(); } }
-  if (action === 'toggle-doctor') { const name = event.target.closest('[data-doctor]')?.dataset.doctor; const doctor = clinicDoctors.find(item => item.name === name); if (doctor) { doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended'; saveDoctors(); closeDetails(); showToast(`Doctor account ${doctor.status === 'Suspended' ? 'suspended' : 'restored'}.`); renderClinics(); } }
-  if (action === 'account-info') showToast('Administrator account Â· Full system access');
-  if (action === 'logout') { sessionStorage.clear(); window.location.href = '../login.html'; }
+  
+  if (action === 'toggle-clinic') {
+    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
+    const clinic = clinics.find(item => item.id === clinicId);
+    if (clinic) {
+      clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended';
+      clinic.updated = 'Just now';
+      saveClinics();
+      closeDetails();
+      showToast(`Clinic "${clinic.name}" ${clinic.status === 'Active' ? 'restored' : 'suspended'}.`);
+      if (location.hash === '#services') renderServices();
+      else renderClinics();
+    }
+  }
+
+  if (action === 'toggle-doctor') {
+    const name = event.target.closest('[data-doctor]')?.dataset.doctor;
+    const doctor = clinicDoctors.find(item => item.name === name);
+    if (doctor) {
+      doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended';
+      saveDoctors();
+      const clinicId2 = event.target.closest('[data-clinic]')?.dataset.clinic;
+      showToast(`Doctor account ${doctor.status === 'Active' ? 'restored' : 'suspended'}.`);
+      // If inside clinic details modal, refresh it
+      const detailsModal = document.getElementById('detailsModal');
+      if (detailsModal.classList.contains('active') && clinicId2) {
+        openClinicDetails(clinicId2);
+      } else {
+        closeDetails();
+        renderClinics();
+      }
+    }
+  }
+
+  if (action === 'toggle-service') {
+    const clinicId3 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    const serviceId = event.target.closest('[data-service]')?.dataset.service;
+    if (clinicId3 && serviceId) toggleClinicService(clinicId3, serviceId);
+  }
+
+  if (action === 'remove-doctor-from-clinic') {
+    const doctorName = event.target.closest('[data-doctor]')?.dataset.doctor;
+    const clinicId4 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (doctorName && clinicId4) removeDoctorFromClinic(doctorName, clinicId4);
+  }
+
+  if (action === 'edit-clinic') {
+    const clinicId5 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId5) openEditClinicModal(clinicId5);
+  }
+
+  if (action === 'delete-clinic') {
+    const clinicId6 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId6) deleteClinic(clinicId6);
+  }
+
+  if (action === 'account-info') showToast('Administrator account · Full system access');
+  if (action === 'logout') {
+    localStorage.removeItem('clinic-auth-session');
+    sessionStorage.clear();
+    showToast('Signed out from Admin Workspace');
+    setTimeout(() => {
+      window.location.href = '../login.html';
+    }, 200);
+  }
   if (!event.target.closest('.admin-account')) closeAccountMenu();
 });
 
@@ -1453,6 +2000,9 @@ document.getElementById('menuToggle').addEventListener('click', () => {
 });
 
 document.addEventListener('click', event => {
+  const requestRow = event.target.closest('[data-request-id]');
+  if (requestRow && !event.target.closest('button')) openRequestDetailsModal(requestRow.dataset.requestId);
+
   const clinicRow = event.target.closest('[data-clinic-id]');
   if (clinicRow && !event.target.closest('button')) openClinicDetails(clinicRow.dataset.clinicId);
   

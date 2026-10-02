@@ -1,167 +1,129 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Receptionist Desk - Dhyey Clinic</title>
-  <meta name="description" content="Receptionist portal for Dhyey Clinic. Register families, add patients, manage patient queue." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="../../css/receptionist.css" />
-  <style>
-    /* ---- Receptionist-specific extras ---- */
-    .queue-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      background: #dc2626; color: #fff; border-radius: 999px;
-      font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; padding: 0 5px;
-      margin-left: 6px; line-height: 1;
-    }
-    .token-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: var(--primary-teal); color: #fff;
-      border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 800;
-    }
-    .status-pill-waiting  { background: #fef9c3; color: #a16207; border: 1px solid #fde68a; }
-    .status-pill-in-consultation { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .status-pill-done { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
-    .queue-card {
-      background: var(--bg-card); border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg); padding: 14px 16px;
-      display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
-      transition: box-shadow .15s;
-    }
-    .queue-card:hover { box-shadow: 0 4px 18px rgba(20,107,92,0.1); }
-    .queue-token-num { font-size: 22px; font-weight: 900; color: var(--primary-teal); width: 44px; text-align: center; }
-    .queue-info strong { font-size: 13px; color: var(--text-main); display: block; }
-    .queue-info span { font-size: 11px; color: var(--text-muted); }
-    .btn-start-consult {
-      background: var(--primary-teal); color: #fff; border: none;
-      border-radius: var(--radius-md); padding: 7px 14px;
-      font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
-    }
-    .btn-start-consult:hover { background: #0d7e74; }
-    .btn-remove-queue {
-      background: none; border: 1px solid #fca5a5; color: #b91c1c;
-      border-radius: var(--radius-md); padding: 5px 10px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-    }
-    .btn-remove-queue:hover { background: #fff1f2; }
-    .section-divider { border: none; border-top: 1px solid var(--border-color); margin: 16px 0 12px; }
-    .form-error { color: #b91c1c; font-size: 11px; margin-top: 3px; display: none; }
-    .form-error.show { display: block; }
-    .patient-found-card {
-      background: rgba(20,107,92,0.06); border: 1px solid var(--primary-teal-border);
-      border-radius: var(--radius-md); padding: 12px 14px; margin-top: 10px;
-    }
-    .family-member-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 0; border-bottom: 1px solid var(--border-color);
-    }
-    .family-member-row:last-child { border-bottom: none; }
-  </style>
+  <title>Reception Desk - Dhyey Clinic Management System</title>
+  <meta name="description" content="Receptionist portal for managing patient registration, family records and OPD consultation queue." />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../css/style.css" />
+  <link rel="stylesheet" href="../../css/dashboard.css" />
+  <link rel="stylesheet" href="../../css/patient.css" />
+  <link rel="stylesheet" href="../../css/print.css" />
 </head>
-<body>
-<div class="app-container">
-  <!-- ===== SIDEBAR ===== -->
-  <aside class="sidebar" id="mainSidebar">
-    <div>
-      <div class="sidebar-header">
-        <div class="brand-logo" style="background: var(--primary-teal);">
-          <i class="fa-solid fa-clipboard-user"></i>
-        </div>
-        <div>
-          <span class="brand-title" id="sb-clinic-name">Dhyey Clinic</span>
-          <div style="font-size:11px; color:var(--text-muted); font-weight:600;">Reception OPD Desk</div>
-        </div>
-      </div>
+<body class="cms-root">
 
-      <nav class="sidebar-nav" aria-label="Receptionist navigation">
-        <a class="nav-item active" id="nav-dashboard" href="javascript:void(0)" onclick="switchView('dashboard')">
-          <div class="nav-item-left"><i class="fa-solid fa-gauge-high nav-icon"></i><span>Dashboard</span></div>
-          <span class="badge-key">F4</span>
-        </a>
-        <a class="nav-item" id="nav-reg" href="javascript:void(0)" onclick="switchView('reg')">
-          <div class="nav-item-left"><i class="fa-solid fa-id-card nav-icon"></i><span>Family Registration</span></div>
-          <span class="badge-key">F1</span>
-        </a>
-        <a class="nav-item" id="nav-member" href="javascript:void(0)" onclick="switchView('member')">
-          <div class="nav-item-left"><i class="fa-solid fa-user-plus nav-icon"></i><span>Add Member</span></div>
-          <span class="badge-key">F2</span>
-        </a>
-        <a class="nav-item" id="nav-queue-mgmt" href="javascript:void(0)" onclick="switchView('queue')">
-          <div class="nav-item-left"><i class="fa-solid fa-list-check nav-icon"></i><span>Patient Queue</span></div>
-          <span class="badge-key" id="queue-count-badge">F3</span>
-        </a>
-        <a class="nav-item" id="nav-search" href="javascript:void(0)" onclick="switchView('search')">
-          <div class="nav-item-left"><i class="fa-solid fa-magnifying-glass nav-icon"></i><span>Find Patient</span></div>
-          <span class="badge-key">F5</span>
-        </a>
-      </nav>
+<div class="cms-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="cms-sidebar" id="rec-sidebar">
+    <div class="cms-brand">
+      <div class="cms-brand-icon"><i class="fa-solid fa-clipboard-user"></i></div>
+      <div>
+        <div class="cms-brand-text" id="rec-clinic-name">Dhyey Clinic</div>
+        <div class="cms-brand-subtitle">Reception OPD Desk</div>
+      </div>
     </div>
 
-    <div class="sidebar-footer-guide">
-      <h6 style="color:var(--text-muted); font-size:11px; margin-bottom:8px;">Reception Quick Keys</h6>
-      <div><kbd class="badge-key">F1</kbd> Family Reg</div>
-      <div><kbd class="badge-key">F2</kbd> Add Member</div>
-      <div><kbd class="badge-key">F3</kbd> Patient Queue</div>
-      <div><kbd class="badge-key">F4</kbd> Dashboard</div>
-      <div><kbd class="badge-key">F5</kbd> Find Patient</div>
-      <div><kbd class="badge-key">/</kbd> Search focus</div>
+    <nav id="rec-nav" style="display:flex;flex-direction:column;gap:4px;">
+      <a class="cms-nav-item active" data-view="dashboard" id="rnav-dashboard">
+        <span class="cms-nav-left"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></span>
+        <span class="cms-kbd">F4</span>
+      </a>
+      <a class="cms-nav-item" data-view="family" id="rnav-family">
+        <span class="cms-nav-left"><i class="fa-solid fa-people-roof"></i><span>Family Head Reg.</span></span>
+        <span class="cms-kbd">F1</span>
+      </a>
+      <a class="cms-nav-item" data-view="member" id="rnav-member">
+        <span class="cms-nav-left"><i class="fa-solid fa-user-plus"></i><span>Add Member</span></span>
+        <span class="cms-kbd">F2</span>
+      </a>
+      <a class="cms-nav-item" data-view="queue" id="rnav-queue">
+        <span class="cms-nav-left"><i class="fa-solid fa-users-line"></i><span>Patient Queue</span></span>
+        <span class="cms-kbd" id="rec-queue-kbd"><i class="fa-solid fa-clock"></i></span>
+      </a>
+      <a class="cms-nav-item" data-view="search" id="rnav-search">
+        <span class="cms-nav-left"><i class="fa-solid fa-magnifying-glass"></i><span>Find Patient</span></span>
+        <span class="cms-kbd">F5</span>
+      </a>
+    </nav>
+
+    <div class="cms-sidebar-footer">
+      <b>Keyboard Shortcuts:</b><br>
+      F1 Family Reg &middot; F2 Add Member<br>
+      F3 Queue &middot; F4 Dashboard<br>
+      F5 Find Patient &middot; / Search Esc Close<br>
+      <div id="rec-clinic-details" style="margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(20,107,92,0.1);font-size:11px;line-height:1.7;color:var(--text-muted);"></div>
     </div>
   </aside>
 
-  <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-wrapper">
-    <!-- TOP NAVBAR -->
-    <header class="top-navbar">
-      <div class="top-navbar-left">
-        <button class="menu-toggle-btn" aria-label="Toggle sidebar" onclick="document.getElementById('mainSidebar').classList.toggle('is-collapsed')">
+  <!-- MAIN -->
+  <main class="cms-main-container">
+
+    <!-- TOPBAR -->
+    <header class="cms-topbar">
+      <div class="cms-topbar-left">
+        <button type="button" id="rec-toggle-sidebar" class="cms-btn-ghost cms-btn-icon" title="Toggle Sidebar">
           <i class="fa-solid fa-bars"></i>
         </button>
-        <div class="page-title-group">
-          <h1 class="page-header-title" id="view-title">
-            <i class="fa-solid fa-clipboard-user"></i> Reception Desk
-          </h1>
-          <span class="page-header-date" id="headerDate"></span>
+        <div>
+          <div class="cms-topbar-title" id="rec-topbar-title">Reception OPD Desk</div>
+          <div class="cms-topbar-date" id="rec-topbar-date">Today</div>
         </div>
       </div>
 
-      <div class="top-navbar-right">
-        <div class="top-search-form">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input id="globalSearchInput" class="top-search-input" type="text"
-            placeholder="Search patient, family head, mobile..." oninput="globalSearch(this.value)" />
-          <span class="search-shortcut-tag">/</span>
+      <div class="cms-topbar-right">
+        <form id="rec-global-search-form" class="cms-search-box">
+          <span class="cms-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input type="text" id="rec-top-search" class="cms-search-input" placeholder="Search patient name, ID, family, mobile..." />
+          <span class="cms-kbd cms-search-shortcut">/</span>
+        </form>
+
+        <button type="button" id="rec-theme-toggle" class="cms-btn-ghost cms-btn-icon" title="Toggle Dark/Light Mode">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <a href="../../index.html" class="cms-btn cms-btn-ghost" style="padding:6px 12px;font-size:12px;text-decoration:none;" title="Back to Doctor Workspace">
+          <i class="fa-solid fa-stethoscope"></i> <span>Doctor Desk</span>
+        </a>
+
+        <div style="position:relative;">
+          <button type="button" id="rec-profile-btn" class="cms-btn cms-btn-ghost" style="padding:6px 12px;gap:6px;">
+            <span id="rec-user-name">Receptionist</span>
+            <i class="fa-solid fa-chevron-down" style="font-size:11px;"></i>
+          </button>
+          <div id="rec-profile-dropdown" class="cms-card" style="position:absolute;right:0;top:calc(100% + 8px);width:260px;padding:12px;display:none;z-index:500;box-shadow:var(--shadow-lg);">
+            <div style="padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;">
+              <div style="font-weight:700;font-size:14px;" id="rec-dropdown-name">Front Desk</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;" id="rec-dropdown-clinic">Dhyey Clinic</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:1px;" id="rec-dropdown-address"></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:1px;" id="rec-dropdown-phone"></div>
+            </div>
+            <button type="button" id="rec-logout-btn" class="cms-btn-danger" style="width:100%;justify-content:center;margin-top:4px;padding:8px;">
+              <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </button>
+          </div>
         </div>
-        <button class="btn-icon" type="button" title="Toggle theme" onclick="toggleTheme()">
-          <i class="fa-regular fa-moon" id="themeIcon"></i>
-        </button>
-        <button class="btn-icon" type="button" title="Logout" style="color:#b91c1c;" onclick="handleLogout()">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
       </div>
     </header>
 
-    <!-- CONTENT BODY -->
-    <div class="content-body" id="mainContent" aria-live="polite">
-      <!-- Views rendered here by JS -->
-    </div>
+    <!-- CONTENT -->
+    <section class="cms-content-area" id="rec-view-container"></section>
 
-    <footer class="bottom-ticker-bar">
-      <div id="sb-clinic-footer">Dhyey Clinic · Reception Desk</div>
-      <div class="ticker-time" id="receptionClock"></div>
+    <!-- STATUS BAR -->
+    <footer class="cms-statusbar">
+      <span id="rec-statusbar-clinic"><b>Reception Desk</b></span>
+      <span>F1 Family Reg</span>
+      <span>F2 Add Member</span>
+      <span>F3 Queue</span>
+      <span>F4 Dashboard</span>
+      <span>F5 Find Patient</span>
+      <span id="rec-statusbar-clock" class="font-mono" style="margin-left:auto;">--:--</span>
     </footer>
   </main>
 </div>
 
-<!-- Toast -->
-<div class="toast-container" id="toastContainer"></div>
-
-<!-- Modals Mount -->
-<div id="modalMount"></div>
-
+<div id="modal-root"></div>
 <script type="module" src="../../js/receptionist.js"></script>
 </body>
 </html>
