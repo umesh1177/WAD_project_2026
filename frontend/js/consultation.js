@@ -23,23 +23,30 @@ import { openLabReportModal } from './history.js';
 export async function renderConsultationView(container, selection, onSelectPatient, onPrintRequested, onOpenLabReports, onEditPatient) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  
+
   const db = { families: {}, customAllergies: [], customAreas: [], customSocieties: [], customRelations: [] };
   try {
-    const [pRes, cRes] = await Promise.all([apiFetch('/patients'), apiFetch('/consultations')]);
+    const [fRes, pRes, cRes] = await Promise.all([apiFetch('/families'), apiFetch('/patients'), apiFetch('/consultations')]);
+    if (fRes && fRes.success) {
+      fRes.data.forEach(f => {
+        const id = f.famId || f._id || f.id;
+        db.families[id] = { ...f, id, patients: {} };
+      });
+    }
     if (pRes && pRes.success) {
       pRes.data.forEach(p => {
         const famId = p.familyId ? (p.familyId.famId || p.familyId._id || p.familyId) : 'UNKNOWN';
-        if (!db.families[famId]) db.families[famId] = { patients: {} };
-        db.families[famId].patients[p.patId||p._id||p.id] = { ...p, visits: [] };
+        if (!db.families[famId]) db.families[famId] = { id: famId, patients: {} };
+        const pId = p.patId || p._id || p.id;
+        db.families[famId].patients[pId] = { ...p, id: pId, visits: [] };
       });
     }
     if (cRes && cRes.success) {
       cRes.data.forEach(c => {
         const patId = c.patientId ? (c.patientId._id || c.patientId.patId || c.patientId) : null;
-        if(patId) {
+        if (patId) {
           Object.values(db.families).forEach(f => {
-            if(f.patients[patId]) {
+            if (f.patients[patId]) {
               f.patients[patId].visits.push({ ...c, id: c._id });
             }
           });
@@ -48,12 +55,12 @@ export async function renderConsultationView(container, selection, onSelectPatie
       for (let famKey in db.families) {
         for (let patKey in db.families[famKey].patients) {
           if (db.families[famKey].patients[patKey].visits) {
-            db.families[famKey].patients[patKey].visits.sort((a,b) => new Date(b.date) - new Date(a.date));
+            db.families[famKey].patients[patKey].visits.sort((a, b) => new Date(b.date) - new Date(a.date));
           }
         }
       }
     }
-  } catch(e) {}
+  } catch (e) { }
 
   window.syncVisitsToDB = async () => {
     if (!patient || !patient.visits) return;
@@ -64,13 +71,13 @@ export async function renderConsultationView(container, selection, onSelectPatie
           v.patientId = patient._id || patient.patId || patient.id;
           v.clinicId = clinicId;
           const r = await apiFetch('/consultations', { method: 'POST', body: v });
-          if(r.success) { v._id = r.data._id; v.id = r.data._id; }
+          if (r.success) { v._id = r.data._id; v.id = r.data._id; }
         } else {
           v.patientId = patient._id || patient.patId || patient.id;
-          await apiFetch('/consultations/'+v._id, { method: 'PUT', body: v });
+          await apiFetch('/consultations/' + v._id, { method: 'PUT', body: v });
         }
       }
-    } catch(e){}
+    } catch (e) { }
   };
 
 
@@ -139,7 +146,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
         }, 150);
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // Calculate Personal & Family Dues
   function computeDues() {
@@ -194,9 +201,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
           </div>
         </div>
 
-        ${
-          patient
-            ? `
+        ${patient
+        ? `
           <!-- Patient Header Banner (Matching Screenshot 1) -->
           <div class="cms-patient-header-banner" id="patient-banner-box">
             
@@ -260,15 +266,14 @@ export async function renderConsultationView(container, selection, onSelectPatie
                     <span>${attachedLabReport ? 'Edit Attached Report' : 'Attach Report'}</span>
                   </button>
 
-                  ${
-                    attachedLabReport
-                      ? `
+                  ${attachedLabReport
+          ? `
                     <span class="cms-pill" id="badge-report-attached" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
                       <i class="fa-solid fa-check"></i> Report Attached (${(attachedLabReport.summaryTags || []).length || '1'} tests)
                     </span>
                   `
-                      : ''
-                  }
+          : ''
+        }
                 </div>
                 <button type="button" id="btn-close-visit" class="cms-btn-ghost" style="padding: 4px 8px; font-size: 16px; color: var(--text-muted);" title="Close form">
                   <i class="fa-solid fa-xmark"></i>
@@ -356,9 +361,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
                   <div id="treatment-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
 
-                ${
-                  hasDigitalRx
-                    ? `
+                ${hasDigitalRx
+          ? `
                 <!-- Right: Prescription (Medical Store) -->
                 <div class="cms-prescription-panel">
                   <div class="cms-prescription-panel-title">
@@ -370,8 +374,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
                   <div id="prescription-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
                 `
-                    : ''
-                }
+          : ''
+        }
               </div>
 
               <!-- Row 3: Financials (Charge, Paid, Due) & Action Buttons (Defaults to 0) -->
@@ -394,16 +398,15 @@ export async function renderConsultationView(container, selection, onSelectPatie
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 10px;">
-                  ${
-                    editingVisitId
-                      ? `
+                  ${editingVisitId
+          ? `
                     <button type="button" id="btn-delete-editing-visit" class="cms-btn-danger" data-visitid="${editingVisitId}" style="padding: 7px 16px; border-radius: 6px; font-weight: 700; border: none; display: inline-flex; align-items: center; gap: 6px; background: #dc2626; color: #fff; cursor: pointer;" title="Delete this Case #${editingVisitId}">
                       <i class="fa-solid fa-trash-can"></i>
                       <span>Delete Case</span>
                     </button>
                   `
-                      : ''
-                  }
+          : ''
+        }
                   <button type="button" id="btn-cancel-visit" class="cms-btn cms-btn-ghost" style="padding: 7px 18px; border: 1px solid var(--border); font-weight: 700;">
                     Cancel
                   </button>
@@ -430,21 +433,19 @@ export async function renderConsultationView(container, selection, onSelectPatie
                     <i class="fa-solid fa-calendar-day" style="color: var(--primary);"></i> Date:
                   </label>
                   <input type="date" id="history-date-filter" class="cms-input" style="padding: 2px 6px; font-size: 12px; border-radius: 4px; width: 130px; height: 26px;" value="${filterDate || ''}" />
-                  ${
-                    filterDate
-                      ? `
+                  ${filterDate
+          ? `
                     <button type="button" id="btn-clear-date-filter" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 2px 6px; font-size: 11px; border: 1px solid var(--border); background: #fff;" title="Show all dates">
                       <i class="fa-solid fa-xmark"></i> Clear
                     </button>
                   `
-                      : ''
-                  }
+          : ''
+        }
                 </div>
               </div>
 
-              ${
-                showDueCasesOnTop
-                  ? `
+              ${showDueCasesOnTop
+          ? `
                 <div class="cms-due-alert-banner" style="margin-top: 4px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 13px;"></i>
@@ -457,38 +458,37 @@ export async function renderConsultationView(container, selection, onSelectPatie
                   </button>
                 </div>
               `
-                  : ''
-              }
+          : ''
+        }
             </div>
 
             <div id="visit-history-list" style="display: flex; flex-direction: column;">
-              ${
-                visits.length === 0
-                  ? `<div style="padding: 35px 20px; text-align: center; color: var(--text-muted);">
+              ${visits.length === 0
+          ? `<div style="padding: 35px 20px; text-align: center; color: var(--text-muted);">
                       <i class="fa-solid fa-calendar-xmark" style="font-size: 24px; margin-bottom: 8px; opacity: 0.7;"></i>
                       <div>${filterDate ? `No visits recorded on <b>${fmtDate(filterDate)}</b>.` : 'No visits recorded yet.'}</div>
                       ${filterDate ? `<button type="button" id="btn-show-all-dates-empty" class="cms-btn cms-btn-ghost cms-btn-sm" style="margin-top: 8px; border: 1px solid var(--border);"><i class="fa-solid fa-arrow-rotate-left"></i> Show All Visits</button>` : ''}
                     </div>`
-                  : visits
-                      .map((v, idx) => {
-                        const visitKey = v.id || v.caseId;
-                        // If this card is currently opened in inline editable mode (Matching user photo)
-                        if (inlineEditingVisitId && (inlineEditingVisitId === visitKey || inlineEditingVisitId === v.caseId || inlineEditingVisitId === v.id)) {
-                          return renderHistoryCardEditableHTML(v);
-                        }
-                        // Latest 2 entries: Full Card View (unless due filter is active, where all due are full cards)
-                        if (idx < 2 || (showDueCasesOnTop && Number(v.due) > 0)) {
-                          return renderHistoryCardFullHTML(v);
-                        }
-                        // Older entries: Compact Row View with Hover Expand
-                        return renderHistoryRowCompactHTML(v);
-                      })
-                      .join('')
+          : visits
+            .map((v, idx) => {
+              const visitKey = v.id || v.caseId;
+              // If this card is currently opened in inline editable mode (Matching user photo)
+              if (inlineEditingVisitId && (inlineEditingVisitId === visitKey || inlineEditingVisitId === v.caseId || inlineEditingVisitId === v.id)) {
+                return renderHistoryCardEditableHTML(v);
               }
+              // Latest 2 entries: Full Card View (unless due filter is active, where all due are full cards)
+              if (idx < 2 || (showDueCasesOnTop && Number(v.due) > 0)) {
+                return renderHistoryCardFullHTML(v);
+              }
+              // Older entries: Compact Row View with Hover Expand
+              return renderHistoryRowCompactHTML(v);
+            })
+            .join('')
+        }
             </div>
           </div>
         `
-            : `
+        : `
           <!-- Initial Search Prompt View when directly clicking Patient Record -->
           <div class="cms-card" style="padding: 40px 24px; text-align: center; color: var(--text-muted); border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
             <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary-soft, rgba(37,99,235,0.1)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 26px;">
@@ -504,8 +504,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
               <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: left; letter-spacing: 0.5px;">
                 Recent Patients in Clinic (Click to Open Record):
               </div>
-              ${
-                getRecentPatients(db).map(({ fam, pat }) => `
+              ${getRecentPatients(db).map(({ fam, pat }) => `
                   <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
                     <div>
                       <b style="font-size: 13.5px; color: var(--text);">${pat.name}</b>
@@ -520,11 +519,11 @@ export async function renderConsultationView(container, selection, onSelectPatie
                     </div>
                   </div>
                 `).join('')
-              }
+        }
             </div>
           </div>
         `
-        }
+      }
 
         <!-- Global In-Page Case Details Modal Mount Point -->
         <div id="case-modal-overlay"></div>
@@ -586,47 +585,44 @@ export async function renderConsultationView(container, selection, onSelectPatie
           <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-bottom: 4px;">Treatment / Clinic:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              ${
-                treatments.length === 0
-                  ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
-                  : treatments
-                      .map(
-                        (t) => `
+              ${treatments.length === 0
+        ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
+        : treatments
+          .map(
+            (t) => `
                       <span style="background: #ffffff; border: 1px solid #fecaca; border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; color: var(--text);">
                         ${t.name} ${t.qty > 1 ? `(x${t.qty})` : ''}
                       </span>
                     `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </div>
           </div>
 
-          ${
-            hasDigitalRx
-              ? `
+          ${hasDigitalRx
+        ? `
           <!-- Prescription / Medical Store -->
           <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              ${
-                prescriptions.length === 0
-                  ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
-                  : prescriptions
-                      .map(
-                        (p) => `
+              ${prescriptions.length === 0
+          ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
+          : prescriptions
+            .map(
+              (p) => `
                       <span style="background: #ffffff; border: 1px solid #99f6e4; border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; color: var(--text);">
                         ${p.name} (${p.mor || '1'}-${p.noon || '0'}-${p.eve || '1'}${p.ngt ? `-${p.ngt}` : ''}) ${p.timing || 'AF'}
                       </span>
                     `
-                      )
-                      .join('')
-              }
+            )
+            .join('')
+        }
             </div>
           </div>
           `
-              : ''
-          }
+        : ''
+      }
         </div>
       </div>
     `;
@@ -687,9 +683,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               </div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-wrap: wrap; gap: 6px;">
@@ -697,8 +692,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               </div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
         </div>
       </div>
@@ -734,19 +729,18 @@ export async function renderConsultationView(container, selection, onSelectPatie
             </div>
             
             <div style="display: flex; align-items: center; gap: 8px;">
-              ${
-                v.labReport
-                  ? `
+              ${v.labReport
+        ? `
                 <button type="button" class="cms-btn cms-btn-sm btn-inline-edit-lab" data-visitid="${visitKey}" style="background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="View / Edit Attached Lab Report">
                   <i class="fa-solid fa-flask-vial"></i> Lab Report Attached
                 </button>
               `
-                  : `
+        : `
                 <button type="button" class="cms-btn cms-btn-sm btn-inline-edit-lab" data-visitid="${visitKey}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
                   <i class="fa-solid fa-file-medical"></i> Attach Report
                 </button>
               `
-              }
+      }
               <button type="button" class="cms-btn-ghost btn-inline-cancel-edit" data-visitid="${visitKey}" style="color: var(--text-muted); font-size: 15px; padding: 2px 6px;" title="Close Editor">
                 <i class="fa-solid fa-xmark"></i>
               </button>
@@ -829,9 +823,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               <div class="inline-treatment-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <!-- Right: Prescription (Store) Cyan Box -->
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
@@ -843,8 +836,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               <div class="inline-prescription-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
 
           <!-- Row 3: Financials & Actions (Matching User Photo: CHARGE, PAID, DUE, Cancel, Save Changes, Print) -->
@@ -874,16 +867,15 @@ export async function renderConsultationView(container, selection, onSelectPatie
               <button type="button" class="cms-btn cms-btn-ghost btn-inline-cancel-edit" data-visitid="${visitKey}" style="padding: 6px 14px; border: 1px solid var(--border); font-weight: 700; border-radius: 6px;">
                 Cancel
               </button>
-              ${
-                hasDigitalRx
-                  ? `
+              ${hasDigitalRx
+        ? `
               <button type="button" class="cms-btn btn-inline-save-print" data-visitid="${visitKey}" style="background: #0284c7; color: #fff; padding: 6px 16px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Save and immediately print prescription">
                 <i class="fa-solid fa-print"></i>
                 <span>Save &amp; Print</span>
               </button>
               `
-                  : ''
-              }
+        : ''
+      }
               <button type="submit" class="cms-btn" style="background: #0f5132; color: #fff; padding: 6px 18px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                 <i class="fa-solid fa-check"></i>
                 <span>Save Changes</span>
@@ -1134,12 +1126,11 @@ export async function renderConsultationView(container, selection, onSelectPatie
                 </tr>
               </thead>
               <tbody>
-                ${
-                  allFamilyDueVisits.length === 0
-                    ? `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">No pending dues found for this family! All visits are paid in full.</td></tr>`
-                    : allFamilyDueVisits
-                        .map(
-                          (d) => `
+                ${allFamilyDueVisits.length === 0
+        ? `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">No pending dues found for this family! All visits are paid in full.</td></tr>`
+        : allFamilyDueVisits
+          .map(
+            (d) => `
                         <tr>
                           <td class="font-mono" style="font-size: 12px;">${fmtDate(d.date)} ${d.time || ''}</td>
                           <td><b>${d.patientName}</b></td>
@@ -1155,9 +1146,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
                           </td>
                         </tr>
                       `
-                        )
-                        .join('')
-                }
+          )
+          .join('')
+      }
               </tbody>
             </table>
           </div>
@@ -1245,9 +1236,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               </div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 10px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 6px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1255,8 +1245,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
               </div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
 
           <!-- Financial Summary -->
@@ -1282,24 +1272,22 @@ export async function renderConsultationView(container, selection, onSelectPatie
             </div>
 
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              ${
-                v.labReport
-                  ? `
+              ${v.labReport
+        ? `
                 <button type="button" id="btn-modal-view-lab" class="cms-btn cms-btn-ghost" style="border: 1.5px solid #0284c7; color: #0284c7; font-weight: 700;">
                   <i class="fa-solid fa-flask-vial"></i> View Lab Report
                 </button>
               `
-                  : ''
-              }
-              ${
-                hasDigitalRx
-                  ? `
+        : ''
+      }
+              ${hasDigitalRx
+        ? `
               <button type="button" id="btn-print-case-modal" class="cms-btn cms-btn-ghost" style="border: 1px solid var(--border);">
                 <i class="fa-solid fa-print"></i> Print Prescription
               </button>
               `
-                  : ''
-              }
+        : ''
+      }
               <button type="button" id="btn-dismiss-case-modal" class="cms-btn cms-btn-primary" style="background: #0f5132; padding: 8px 20px;">
                 Close
               </button>
