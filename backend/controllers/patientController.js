@@ -33,8 +33,8 @@ const createPatientMember = async (req, res) => {
       if (fam) famIdRef = fam.famId || fam._id;
     }
 
-    const count = await Patient.countDocuments();
-    const patId = `PAT-${String(count + 1).padStart(4, '0')}`;
+    const count = await Patient.countDocuments({ familyId: famIdRef });
+    const patId = req.body.patId || (famIdRef + String(count + 1).padStart(4, '0'));
 
     const newPatient = new Patient({
       patId,

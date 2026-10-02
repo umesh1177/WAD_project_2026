@@ -11,16 +11,30 @@ const getFamilies = async (req, res) => {
 
 const createFamily = async (req, res) => {
   try {
-    const { headName, society, area, phone } = req.body;
+    const Patient = require('../models/Patient');
+    const { famId: explicitFamId, headName, society, area, phone, age, bloodGroup, allergy, registeredBy } = req.body;
     const count = await Family.countDocuments();
-    const famId = `FAM-${String(count + 1).padStart(4, '0')}`;
+    const famId = explicitFamId || `FAM-${String(count + 1).padStart(4, '0')}`;
 
     const newFamily = new Family({
-      famId, headName, society, area, phone
+      famId, headName, society, area, phone, registeredBy: registeredBy || 'Self'
     });
     await newFamily.save();
-    res.status(201).json({ success: true, data: newFamily });
+
+    // Create the head patient
+    const patId = explicitFamId ? (explicitFamId + '0001') : `PAT-${String(await Patient.countDocuments() + 1).padStart(4, '0')}`;
+    const newPatient = new Patient({
+      patId,
+      familyId: famId,
+      name: headName,
+      relation: 'Head',
+      age, bloodGroup, allergy, society, area, phone
+    });
+    await newPatient.save();
+
+    res.status(201).json({ success: true, data: { family: newFamily, headPatient: newPatient } });
   } catch (error) {
+    console.error('Error creating family:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
