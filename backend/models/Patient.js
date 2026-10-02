@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const patientSchema = new mongoose.Schema({
   patId: { type: String, required: true, unique: true },
-  familyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Family' },
+  familyId: { type: String, ref: 'Family' },
   name: { type: String, required: true },
   relation: { type: String },
   age: { type: String },

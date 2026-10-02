@@ -4,7 +4,7 @@ const Consultation = require('../models/Consultation');
 
 const getPatients = async (req, res) => {
   try {
-    const patients = await Patient.find().populate('familyId');
+    const patients = await Patient.find();
     res.json({ success: true, count: patients.length, data: patients });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -14,9 +14,9 @@ const getPatients = async (req, res) => {
 const getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
-    const patient = await Patient.findOne({ patId: id }).populate('familyId');
+    const patient = await Patient.findOne({ patId: id });
     if (!patient) return res.status(404).json({ success: false, message: 'Not found' });
-    const visits = await Consultation.find({ patientId: patient._id });
+    const visits = await Consultation.find({ $or: [{ patientId: patient._id }, { patientId: patient.patId }] });
     res.json({ success: true, data: { ...patient.toObject(), visits } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -30,7 +30,7 @@ const createPatientMember = async (req, res) => {
     let fam = await Family.findById(famIdRef).catch(() => null);
     if (!fam) {
       if (req.body.famId) fam = await Family.findOne({ famId: req.body.famId });
-      if (fam) famIdRef = fam._id;
+      if (fam) famIdRef = fam.famId || fam._id;
     }
 
     const count = await Patient.countDocuments();
@@ -66,7 +66,7 @@ const deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
     const pat = await Patient.findOneAndDelete({ patId: id });
-    if (pat) await Consultation.deleteMany({ patientId: pat._id });
+    if (pat) await Consultation.deleteMany({ $or: [{ patientId: pat._id }, { patientId: pat.patId }] });
     res.json({ success: true, message: 'Deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

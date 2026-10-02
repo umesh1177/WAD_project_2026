@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const billSchema = new mongoose.Schema({
   billNo: { type: String, required: true, unique: true },
-  consultationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Consultation' },
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },
+  consultationId: { type: String, ref: 'Consultation' },
+  patientId: { type: String, ref: 'Patient' },
   patientName: { type: String },
   billDate: { type: Date, default: Date.now },
   totalCharge: { type: Number, default: 0 },
