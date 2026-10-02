@@ -430,3 +430,14 @@
 
 /* ---- Confirm dialog ---- */
 #adminConfirmDialog * { box-sizing: border-box; }
+.log-table {
+  overflow-x: auto;
+}
+
+.log-table .admin-table {
+  min-width: 900px;
+}
+
+.log-table td {
+  vertical-align: top;
+}
