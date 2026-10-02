@@ -2,8 +2,11 @@ const mongoose = require('mongoose');
 
 const consultationSchema = new mongoose.Schema({
   caseId: { type: String, required: true, unique: true },
-  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
-  familyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Family' },
+  patientId: { type: String, required: true },
+  familyId: { type: String },
+  clinicId: { type: String, default: 'demo' },
+  doctorId: { type: String },
+  doctorName: { type: String },
   date: { type: String },
   time: { type: String },
   bp: { type: String },
@@ -13,6 +16,7 @@ const consultationSchema = new mongoose.Schema({
   complaint: { type: String },
   investigation: { type: String },
   dietary: { type: String },
+  diagnosis: { type: String },
   vitals: {
     bp: String,
     pulse: String,
@@ -31,12 +35,14 @@ const consultationSchema = new mongoose.Schema({
     noon: String,
     eve: String,
     ngt: String,
-    timing: String
+    timing: String,
+    days: String
   }],
-  labReport: { type: Boolean, default: false },
+  labReport: { type: mongoose.Schema.Types.Mixed, default: null },
   charge: { type: Number, default: 0 },
   paid: { type: Number, default: 0 },
+  received: { type: Number, default: 0 },
   due: { type: Number, default: 0 }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 module.exports = mongoose.model('Consultation', consultationSchema);

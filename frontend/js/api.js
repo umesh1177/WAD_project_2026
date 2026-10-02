@@ -42,6 +42,13 @@ export const generateFamilyId = (clinicId, year, seq) => {
   return `${prefix}${y}${s}`; // 4 digit clinic + 4 digit year + 4 digit sequence (e.g. 000120260001)
 };
 
+export const generatePatientId = (famId, memberSeq = 1) => {
+  if (!famId) return `PAT-${pad(memberSeq || 1, 4)}`;
+  const cleanFam = String(famId).trim();
+  const s = pad(memberSeq || 1, 2);
+  return `${cleanFam}-${s}`; // e.g. 000120260001-01, 000120260001-02
+};
+
 export const makeCaseId = (famId, patId, visitNum) => {
   const f = pad(String(famId).replace(/\D/g, '') || famId, 2);
   const p = pad(String(patId).replace(/\D/g, '') || patId, 2);
@@ -330,6 +337,14 @@ export function addSharedMasterItem(type, item, currentDb = null) {
     list.unshift(cleanItem);
     saveSharedMasterCollection(type, list);
 
+    // Persist to MongoDB backend
+    try {
+      apiFetch('/masters', {
+        method: 'POST',
+        body: { type, ...cleanItem }
+      }).catch(() => {});
+    } catch (e) {}
+
     // Auto-assign '-' shortcut if applicable
     const shortcutKeys = ['complaints', 'investigations', 'medicines', 'allergies', 'relations'];
     if (shortcutKeys.includes(type) && currentDb) {
@@ -357,13 +372,35 @@ export function updateSharedMasterItem(type, updatedItem) {
     list.unshift(cleanItem);
     saveSharedMasterCollection(type, list);
   }
+
+  // Persist to MongoDB backend
+  try {
+    const targetId = cleanItem.id || cleanItem.name;
+    apiFetch('/masters/' + encodeURIComponent(targetId), {
+      method: 'PUT',
+      body: { type, ...cleanItem }
+    }).catch(() => {});
+  } catch (e) {}
+
   return list;
 }
 
 export function deleteSharedMasterItem(type, filterFn) {
   const list = getSharedMasterCollection(type);
+  const toDelete = list.filter(item => !filterFn(item));
   const updated = list.filter(item => filterFn(item));
   saveSharedMasterCollection(type, updated);
+
+  // Persist deletion to MongoDB backend
+  toDelete.forEach(item => {
+    try {
+      const targetId = item.id || item.name;
+      apiFetch('/masters/' + encodeURIComponent(targetId), {
+        method: 'DELETE'
+      }).catch(() => {});
+    } catch (e) {}
+  });
+
   return updated;
 }
 

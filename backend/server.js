@@ -18,11 +18,7 @@ const consultationRoutes = require('./routes/consultationRoutes');
 const diagnosisRoutes = require('./routes/diagnosisRoutes');
 const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const certificateRoutes = require('./routes/certificateRoutes');
-const medicineRoutes = require('./routes/medicineRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes');
 const masterRoutes = require('./routes/masterRoutes');
-const billingRoutes = require('./routes/billingRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
 const followUpRoutes = require('./routes/followUpRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const clinicRoutes = require('./routes/clinicRoutes');
@@ -34,7 +30,6 @@ const Patient = require('./models/Patient');
 const Consultation = require('./models/Consultation');
 const Appointment = require('./models/Appointment');
 const FollowUp = require('./models/FollowUp');
-const Bill = require('./models/Bill');
 const { todayISO } = require('./utils/generateId');
 
 const seedDemoData = async () => {
@@ -50,7 +45,6 @@ const seedDemoData = async () => {
       await Consultation.deleteMany({ clinicId: 'demo' });
       await Appointment.deleteMany({ clinicId: 'demo' });
       await FollowUp.deleteMany({ clinicId: 'demo' });
-      await Bill.deleteMany({ clinicId: 'demo' });
 
       // Family 1 - Vastrapur
       await new Family({
@@ -276,14 +270,6 @@ const seedDemoData = async () => {
         { patientId: '00040001', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', followUpDate: '2026-10-06', reason: 'Migraine Prophylaxis Assessment', status: 'Pending', clinicId: 'demo' },
       ]);
 
-      // Seed Bills
-      await Bill.insertMany([
-        { billNo: 'INV-2026-001', billDate: curDate, patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', totalCharge: 600, paidAmount: 600, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
-        { billNo: 'INV-2026-002', billDate: curDate, patientId: '00020002', patientName: 'SHARMA PRIYABEN AMITBHAI', totalCharge: 500, paidAmount: 500, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
-        { billNo: 'INV-2026-003', billDate: curDate, patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', totalCharge: 500, paidAmount: 250, dueAmount: 250, status: 'Partial', clinicId: 'demo' },
-        { billNo: 'INV-2026-004', billDate: curDate, patientId: '00030003', patientName: 'DESAI KANTABEN KANTILAL', totalCharge: 750, paidAmount: 750, dueAmount: 0, status: 'Paid', clinicId: 'demo' },
-      ]);
-
       console.log('[Database Seeding]: Rich demo dataset seeded successfully.');
     }
   } catch (err) {
@@ -291,9 +277,7 @@ const seedDemoData = async () => {
   }
 };
 
-connectDB().then(() => {
-  seedDemoData();
-});
+connectDB();
 
 // Global Middlewares
 app.use(cors({ origin: true, credentials: true }));
@@ -337,7 +321,7 @@ app.get('/api/clinic/info', authMiddleware, async (req, res, next) => {
       address: familyDoc?.clinicAddress || '',
       phone: familyDoc?.clinicPhone || '',
       city: familyDoc?.clinicCity || '',
-      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates']
     };
     res.json({ success: true, data: clinicInfo });
   } catch (err) {
@@ -401,14 +385,7 @@ app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/prescription', prescriptionRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/certificate', certificateRoutes);
-app.use('/api/medicines', medicineRoutes);
-app.use('/api/medicine', medicineRoutes);
-app.use('/api/inventory', inventoryRoutes);
 app.use('/api/masters', masterRoutes);
-app.use('/api/billing', billingRoutes);
-app.use('/api/bills', billingRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/payment', paymentRoutes);
 app.use('/api/followups', followUpRoutes);
 app.use('/api/followup', followUpRoutes);
 app.use('/api/feedback', feedbackRoutes);

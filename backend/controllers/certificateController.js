@@ -1,7 +1,7 @@
+const mongoose = require('mongoose');
 const Certificate = require('../models/Certificate');
 const CertificateTemplate = require('../models/CertificateTemplate');
 const { todayISO, pad } = require('../utils/generateId');
-const { generateCertificateNumber } = require('../services/certificateService');
 
 // Default built-in certificate templates
 const DEFAULT_TEMPLATES = [
@@ -39,14 +39,14 @@ const DEFAULT_TEMPLATES = [
 const getCertificates = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const certs = await Certificate.find({ clinicId }).sort({ createdAt: -1 });
+    const certs = await Certificate.find().sort({ createdAt: -1 });
     res.json({ success: true, count: certs.length, data: certs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Issue new certificate with auto-generated unique Certificate ID
+// Issue new certificate
 const createCertificate = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
@@ -70,27 +70,25 @@ const createCertificate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Patient name, diagnosis, and dates are required' });
     }
 
-    // Generate unique Certificate ID
-    const count = await Certificate.countDocuments({ clinicId });
+    const count = await Certificate.countDocuments();
     const year = new Date().getFullYear();
     let certNo = `CERT-${year}-${pad(count + 1, 4)}`;
 
-    // Ensure certNo uniqueness
-    let exists = await Certificate.findOne({ certNo, clinicId });
+    let exists = await Certificate.findOne({ certNo });
     let seq = count + 1;
     while (exists) {
       seq++;
       certNo = `CERT-${year}-${pad(seq, 4)}`;
-      exists = await Certificate.findOne({ certNo, clinicId });
+      exists = await Certificate.findOne({ certNo });
     }
 
     const newCert = new Certificate({
       certNo,
       patientId: patientId || '',
-      patientName: patientName.trim(),
+      patientName: (patientName || '').trim(),
       patientAge: patientAge || '',
       patientGender: patientGender || '',
-      diagnosis: diagnosis.trim(),
+      diagnosis: (diagnosis || '').trim(),
       fromDate,
       toDate,
       restDays: Number(restDays) || 0,
@@ -109,6 +107,25 @@ const createCertificate = async (req, res) => {
 
     await newCert.save();
     res.status(201).json({ success: true, message: 'Certificate issued successfully', data: newCert });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update certificate
+const updateCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let query = { certNo: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [{ _id: id }, { certNo: id }] };
+    }
+
+    const updated = await Certificate.findOneAndUpdate(query, { $set: req.body }, { new: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Certificate not found for update' });
+    }
+    res.json({ success: true, message: 'Certificate updated', data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -137,18 +154,23 @@ const verifyCertificate = async (req, res) => {
 const deleteCertificate = async (req, res) => {
   try {
     const { id } = req.params;
-    await Certificate.findByIdAndDelete(id);
+    let query = { certNo: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [{ _id: id }, { certNo: id }] };
+    }
+
+    await Certificate.findOneAndDelete(query);
     res.json({ success: true, message: 'Certificate deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get all certificate templates (built-in defaults + clinic custom templates)
+// Get all certificate templates
 const getTemplates = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const customTemplates = await CertificateTemplate.find({ clinicId }).sort({ createdAt: -1 });
+    const customTemplates = await CertificateTemplate.find().sort({ createdAt: -1 });
 
     const allTemplates = [...DEFAULT_TEMPLATES, ...customTemplates];
     res.json({ success: true, count: allTemplates.length, data: allTemplates });
@@ -184,6 +206,20 @@ const createTemplate = async (req, res) => {
   }
 };
 
+// Update custom template
+const updateTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await CertificateTemplate.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Template not found' });
+    }
+    res.json({ success: true, message: 'Template updated', data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Delete custom template
 const deleteTemplate = async (req, res) => {
   try {
@@ -198,9 +234,11 @@ const deleteTemplate = async (req, res) => {
 module.exports = {
   getCertificates,
   createCertificate,
+  updateCertificate,
   verifyCertificate,
   deleteCertificate,
   getTemplates,
   createTemplate,
+  updateTemplate,
   deleteTemplate,
 };

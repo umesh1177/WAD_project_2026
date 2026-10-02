@@ -208,10 +208,6 @@
     import { renderCertificateView } from './js/certificate.js';
     import { renderFeedbackView } from './js/feedback.js';
     import { renderAppointmentsView } from './js/appointment.js';
-    import { renderBillingView } from './js/billing.js';
-    import { renderPaymentView } from './js/payment.js';
-    import { renderMedicineList } from './js/medicine.js';
-    import { renderInventoryView } from './js/inventory.js';
     import { renderFollowUpsView } from './js/followUp.js';
     import { renderReportsView } from './js/reports.js';
     import { renderMastersView } from './js/masters.js';
@@ -390,15 +386,10 @@
     /* ---- Navigation Handler ---- */
     document.querySelectorAll('.cms-nav-item').forEach(item => {
       item.addEventListener('click', () => {
-        document.querySelectorAll('.cms-nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        currentView = item.getAttribute('data-view');
-        if (currentView === 'case') {
-          currentSelection = { familyId: null, patientId: null };
-        } else {
-          currentSelection = { ...currentSelection, isRedirectFromHeadReg: false };
+        const viewName = item.getAttribute('data-view');
+        if (viewName) {
+          navigateTo(viewName);
         }
-        renderActiveView();
       });
     });
 
@@ -423,9 +414,15 @@
       container.innerHTML = '';
 
       if (currentView === 'dashboard') {
-        renderDashboard(container, (famId, patId) => {
-          navigateTo('case', { familyId: famId, patientId: patId });
-        });
+        renderDashboard(
+          container,
+          (famId, patId) => {
+            navigateTo('case', { familyId: famId, patientId: patId });
+          },
+          (viewName, sel) => {
+            navigateTo(viewName, sel);
+          }
+        );
       } else if (currentView === 'family') {
         renderFamilyRegistration(container, (famId, patId) => {
           navigateTo('case', { familyId: famId, patientId: patId });
@@ -462,12 +459,6 @@
         renderAppointmentsView(container, (sel) => {
           navigateTo('case', sel);
         });
-      } else if (currentView === 'billing') {
-        renderBillingView(container);
-      } else if (currentView === 'medicines') {
-        renderMedicineList(container);
-      } else if (currentView === 'inventory') {
-        renderInventoryView(container);
       } else if (currentView === 'certificates') {
         renderCertificateView(container);
       } else if (currentView === 'feedback') {

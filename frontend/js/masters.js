@@ -76,21 +76,80 @@ export async function renderMastersView(container) {
     customShortcuts: [] 
   };
   try {
-    const mRes = await apiFetch('/masters');
-    // minimal loading hook
+    const mRes = await apiFetch(`/masters?clinicId=${encodeURIComponent(clinicId)}`);
+    if (mRes && mRes.data && Array.isArray(mRes.data)) {
+      // Sort so demo items load first, and clinic-specific items override demo items
+      const sortedMasters = mRes.data.slice().sort((a, b) => {
+        if (a.clinicId === clinicId && b.clinicId !== clinicId) return 1;
+        if (a.clinicId !== clinicId && b.clinicId === clinicId) return -1;
+        return 0;
+      });
+
+      sortedMasters.forEach(item => {
+        if (item.type === 'custom_shortcuts') {
+          try {
+            const parsed = item.value ? JSON.parse(item.value) : (Array.isArray(item.items) ? item.items : null);
+            if (Array.isArray(parsed) && parsed.length > 0) db.customShortcuts = parsed;
+          } catch(e) {}
+        } else if (item.type === 'clinic_shortcuts') {
+          try {
+            const parsed = item.value ? JSON.parse(item.value) : (item.items?.[0] || null);
+            if (parsed && typeof parsed === 'object') db.clinicShortcuts = { ...db.clinicShortcuts, ...parsed };
+          } catch(e) {}
+        } else if (item.type === 'dietary') {
+          const dCode = item.code || item.name;
+          if (dCode) {
+            db.dietary[dCode] = {
+              _id: item._id,
+              id: item._id || dCode,
+              code: dCode,
+              disease: item.disease || item.name,
+              eat: item.eat || item.description || '',
+              avoid: item.avoid || ''
+            };
+          }
+        }
+      });
+    }
   } catch(e){}
 
   window.syncMasters = async () => {
     try {
-      // Masters update instantly over apiFetch via addSharedMasterItem, but for specific dietaries
-      for(let k in db.dietary) {
+      // 1. Sync custom shortcuts to DB
+      await apiFetch('/masters', {
+        method: 'POST',
+        body: {
+          type: 'custom_shortcuts',
+          name: 'custom_shortcuts',
+          clinicId: clinicId,
+          items: db.customShortcuts || [],
+          value: JSON.stringify(db.customShortcuts || [])
+        }
+      });
+
+      // 2. Sync clinic-specific item codes / shortcuts to DB
+      await apiFetch('/masters', {
+        method: 'POST',
+        body: {
+          type: 'clinic_shortcuts',
+          name: 'clinic_shortcuts',
+          clinicId: clinicId,
+          items: [db.clinicShortcuts || {}],
+          value: JSON.stringify(db.clinicShortcuts || {})
+        }
+      });
+
+      // 3. Sync dietary items
+      for (let k in db.dietary) {
         let d = db.dietary[k];
-        if(!d._id) {
-          let r = await apiFetch('/masters', { method: 'POST', body: Object.assign({}, d, { type: 'dietary', value: d.disease }) });
-          if(r.success) d._id = r.data._id;
+        if (!d._id) {
+          let r = await apiFetch('/masters', { method: 'POST', body: Object.assign({}, d, { type: 'dietary', value: d.disease, clinicId: clinicId }) });
+          if (r.success && r.data?._id) d._id = r.data._id;
         }
       }
-    } catch(e){}
+    } catch(e) {
+      console.warn('syncMasters error:', e);
+    }
   };
 
   // Ensure clinic-specific structures exist in db
@@ -119,13 +178,13 @@ export async function renderMastersView(container) {
       { id: 'sc9', key: 'Alt+N', target: 'open_new_case', title: '+ Open New Case Form', category: 'Form' },
       { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' },
     ];
+    window.syncMasters();
   }
 
   // Ensure persistent IDs on custom shortcuts
   (db.customShortcuts || []).forEach((sc, idx) => {
     if (!sc.id) sc.id = `sc_${idx + 1}_${(sc.key || '').toLowerCase()}`;
   });
-  window.syncMasters();
 
   // Active sub-tab state: 'dietary' | 'complaints' | 'investigations' | 'areas' | 'medicines' | 'allergies' | 'relations' | 'societies' | 'shortcuts'
   let activeTab = 'dietary';

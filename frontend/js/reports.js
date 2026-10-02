@@ -7,10 +7,9 @@
 
 import { apiFetch, getLocalDB, getAuthSession, fmtDate, fmtMoney, todayISO } from './api.js';
 
-export function renderReportsView(container) {
+export async function renderReportsView(container) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const db = getLocalDB(clinicId);
 
   let activeTab = 'area'; // 'area' | 'refdr' | 'diagnosis' | 'patient' | 'collection'
 
@@ -39,24 +38,55 @@ export function renderReportsView(container) {
     </div>
   `;
 
-  // Aggregate Data
-  const families = Object.values(db.families || {});
-  const allVisits = [];
-  const allPatients = [];
+  // Aggregate Data from API
+  let allPatients = [];
+  let allVisits = [];
 
-  families.forEach((fam) => {
-    Object.values(fam.patients || {}).forEach((pat) => {
-      allPatients.push({ ...pat, famHead: fam.headName, famArea: fam.area });
-      (pat.visits || []).forEach((v) => {
-        allVisits.push({
-          ...v,
-          famHead: fam.headName,
-          famArea: fam.area,
-          patName: pat.name,
-        });
-      });
+  try {
+    const [fRes, pRes, cRes] = await Promise.all([
+      apiFetch('/families').catch(() => ({ data: [] })),
+      apiFetch('/patients').catch(() => ({ data: [] })),
+      apiFetch('/consultations').catch(() => ({ data: [] }))
+    ]);
+
+    const famMap = {};
+    (fRes?.data || []).forEach(f => {
+      famMap[f.famId || f._id || f.id] = f;
+      if (f._id) famMap[String(f._id)] = f;
     });
-  });
+
+    const patMap = {};
+    (pRes?.data || []).forEach(p => {
+      const fam = famMap[p.familyId] || famMap[p.familyId?._id] || {};
+      const patObj = {
+        ...p,
+        famHead: fam.headName || p.name || 'Family Head',
+        famArea: fam.area || fam.society || p.area || p.society || '',
+        visits: []
+      };
+      allPatients.push(patObj);
+      patMap[p.patId || p._id || p.id] = patObj;
+      if (p._id) patMap[String(p._id)] = patObj;
+      if (p.patId) patMap[p.patId] = patObj;
+    });
+
+    (cRes?.data || []).forEach(c => {
+      const pKey = c.patientId?._id || c.patientId?.patId || c.patientId;
+      const matchedPat = patMap[pKey] || allPatients.find(p => p.patId === pKey || String(p._id) === String(pKey) || (p.patId && String(c.caseId).startsWith(p.patId)));
+      const vObj = {
+        ...c,
+        famHead: matchedPat?.famHead || '',
+        famArea: matchedPat?.famArea || '',
+        patName: matchedPat?.name || 'Patient',
+      };
+      allVisits.push(vObj);
+      if (matchedPat) {
+        matchedPat.visits.push(vObj);
+      }
+    });
+  } catch(e) {
+    console.warn('Reports load error:', e);
+  }
 
   const renderCurrentReport = () => {
     const box = container.querySelector('#rpt-content-box');

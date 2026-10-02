@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection, addSharedMasterItem } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, generatePatientId, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 
 export async function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
   const session = getAuthSession();
@@ -546,8 +546,7 @@ export async function renderFamilyRegistration(container, onSelectPatient, onAdd
     }
 
     const finalFamId = createdFamId || computedFamId;
-    const famSeqCode = pad(curSeq, 4);
-    const finalPatId = createdPatId || `${famSeqCode}0001`;
+    const finalPatId = createdPatId || generatePatientId(finalFamId, 1);
 
     const pat = {
       id: finalPatId,

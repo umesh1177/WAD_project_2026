@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Diagnosis = require('../models/Diagnosis');
 const Consultation = require('../models/Consultation');
 
@@ -5,7 +6,7 @@ const Consultation = require('../models/Consultation');
 const getDiagnoses = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const diagnoses = await Diagnosis.find({ clinicId }).sort({ name: 1 });
+    const diagnoses = await Diagnosis.find().sort({ name: 1 });
     res.json({ success: true, count: diagnoses.length, data: diagnoses });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -20,6 +21,13 @@ const createDiagnosis = async (req, res) => {
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Diagnosis name is required' });
+    }
+
+    let existing = await Diagnosis.findOne({ name: name.trim() });
+    if (existing) {
+      Object.assign(existing, req.body);
+      await existing.save();
+      return res.status(200).json({ success: true, message: 'Diagnosis updated', data: existing });
     }
 
     const newDiag = new Diagnosis({
@@ -38,11 +46,35 @@ const createDiagnosis = async (req, res) => {
   }
 };
 
+// Update diagnosis
+const updateDiagnosis = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let query = { name: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [{ _id: id }, { name: id }] };
+    }
+
+    const updated = await Diagnosis.findOneAndUpdate(query, { $set: req.body }, { new: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Diagnosis not found for update' });
+    }
+    res.json({ success: true, message: 'Diagnosis updated', data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Delete diagnosis
 const deleteDiagnosis = async (req, res) => {
   try {
     const { id } = req.params;
-    await Diagnosis.findByIdAndDelete(id);
+    let query = { name: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [{ _id: id }, { name: id }] };
+    }
+
+    await Diagnosis.findOneAndDelete(query);
     res.json({ success: true, message: 'Diagnosis deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -53,7 +85,7 @@ const deleteDiagnosis = async (req, res) => {
 const getDiagnosisAnalytics = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const visits = await Consultation.find({ clinicId });
+    const visits = await Consultation.find();
 
     const counts = {};
     visits.forEach((v) => {
@@ -76,6 +108,7 @@ const getDiagnosisAnalytics = async (req, res) => {
 module.exports = {
   getDiagnoses,
   createDiagnosis,
+  updateDiagnosis,
   deleteDiagnosis,
   getDiagnosisAnalytics,
 };

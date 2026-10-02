@@ -6,6 +6,7 @@ const { validateDiagnosis } = require('../middleware/validateMiddleware');
 
 router.get('/', authMiddleware, diagnosisController.getDiagnoses);
 router.post('/', authMiddleware, validateDiagnosis, diagnosisController.createDiagnosis);
+router.put('/:id', authMiddleware, diagnosisController.updateDiagnosis);
 router.delete('/:id', authMiddleware, diagnosisController.deleteDiagnosis);
 router.get('/analytics', authMiddleware, diagnosisController.getDiagnosisAnalytics);
 

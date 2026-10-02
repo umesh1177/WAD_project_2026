@@ -1,7 +1,6 @@
 const Consultation = require('../models/Consultation');
 const Family = require('../models/Family');
 const Patient = require('../models/Patient');
-const Payment = require('../models/Payment');
 
 const aggregateClinicStats = async (clinicId, dateFilter) => {
   try {

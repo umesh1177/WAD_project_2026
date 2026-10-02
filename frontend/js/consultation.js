@@ -26,53 +26,171 @@ export async function renderConsultationView(container, selection, onSelectPatie
   
   const db = { families: {}, customAllergies: [], customAreas: [], customSocieties: [], customRelations: [] };
   try {
-    const [pRes, cRes] = await Promise.all([apiFetch('/patients'), apiFetch('/consultations')]);
-    if (pRes && pRes.success) {
-      pRes.data.forEach(p => {
-        const famId = p.familyId ? (p.familyId.famId || p.familyId._id || p.familyId) : 'UNKNOWN';
-        if (!db.families[famId]) db.families[famId] = { patients: {} };
-        db.families[famId].patients[p.patId||p._id||p.id] = { ...p, visits: [] };
-      });
-    }
-    if (cRes && cRes.success) {
-      cRes.data.forEach(c => {
-        const patId = c.patientId ? (c.patientId._id || c.patientId.patId || c.patientId) : null;
-        if(patId) {
-          Object.values(db.families).forEach(f => {
-            if(f.patients[patId]) {
-              f.patients[patId].visits.push({ ...c, id: c._id });
-            }
-          });
+    const [fRes, pRes, cRes] = await Promise.all([
+      apiFetch('/families').catch(() => ({ data: [] })),
+      apiFetch('/patients').catch(() => ({ data: [] })),
+      apiFetch('/consultations').catch(() => ({ data: [] }))
+    ]);
+
+    if (fRes && fRes.data && Array.isArray(fRes.data)) {
+      fRes.data.forEach(f => {
+        const famId = f.famId || f.id || String(f._id);
+        const famObj = {
+          ...f,
+          id: famId,
+          famId: famId,
+          _id: f._id,
+          headName: f.headName || f.name || 'Family Head',
+          area: f.area || f.society || '',
+          patients: {}
+        };
+        db.families[famId] = famObj;
+        if (f._id && String(f._id) !== String(famId)) {
+          db.families[String(f._id)] = famObj;
         }
       });
+    }
+
+    if (pRes && pRes.data && Array.isArray(pRes.data)) {
+      pRes.data.forEach(p => {
+        const pFamRaw = p.familyId ? (p.familyId.famId || p.familyId._id || p.familyId) : null;
+        let famObj = pFamRaw ? (db.families[pFamRaw] || db.families[String(pFamRaw)]) : null;
+        if (!famObj && pFamRaw) {
+          famObj = Object.values(db.families).find(f => f.famId === pFamRaw || f.id === pFamRaw || String(f._id) === String(pFamRaw));
+        }
+        if (!famObj) {
+          const fallbackFamId = pFamRaw || p.patId?.split('-')?.[0] || 'FAM-0001';
+          famObj = {
+            id: fallbackFamId,
+            famId: fallbackFamId,
+            headName: p.relation === 'Head' ? p.name : 'Family Head',
+            area: p.area || p.society || '',
+            patients: {}
+          };
+          db.families[fallbackFamId] = famObj;
+        }
+
+        const patId = p.patId || p.id || String(p._id);
+        const patObj = {
+          ...p,
+          id: patId,
+          patId: patId,
+          _id: p._id,
+          name: p.name || 'Patient',
+          relation: p.relation || 'Head',
+          familyId: famObj.famId,
+          visits: []
+        };
+        famObj.patients[patId] = patObj;
+        if (p._id && String(p._id) !== String(patId)) {
+          famObj.patients[String(p._id)] = patObj;
+        }
+      });
+    }
+
+    if (cRes && cRes.data && Array.isArray(cRes.data)) {
+      cRes.data.forEach(c => {
+        const cPatId = String(c.patientId?._id || c.patientId?.patId || c.patientId || '').trim();
+        const cCaseId = String(c.caseId || '').trim();
+        const visitObj = {
+          ...c,
+          id: c._id || c.caseId || c.id,
+          _id: c._id,
+          caseId: c.caseId || c._id || c.id,
+          labReport: (c.labReport && typeof c.labReport === 'object') ? c.labReport : null
+        };
+
+        Object.values(db.families).forEach(f => {
+          Object.values(f.patients || {}).forEach(p => {
+            const pIdStr = String(p.id || '').trim();
+            const pPatIdStr = String(p.patId || '').trim();
+            const pDbIdStr = String(p._id || '').trim();
+
+            const matches =
+              (cPatId && (pPatIdStr === cPatId || pDbIdStr === cPatId || pIdStr === cPatId || (pPatIdStr && cPatId.includes(pPatIdStr)))) ||
+              (pPatIdStr && cCaseId && cCaseId.startsWith(pPatIdStr)) ||
+              (pPatIdStr && cCaseId && cCaseId.replace(/\D/g, '').startsWith(pPatIdStr.replace(/\D/g, ''))) ||
+              (c.patient && (String(c.patient._id) === pDbIdStr || String(c.patient.patId) === pPatIdStr));
+
+            if (matches) {
+              if (!p.visits) p.visits = [];
+              const vKey = String(visitObj._id || visitObj.caseId || visitObj.id);
+              if (!p.visits.some(v => String(v._id || v.caseId || v.id) === vKey)) {
+                p.visits.push(visitObj);
+              }
+            }
+          });
+        });
+      });
+
       for (let famKey in db.families) {
         for (let patKey in db.families[famKey].patients) {
           if (db.families[famKey].patients[patKey].visits) {
-            db.families[famKey].patients[patKey].visits.sort((a,b) => new Date(b.date) - new Date(a.date));
+            db.families[famKey].patients[patKey].visits.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
           }
         }
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('Error loading consultation data:', e);
+  }
+
+  function resolvePatientAndFamily(dbSource, fId, pId) {
+    let resolvedFamily = null;
+    let resolvedPatient = null;
+
+    if (fId) {
+      resolvedFamily = dbSource.families[fId] || Object.values(dbSource.families || {}).find(f => (f.famId === fId || f.id === fId || f._id === fId || String(f._id) === String(fId)));
+    }
+
+    if (resolvedFamily && pId) {
+      resolvedPatient = resolvedFamily.patients?.[pId] || Object.values(resolvedFamily.patients || {}).find(p => (p.patId === pId || p.id === pId || p._id === pId || String(p._id) === String(pId)));
+    }
+
+    if (!resolvedPatient && pId) {
+      for (let f of Object.values(dbSource.families || {})) {
+        const p = Object.values(f.patients || {}).find(p => p.patId === pId || p.id === pId || p._id === pId || String(p._id) === String(pId));
+        if (p) {
+          resolvedPatient = p;
+          resolvedFamily = f;
+          break;
+        }
+      }
+    }
+
+    return { family: resolvedFamily, patient: resolvedPatient };
+  }
 
   window.syncVisitsToDB = async () => {
     if (!patient || !patient.visits) return;
     try {
       for (let i = 0; i < patient.visits.length; i++) {
         let v = patient.visits[i];
-        if (!v._id) {
-          v.patientId = patient._id || patient.patId || patient.id;
-          v.clinicId = clinicId;
-          const r = await apiFetch('/consultations', { method: 'POST', body: v });
-          if(r.success) { v._id = r.data._id; v.id = r.data._id; }
+        v.patientId = patient.patId || patient._id || patient.id;
+        v.familyId = family?.famId || family?._id || patient.familyId || '';
+        v.clinicId = clinicId;
+
+        const targetId = v._id || v.caseId || v.id;
+        if (v._id) {
+          await apiFetch('/consultations/' + v._id, { method: 'PUT', body: v });
+        } else if (targetId && !String(targetId).startsWith('v_')) {
+          const res = await apiFetch('/consultations/' + targetId, { method: 'PUT', body: v });
+          if (res.success && res.data?._id) {
+            v._id = res.data._id;
+          }
         } else {
-          v.patientId = patient._id || patient.patId || patient.id;
-          await apiFetch('/consultations/'+v._id, { method: 'PUT', body: v });
+          const r = await apiFetch('/consultations', { method: 'POST', body: v });
+          if (r.success && r.data?._id) {
+            v._id = r.data._id;
+            v.id = r.data._id;
+            v.caseId = r.data.caseId || v.caseId;
+          }
         }
       }
-    } catch(e){}
+    } catch(e) {
+      console.warn('syncVisitsToDB error:', e);
+    }
   };
-
 
   // Determine active clinic services
   const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
@@ -93,8 +211,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
   const hasBilling = clinicServices.includes('billing');
 
   let { familyId, patientId } = selection || {};
-  let family = familyId ? (db.families[familyId] || Object.values(db.families || {}).find(f => (f.famId === familyId || f.id === familyId))) : null;
-  let patient = family && patientId ? (family.patients?.[patientId] || Object.values(family.patients || {}).find(p => (p.patId === patientId || p.id === patientId))) : null;
+  const initResolved = resolvePatientAndFamily(db, familyId, patientId);
+  let family = initResolved.family;
+  let patient = initResolved.patient;
 
   // Views state: 'case' | 'family-due'
   let currentSubView = 'case';
@@ -167,7 +286,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
     }
 
     const { personalDue, familyDue } = computeDues();
-    let rawVisits = (patient?.visits || []).slice().reverse();
+    let rawVisits = (patient?.visits || []).slice().sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
 
     // Filter by Date if filterDate is active
     let visits = rawVisits;
@@ -505,21 +624,25 @@ export async function renderConsultationView(container, selection, onSelectPatie
                 Recent Patients in Clinic (Click to Open Record):
               </div>
               ${
-                getRecentPatients(db).map(({ fam, pat }) => `
-                  <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
+                getRecentPatients(db).map(({ fam, pat }) => {
+                  const pId = pat.patId || pat.id || pat._id;
+                  const fId = fam.famId || fam.id || fam._id;
+                  return `
+                  <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fId}" data-patid="${pId}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
                     <div>
                       <b style="font-size: 13.5px; color: var(--text);">${pat.name}</b>
                       <span style="font-size: 12px; color: var(--text-muted);">(${pat.relation || 'Head'})</span>
                       <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
-                        ${fam.headName} &middot; FAM ${fam.id} &middot; ${fam.area || '—'}
+                        ${fam.headName || 'Family Head'} &middot; FAM ${fId} &middot; ${fam.area || fam.society || '—'}
                       </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                      <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pat.id}</span>
+                      <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pId}</span>
                       <i class="fa-solid fa-arrow-right" style="color: var(--primary);"></i>
                     </div>
                   </div>
-                `).join('')
+                `;
+                }).join('')
               }
             </div>
           </div>
@@ -554,7 +677,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px;">
-            ${v.labReport ? `<button type="button" class="cms-btn cms-btn-ghost btn-card-view-lab" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: #0284c7; border: 1px solid #bae6fd; background: #f0fdf4; font-weight: 700; border-radius: 4px;" title="View / Print Attached Lab Report"><i class="fa-solid fa-flask-vial"></i> Lab Report</button>` : ''}
+            <button type="button" class="cms-btn cms-btn-ghost btn-card-view-lab" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: ${v.labReport ? '#0369a1' : '#64748b'}; border: 1px solid ${v.labReport ? '#bae6fd' : 'var(--border)'}; background: ${v.labReport ? '#e0f2fe' : '#f8fafc'}; font-weight: 700; border-radius: 4px;" title="View / Attach Lab Report">
+              <i class="fa-solid fa-flask-vial"></i> ${v.labReport ? 'Lab Report (Attached)' : '+ Lab Report'}
+            </button>
             ${hasDigitalRx ? `
             <button type="button" class="cms-btn cms-btn-ghost btn-card-print-rx" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: #0f5132; border: 1px solid #86efac; background: #f0fdf4; font-weight: 700; border-radius: 4px;" title="Print Prescription for Case #${v.caseId}">
               <i class="fa-solid fa-print"></i> Print Rx
@@ -577,6 +702,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
           ${v.dietary ? `<div class="cms-pill-dietary" title="Dietary Advice"><i class="fa-solid fa-utensils"></i> Diet: ${v.dietary}</div>` : ''}
           ${v.sugar ? `<div class="cms-pill-sugar">Sugar: ${v.sugar}</div>` : ''}
           ${v.investigation ? `<div class="cms-pill-investigation">Investigation: ${v.investigation}</div>` : ''}
+          ${v.labReport ? `<div class="cms-pill" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700;"><i class="fa-solid fa-flask-vial"></i> Lab: ${(v.labReport.summaryTags || []).join(', ') || 'Report Attached'}</div>` : ''}
           ${v.other ? `<div class="cms-pill-other">Other: ${v.other}</div>` : ''}
         </div>
 
@@ -1440,8 +1566,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
     setupPatientSearch(container, db, (fId, pId) => {
       familyId = fId;
       patientId = pId;
-      family = db.families[fId];
-      patient = family?.patients?.[pId];
+      const res = resolvePatientAndFamily(db, fId, pId);
+      family = res.family;
+      patient = res.patient;
       isNewVisitOpen = false;
       editingVisitId = null;
       showDueCasesOnTop = false;
@@ -1457,8 +1584,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
         const pId = item.getAttribute('data-patid');
         familyId = fId;
         patientId = pId;
-        family = db.families[fId];
-        patient = family?.patients?.[pId];
+        const res = resolvePatientAndFamily(db, fId, pId);
+        family = res.family;
+        patient = res.patient;
         isNewVisitOpen = false;
         editingVisitId = null;
         showDueCasesOnTop = false;
@@ -1584,7 +1712,9 @@ export async function renderConsultationView(container, selection, onSelectPatie
         sessionStorage.setItem('cms_active_case_draft', JSON.stringify({ patientId: patient.id, draft: draftCase }));
 
         if (onEditPatient) {
-          onEditPatient(family.id, patient.id);
+          const fId = family?.famId || family?.id || family?._id || familyId;
+          const pId = patient?.patId || patient?.id || patient?._id || patientId;
+          onEditPatient(fId, pId);
         }
       });
     }
@@ -1829,15 +1959,16 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
         if (editingVisitId) {
           // Update existing visit
-          const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId));
+          const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId || v._id === editingVisitId));
           if (vIdx !== -1) {
-            patient.visits[vIdx] = {
+            const updatedVisit = {
               ...patient.visits[vIdx],
               date: visitDate,
               bp,
               sugar,
               other,
               reference,
+              refDr: reference,
               investigation,
               complaint,
               dietary,
@@ -1846,8 +1977,24 @@ export async function renderConsultationView(container, selection, onSelectPatie
               labReport: attachedLabReport,
               charge,
               received,
+              paid: received,
               due,
             };
+            patient.visits[vIdx] = updatedVisit;
+
+            const targetId = updatedVisit._id || updatedVisit.caseId || editingVisitId;
+            try {
+              const uRes = await apiFetch('/consultations/' + targetId, {
+                method: 'PUT',
+                body: updatedVisit
+              });
+              if (uRes.success && uRes.data?._id) {
+                patient.visits[vIdx]._id = uRes.data._id;
+              }
+            } catch(e) {
+              console.warn('Update consultation error:', e);
+            }
+
             showToast(`✨ Case #${editingVisitId} updated successfully!`);
           }
         } else {
@@ -1865,6 +2012,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
             sugar,
             other,
             reference,
+            refDr: reference,
             investigation,
             complaint,
             dietary,
@@ -1873,10 +2021,30 @@ export async function renderConsultationView(container, selection, onSelectPatie
             labReport: attachedLabReport,
             charge,
             received,
+            paid: received,
             due,
           };
 
-          patient.visits.push(newVisit);
+          try {
+            const cRes = await apiFetch('/consultations', {
+              method: 'POST',
+              body: {
+                ...newVisit,
+                patientId: patient.patId || patient._id || patient.id,
+                familyId: family?.famId || family?._id || patient.familyId || '',
+                clinicId
+              }
+            });
+            if (cRes.success && cRes.data) {
+              newVisit._id = cRes.data._id;
+              newVisit.id = cRes.data._id;
+              newVisit.caseId = cRes.data.caseId || newVisit.caseId;
+            }
+          } catch(e) {
+            console.warn('Create consultation error:', e);
+          }
+
+          patient.visits.unshift(newVisit);
           showToast(`✨ Visit #${nextVisitNum} saved!`);
 
           // Open Prescription Print Preview only if Digital Prescription service is enabled
@@ -1889,7 +2057,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
           }
         }
 
-        window.syncVisitsToDB();
+        await window.syncVisitsToDB();
         isNewVisitOpen = false;
         editingVisitId = null;
         attachedLabReport = null;
@@ -2075,11 +2243,18 @@ export async function renderConsultationView(container, selection, onSelectPatie
       // Inline Attached Lab Report button
       container.querySelectorAll('.btn-inline-edit-lab').forEach((btn) => {
         btn.addEventListener('click', () => {
-          const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId);
+          const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId || String(item._id) === String(inlineEditingVisitId));
           if (v) {
-            openLabReportModal(patient, family, v, v.labReport || {}, (savedLab) => {
+            openLabReportModal(patient, family, v, v.labReport || {}, async (savedLab) => {
               v.labReport = savedLab;
-              window.syncVisitsToDB();
+              const targetId = v._id || v.caseId || v.id;
+              if (targetId && !String(targetId).startsWith('v_')) {
+                await apiFetch('/consultations/' + targetId, {
+                  method: 'PUT',
+                  body: { ...v, labReport: savedLab }
+                });
+              }
+              await window.syncVisitsToDB();
               showToast('✨ Attached Lab Report updated');
               renderView();
             });
@@ -2090,7 +2265,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
       // Inline Form Submit -> Save Changes
       const inlineForm = container.querySelector('#form-inline-edit-visit');
       if (inlineForm) {
-        inlineForm.addEventListener('submit', (e) => {
+        inlineForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId);
           if (!v) return;
@@ -2150,8 +2325,21 @@ export async function renderConsultationView(container, selection, onSelectPatie
             }
           });
 
-          window.syncVisitsToDB();
-          showToast(`✨ Case #${v.caseId} updated successfully!`);
+          const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
+          try {
+            const uRes = await apiFetch('/consultations/' + targetId, {
+              method: 'PUT',
+              body: v
+            });
+            if (uRes.success && uRes.data?._id) {
+              v._id = uRes.data._id;
+            }
+          } catch(e) {
+            console.warn('Inline update error:', e);
+          }
+
+          await window.syncVisitsToDB();
+          showToast(`✨ Case #${v.caseId || targetId} updated successfully!`);
           inlineEditingVisitId = null;
           renderView();
         });
@@ -2159,7 +2347,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
       // Inline Save & Print Button Click Handler
       container.querySelectorAll('.btn-inline-save-print').forEach((btn) => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
           e.preventDefault();
           const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId);
           if (!v) return;
@@ -2190,10 +2378,24 @@ export async function renderConsultationView(container, selection, onSelectPatie
           v.prescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
           v.charge = charge;
           v.received = received;
+          v.paid = received;
           v.due = due;
 
-          window.syncVisitsToDB();
-          showToast(`✨ Case #${v.caseId} saved! Opening prescription...`);
+          const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
+          try {
+            const uRes = await apiFetch('/consultations/' + targetId, {
+              method: 'PUT',
+              body: v
+            });
+            if (uRes.success && uRes.data?._id) {
+              v._id = uRes.data._id;
+            }
+          } catch(e) {
+            console.warn('Inline update error:', e);
+          }
+
+          await window.syncVisitsToDB();
+          showToast(`✨ Case #${v.caseId || targetId} saved! Opening prescription...`);
           inlineEditingVisitId = null;
           renderView();
 
@@ -2262,11 +2464,19 @@ export async function renderConsultationView(container, selection, onSelectPatie
         e.preventDefault();
         e.stopPropagation();
         const vId = btn.getAttribute('data-visitid');
-        const v = (patient?.visits || []).find((item) => item.id === vId || item.caseId === vId);
-        if (v && v.labReport) {
-          openLabReportModal(patient, family, v, v.labReport, (updatedLab) => {
+        const v = (patient?.visits || []).find((item) => item.id === vId || item.caseId === vId || String(item._id) === String(vId));
+        if (v) {
+          openLabReportModal(patient, family, v, v.labReport || {}, async (updatedLab) => {
             v.labReport = updatedLab;
-            window.syncVisitsToDB();
+            const targetId = v._id || v.caseId || v.id;
+            if (targetId && !String(targetId).startsWith('v_')) {
+              await apiFetch('/consultations/' + targetId, {
+                method: 'PUT',
+                body: { ...v, labReport: updatedLab }
+              });
+            }
+            await window.syncVisitsToDB();
+            showToast('✨ Lab Report saved to database!');
             renderView();
           });
         }
@@ -2870,12 +3080,38 @@ function setupPatientSearch(container, db, onSelect) {
 
 function getRecentPatients(db) {
   const list = [];
+  const seenPatIds = new Set();
+  const seenFamIds = new Set();
+
   Object.values(db.families || {}).forEach((fam) => {
+    const fId = fam.famId || fam.id || (fam._id ? String(fam._id) : null);
+    if (!fId || seenFamIds.has(fId)) return;
+    seenFamIds.add(fId);
+
     Object.values(fam.patients || {}).forEach((pat) => {
-      list.push({ fam, pat });
+      const pId = pat.patId || pat.id || (pat._id ? String(pat._id) : null);
+      if (!pId || seenPatIds.has(pId)) return;
+      seenPatIds.add(pId);
+
+      list.push({
+        fam: {
+          ...fam,
+          id: fId,
+          famId: fId,
+          headName: fam.headName || pat.name || 'Family Head',
+          area: fam.area || fam.society || ''
+        },
+        pat: {
+          ...pat,
+          id: pId,
+          patId: pId,
+          name: pat.name || 'Patient',
+          relation: pat.relation || 'Head'
+        }
+      });
     });
   });
-  return list.slice(0, 5);
+  return list.slice(0, 8);
 }
 
 // ==========================================
