@@ -254,10 +254,9 @@
       document.getElementById('topbar-doc-name').textContent = docName.startsWith('Dr.') ? docName : `Dr. ${docName}`;
       document.getElementById('dropdown-doc-fullname').textContent = docName.startsWith('Dr.') ? docName : `Dr. ${docName}`;
 
-      const clinicId = session?.profile?.activeClinicId;
-      const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-      const activeClinic = (session.profile?.clinics || []).find(c => c.id === clinicId) || adminClinics.find(c => c.id === clinicId) || session.profile?.clinics?.[0];
-      const clinicName = activeClinic ? activeClinic.name : (session.profile?.clinicName || 'Clinic Management');
+      const clinicId = session?.profile?.activeClinicId || 'CLN-001';
+      const activeClinic = (session.profile?.clinics || []).find(c => c.id === clinicId) || session.profile?.clinics?.[0];
+      const clinicName = activeClinic ? activeClinic.name : (session.profile?.clinicName || 'Dhyey Clinic & Nursing Home');
 
       // Dynamically update all Clinic Branding elements
       const sidebarBrandEl = document.getElementById('sidebar-clinic-name') || document.querySelector('.cms-brand-text');
@@ -280,26 +279,9 @@
     /* ---- Customize Doctor Dashboard according to Selected Clinic Services ---- */
     function customizeViewByServices(session, activeClinic) {
       const clinicId = session?.profile?.activeClinicId || activeClinic?.id || 'demo';
-      const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-      const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
-      const matchedClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinic?.name || c.id === activeClinic?.id);
-      const matchedDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
-
-      // Read activeServices from clinic's local DB first (admin may have toggled them)
-      let clinicDbServices = null;
-      try {
-        const dbRaw = localStorage.getItem(`clinic-db-${clinicId}`);
-        if (dbRaw) {
-          const dbObj = JSON.parse(dbRaw);
-          if (Array.isArray(dbObj.activeServices)) clinicDbServices = dbObj.activeServices;
-        }
-      } catch (e) {}
-
-      let services = clinicDbServices || matchedClinic?.services || matchedDoc?.services || activeClinic?.services || session?.profile?.services;
+      let services = activeClinic?.services || session?.profile?.services;
       if (!services || !Array.isArray(services)) {
-        services = clinicId === 'demo'
-          ? ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
-          : ['digitalPrescription', 'certificates', 'billing'];
+        services = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
       }
 
       const hasReceptionist = services.includes('receptionist');

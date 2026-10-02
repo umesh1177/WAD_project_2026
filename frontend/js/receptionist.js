@@ -29,8 +29,6 @@ let currentView = 'dashboard';
 let currentSelection = { familyId: null, patientId: null };
 let globalSearchQuery = '';
 
-const QUEUE_KEY = 'clinic_consultation_queue';
-
 // ---- Boot ----
 document.addEventListener('DOMContentLoaded', () => {
   boot();
@@ -45,31 +43,47 @@ function boot() {
 
   clinicId = session.profile.activeClinicId || 'demo';
 
-  // Resolve full clinic object from admin store (merging with session profile data)
-  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-  const adminClinic = adminClinics.find(c => c.id === clinicId || c.name === session.profile.clinicName);
+  // Resolve full clinic object
   clinicData = {
     id: clinicId,
-    name: session.profile.clinicName || adminClinic?.name || 'Dhyey Clinic',
-    address: adminClinic?.address || adminClinic?.location || session.profile.clinicAddress || '',
-    phone: adminClinic?.phone || adminClinic?.contact || session.profile.clinicPhone || '',
-    city: adminClinic?.city || adminClinic?.district || session.profile.clinicCity || '',
-    services: adminClinic?.services || session.profile.services || []
+    name: session.profile.clinicName || 'Dhyey Clinic',
+    address: session.profile.clinicAddress || '',
+    phone: session.profile.clinicPhone || '',
+    city: session.profile.clinicCity || '',
+    services: session.profile.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
   };
 
-  // Guard: receptionist service must be enabled
-  const services = clinicData.services || [];
-  if (!services.includes('receptionist')) {
-    alert('This clinic has not enabled the Receptionist Service. Contact your administrator.');
-    window.location.replace('../login.html');
-    return;
-  }
+  // Sync clinic details from MongoDB API
+  apiFetch('/clinic/info').then(res => {
+    if (res && res.data) {
+      Object.assign(clinicData, res.data);
+      setupHeader();
+    }
+  }).catch(() => {});
 
   db = getLocalDB(clinicId);
   if (!db.patientQueue) {
-    try { db.patientQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { db.patientQueue = []; }
-    saveLocalDB(db, clinicId);
+    db.patientQueue = [];
   }
+
+  // Load live queue from MongoDB
+  apiFetch('/queue').then(res => {
+    if (res && Array.isArray(res.data)) {
+      db.patientQueue = res.data.map(a => ({
+        token: a.token || 'T-01',
+        patientId: a.patientId,
+        patientName: a.patientName,
+        name: a.patientName,
+        familyId: a.familyId,
+        reason: a.reason,
+        status: a.status === 'completed' ? 'done' : a.status === 'in-progress' ? 'calling' : 'waiting',
+        time: a.appointmentTime,
+        date: a.appointmentDate,
+      }));
+      updateQueueBadge();
+      if (currentView === 'dashboard' || currentView === 'queue') renderView();
+    }
+  }).catch(() => {});
 
   setupHeader();
   setupInteractions();
@@ -77,13 +91,11 @@ function boot() {
   startClock();
   navigateTo('dashboard');
 
-  // Cross-tab sync
-  window.addEventListener('storage', e => {
-    if (e.key === QUEUE_KEY || (e.key || '').startsWith('clinic_db_')) {
-      db = getLocalDB(clinicId);
-      updateQueueBadge();
-      if (currentView === 'dashboard' || currentView === 'queue') renderView();
-    }
+  // Cross-component sync
+  window.addEventListener('clinic-queue-updated', () => {
+    db = getLocalDB(clinicId);
+    updateQueueBadge();
+    if (currentView === 'dashboard' || currentView === 'queue') renderView();
   });
 }
 
@@ -751,8 +763,8 @@ function openQueueDetailModal(token) {
 function saveQueue(queueArr) {
   db.patientQueue = queueArr;
   saveLocalDB(db, clinicId);
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queueArr));
   updateQueueBadge();
+  window.dispatchEvent(new CustomEvent('clinic-queue-updated'));
 }
 
 function pushToQueue(data) {

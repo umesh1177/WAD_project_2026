@@ -38,11 +38,13 @@ const createAppointment = async (req, res) => {
       familyId,
       patientName,
       clinicId,
-      doctorId: req.user?.id || 'demo',
       appointmentDate,
       appointmentTime: appointmentTime || '10:00',
       reason: reason || 'Consultation',
       notes: notes || '',
+      token: req.body.token || '',
+      vitals: req.body.vitals || {},
+      status: req.body.status || 'scheduled',
     });
 
     await newAppointment.save();

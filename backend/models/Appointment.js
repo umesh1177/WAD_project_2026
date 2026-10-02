@@ -5,7 +5,6 @@ const AppointmentSchema = new mongoose.Schema(
     patientId: { type: String, required: true, index: true },
     familyId: { type: String, default: '' },
     patientName: { type: String, required: true },
-    doctorId: { type: String, default: 'demo' },
     clinicId: { type: String, default: 'demo', index: true },
     appointmentDate: { type: String, required: true }, // YYYY-MM-DD
     appointmentTime: { type: String, default: '10:00' },
@@ -15,6 +14,8 @@ const AppointmentSchema = new mongoose.Schema(
       enum: ['scheduled', 'in-progress', 'completed', 'cancelled'],
       default: 'scheduled',
     },
+    token: { type: String, default: '' },
+    vitals: { type: mongoose.Schema.Types.Mixed, default: {} },
     notes: { type: String, default: '' },
   },
   { timestamps: true }

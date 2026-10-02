@@ -13,17 +13,16 @@ const PrescriptionItemSchema = new mongoose.Schema({
   noon: { type: String, default: '0' },
   eve: { type: String, default: '0' },
   ngt: { type: String, default: '0' },
-  timing: { type: String, default: 'AF' }, // 'BF' or 'AF' or 'custom'
+  timing: { type: String, default: 'AF' }, // 'BF' or 'AF'
   notes: { type: String, default: '' },
 });
 
 const ConsultationSchema = new mongoose.Schema(
   {
-    caseId: { type: String, required: true, index: true }, // e.g. "0001000101"
+    caseId: { type: String, required: true, index: true },
     visitNum: { type: Number, default: 1 },
     patientId: { type: String, required: true, index: true },
     familyId: { type: String, required: true, index: true },
-    doctorId: { type: String, default: 'demo' },
     clinicId: { type: String, default: 'demo', index: true },
     date: { type: String, required: true }, // YYYY-MM-DD
     time: { type: String, default: '10:00' },
@@ -31,7 +30,6 @@ const ConsultationSchema = new mongoose.Schema(
     bp: { type: String, default: '' },
     sugar: { type: String, default: '' },
     pulse: { type: String, default: '' },
-    temp: { type: String, default: '' },
     other: { type: String, default: '' },
     reference: { type: String, default: 'Self' },
     complaint: { type: String, default: '' },
@@ -39,7 +37,6 @@ const ConsultationSchema = new mongoose.Schema(
     investigation: { type: String, default: '' },
     treatment: [TreatmentItemSchema],
     prescription: [PrescriptionItemSchema],
-    labReports: { type: mongoose.Schema.Types.Mixed, default: {} },
     charge: { type: Number, default: 0 },
     received: { type: Number, default: 0 },
     due: { type: Number, default: 0 },

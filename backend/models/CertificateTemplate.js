@@ -7,7 +7,6 @@ const CertificateTemplateSchema = new mongoose.Schema(
     body: { type: String, required: true },
     category: { type: String, default: 'General' },
     clinicId: { type: String, default: 'demo', index: true },
-    doctorId: { type: String, default: 'demo' },
     isDefault: { type: Boolean, default: false },
   },
   { timestamps: true }

@@ -26,17 +26,10 @@ export function renderConsultationView(container, selection, onSelectPatient, on
   const db = getLocalDB(clinicId);
 
   // Determine active clinic services
-  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-  const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
   const activeClinicObj = (session?.profile?.clinics || []).find(c => c.id === clinicId) || session?.profile?.clinics?.[0];
-  const matchedAdminClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinicObj?.name || c.id === activeClinicObj?.id);
-  const matchedAdminDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
-
-  let clinicServices = matchedAdminClinic?.services || matchedAdminDoc?.services || activeClinicObj?.services || session?.profile?.services;
+  let clinicServices = activeClinicObj?.services || session?.profile?.services;
   if (!clinicServices || !Array.isArray(clinicServices)) {
-    clinicServices = clinicId === 'demo'
-      ? ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
-      : ['digitalPrescription', 'certificates', 'billing'];
+    clinicServices = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
   }
 
   const hasDigitalRx = clinicServices.includes('digitalPrescription');

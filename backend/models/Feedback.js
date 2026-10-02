@@ -32,12 +32,12 @@ const FeedbackSchema = new mongoose.Schema(
     },
     doctorId: {
       type: String,
-      required: true,
+      default: 'demo',
       trim: true,
     },
     doctorName: {
       type: String,
-      required: true,
+      default: 'Doctor',
       trim: true,
     },
     clinicId: {
@@ -74,23 +74,9 @@ const FeedbackSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    // Category-specific metadata
     metaDetails: {
-      // For clinic registration requests
-      requestedClinicName: { type: String, trim: true },
-      clinicCity: { type: String, trim: true },
-      clinicAddress: { type: String, trim: true },
-      clinicPhone: { type: String, trim: true },
-      speciality: { type: String, trim: true },
-      clinicApproved: { type: Boolean, default: false },
-
-      // For bug reports
-      affectedModule: { type: String, trim: true },
-      deviceInfo: { type: String, trim: true },
-
-      // For feature requests
-      targetModule: { type: String, trim: true },
-      expectedBenefit: { type: String, trim: true },
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     status: {
       type: String,
@@ -103,9 +89,7 @@ const FeedbackSchema = new mongoose.Schema(
       default: null,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model('Feedback', FeedbackSchema);

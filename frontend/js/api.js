@@ -286,39 +286,55 @@ function sanitizeSharedItem(item) {
   return rest;
 }
 
+// In-memory master collection storage backed by MongoDB
+const _sharedMasterMemoryStore = {};
+let _mastersSyncInitiated = false;
+
+export function initSharedMastersFromMongoDB() {
+  if (_mastersSyncInitiated) return;
+  _mastersSyncInitiated = true;
+  apiFetch('/masters/all')
+    .then(res => {
+      if (res && res.data && typeof res.data === 'object') {
+        Object.entries(res.data).forEach(([t, items]) => {
+          if (Array.isArray(items) && items.length > 0) {
+            _sharedMasterMemoryStore[t] = sanitizeSharedList(items);
+          }
+        });
+      }
+    })
+    .catch(() => {});
+}
+// Trigger async sync on load
+setTimeout(initSharedMastersFromMongoDB, 50);
+
 export function getSharedMasterCollection(type) {
-  try {
-    const raw = localStorage.getItem('dhyey-shared-master-data');
-    const store = raw ? JSON.parse(raw) : {};
-    if (type === 'medicines') return sanitizeSharedList(store.medicines && store.medicines.length > 0 ? store.medicines : defaultMasterMedicines);
-    if (type === 'complaints') return sanitizeSharedList(store.complaints && store.complaints.length > 0 ? store.complaints : defaultMasterComplaints);
-    if (type === 'investigations') return sanitizeSharedList(store.investigations && store.investigations.length > 0 ? store.investigations : defaultMasterInvestigations);
-    if (type === 'allergies') return sanitizeSharedList(store.allergies && store.allergies.length > 0 ? store.allergies : defaultMasterAllergies);
-    if (type === 'relations') return sanitizeSharedList(store.relations && store.relations.length > 0 ? store.relations : defaultMasterRelations);
-    if (type === 'areas') return sanitizeSharedList(store.areas && store.areas.length > 0 ? store.areas : defaultMasterAreas);
-    if (type === 'societies') return sanitizeSharedList(store.societies && store.societies.length > 0 ? store.societies : defaultMasterSocieties);
-    return sanitizeSharedList(store[type] || []);
-  } catch (e) {
-    if (type === 'medicines') return sanitizeSharedList(defaultMasterMedicines);
-    if (type === 'complaints') return sanitizeSharedList(defaultMasterComplaints);
-    if (type === 'investigations') return sanitizeSharedList(defaultMasterInvestigations);
-    if (type === 'allergies') return sanitizeSharedList(defaultMasterAllergies);
-    if (type === 'relations') return sanitizeSharedList(defaultMasterRelations);
-    if (type === 'areas') return sanitizeSharedList(defaultMasterAreas);
-    if (type === 'societies') return sanitizeSharedList(defaultMasterSocieties);
-    return [];
+  if (_sharedMasterMemoryStore[type] && _sharedMasterMemoryStore[type].length > 0) {
+    return _sharedMasterMemoryStore[type];
   }
+  let defaultList = [];
+  if (type === 'medicines') defaultList = defaultMasterMedicines;
+  else if (type === 'complaints') defaultList = defaultMasterComplaints;
+  else if (type === 'investigations') defaultList = defaultMasterInvestigations;
+  else if (type === 'allergies') defaultList = defaultMasterAllergies;
+  else if (type === 'relations') defaultList = defaultMasterRelations;
+  else if (type === 'areas') defaultList = defaultMasterAreas;
+  else if (type === 'societies') defaultList = defaultMasterSocieties;
+
+  _sharedMasterMemoryStore[type] = sanitizeSharedList(defaultList);
+  return _sharedMasterMemoryStore[type];
 }
 
 export function saveSharedMasterCollection(type, list) {
-  try {
-    const raw = localStorage.getItem('dhyey-shared-master-data');
-    const store = raw ? JSON.parse(raw) : {};
-    store[type] = sanitizeSharedList(list);
-    localStorage.setItem('dhyey-shared-master-data', JSON.stringify(store));
-  } catch (e) {
-    console.error('Failed to save shared master collection:', e);
-  }
+  const cleanList = sanitizeSharedList(list);
+  _sharedMasterMemoryStore[type] = cleanList;
+  // Persist directly to MongoDB
+  apiFetch(`/masters/${type}`, {
+    method: 'POST',
+    body: { items: cleanList }
+  }).catch(err => {
+    console.warn(`[Masters MongoDB Sync Notice] (${type}):`, err.message);
+  });
 }
 
 export function addSharedMasterItem(type, item, currentDb = null) {
@@ -487,26 +503,85 @@ export const defaultFeedbacks = [
   },
 ];
 
-/* ---- Offline/Local DB Fallback Engine ---- */
+/* ---- In-Memory Clinic Store Backed by MongoDB API ---- */
+const _clinicMemoryStores = {};
+const _clinicSyncStatus = {};
+
+export async function syncClinicFromMongoDB(clinicId = 'demo') {
+  const cleanId = String(clinicId || 'demo').trim();
+  if (_clinicSyncStatus[cleanId]) return;
+  _clinicSyncStatus[cleanId] = true;
+
+  try {
+    const [famRes, apptRes, certRes, tplRes, billRes, feedRes, masterRes] = await Promise.all([
+      apiFetch('/families').catch(() => null),
+      apiFetch('/appointments').catch(() => null),
+      apiFetch('/certificates').catch(() => null),
+      apiFetch('/certificates/templates').catch(() => null),
+      apiFetch('/bills').catch(() => null),
+      apiFetch('/feedback').catch(() => null),
+      apiFetch('/masters/all').catch(() => null),
+    ]);
+
+    const db = _clinicMemoryStores[cleanId] || getLocalDB(cleanId);
+
+    if (famRes && famRes.data && Array.isArray(famRes.data)) {
+      db.families = {};
+      famRes.data.forEach(f => {
+        const fid = f.famId || f.id;
+        db.families[fid] = f;
+      });
+      db.counters.family = Math.max(db.counters.family || 0, famRes.data.length);
+    }
+
+    if (apptRes && apptRes.data && Array.isArray(apptRes.data)) {
+      db.appointments = apptRes.data;
+    }
+
+    if (certRes && certRes.data && Array.isArray(certRes.data)) {
+      db.certificates = certRes.data;
+    }
+
+    if (tplRes && tplRes.data && Array.isArray(tplRes.data) && tplRes.data.length > 0) {
+      db.certificateTemplates = tplRes.data;
+    }
+
+    if (billRes && billRes.data && Array.isArray(billRes.data)) {
+      db.bills = billRes.data;
+    }
+
+    if (feedRes && feedRes.data && Array.isArray(feedRes.data)) {
+      db.feedbacks = feedRes.data;
+    }
+
+    if (masterRes && masterRes.data && typeof masterRes.data === 'object') {
+      if (masterRes.data.medicines) db.masterMedicines = masterRes.data.medicines;
+      if (masterRes.data.complaints) db.masterComplaints = masterRes.data.complaints;
+      if (masterRes.data.investigations) db.masterInvestigations = masterRes.data.investigations;
+      if (masterRes.data.allergies) db.masterAllergies = masterRes.data.allergies;
+      if (masterRes.data.relations) db.masterRelations = masterRes.data.relations;
+      if (masterRes.data.areas) db.masterAreas = masterRes.data.areas;
+      if (masterRes.data.societies) db.masterSocieties = masterRes.data.societies;
+      if (masterRes.data.customShortcuts) db.customShortcuts = masterRes.data.customShortcuts;
+      if (masterRes.data.clinicShortcuts) db.clinicShortcuts = masterRes.data.clinicShortcuts;
+    }
+
+    _clinicMemoryStores[cleanId] = db;
+  } catch (err) {
+    console.warn(`[MongoDB Sync Notice for ${cleanId}]:`, err.message);
+  } finally {
+    _clinicSyncStatus[cleanId] = false;
+  }
+}
+
 export function getLocalDB(clinicId = 'demo') {
   const cleanId = String(clinicId || 'demo').trim();
-  const key = `clinic-db-${cleanId}`;
-  let db = null;
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) db = JSON.parse(stored);
-  } catch (e) {}
+  let db = _clinicMemoryStores[cleanId];
 
-  if (cleanId === 'demo') {
-    // Only the default demo clinic gets seeded with demo patients and demo shortcuts
-    const hasLegacyPatIds = db && db.families && Object.values(db.families).some(f => Object.keys(f.patients || {}).some(pk => pk.length > 8));
-    if (!db || !db.families || Object.keys(db.families).length < 4 || Object.keys(db.families).some(k => k.includes('-') || k.length < 12) || hasLegacyPatIds || !db.appointments || db.appointments.length === 0) {
+  if (!db) {
+    if (cleanId === 'demo') {
       db = seedLocalDatabase();
-      localStorage.setItem(key, JSON.stringify(db));
-    }
-  } else {
-    // Custom clinics are strictly isolated and start clean with zero other clinic data or shortcuts!
-    if (!db) {
+    } else {
       db = {
         counters: { family: 0, patient: 0, visit: 0 },
         families: {},
@@ -515,7 +590,7 @@ export function getLocalDB(clinicId = 'demo') {
         certificateTemplates: [...defaultCertificateTemplates],
         bills: [],
         feedbacks: [],
-        dietary: {}, // Completely clean and empty for new clinics
+        dietary: {},
         clinicShortcuts: {
           medicines: {},
           complaints: {},
@@ -546,24 +621,10 @@ export function getLocalDB(clinicId = 'demo') {
           { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' }
         ]
       };
-      localStorage.setItem(key, JSON.stringify(db));
-    } else if (db._shortcutsCleanedV2 !== true) {
-      // Clean legacy demo shortcuts from any previously seeded non-demo clinic
-      db.clinicShortcuts = {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      };
-      if (db.counters && db.counters.family === 6 && db.counters.patient === 16) {
-        db.dietary = {};
-      }
-      db._shortcutsCleanedV2 = true;
-      localStorage.setItem(key, JSON.stringify(db));
     }
+    _clinicMemoryStores[cleanId] = db;
+    // Kick off asynchronous live sync from MongoDB
+    setTimeout(() => syncClinicFromMongoDB(cleanId), 100);
   }
 
   // Ensure all collections exist
@@ -594,23 +655,28 @@ export function getLocalDB(clinicId = 'demo') {
   if (!db.masterAllergies) db.masterAllergies = [];
   if (!db.masterRelations) db.masterRelations = [];
 
-  // Strip any legacy code fields from local master arrays
-  if (Array.isArray(db.masterMedicines)) {
-    db.masterMedicines = db.masterMedicines.map(m => {
-      if (m && m.code) {
-        const { code, ...rest } = m;
-        return rest;
-      }
-      return m;
-    });
-  }
-
   return db;
 }
 
 export function saveLocalDB(db, clinicId = 'demo') {
-  const key = `clinic-db-${clinicId}`;
-  localStorage.setItem(key, JSON.stringify(db));
+  const cleanId = String(clinicId || 'demo').trim();
+  _clinicMemoryStores[cleanId] = db;
+
+  // Persist shortcuts and custom shortcuts to MongoDB MasterData collection
+  if (db.clinicShortcuts || db.customShortcuts) {
+    if (db.clinicShortcuts) {
+      apiFetch('/masters/clinicShortcuts', {
+        method: 'POST',
+        body: { items: db.clinicShortcuts },
+      }).catch(() => {});
+    }
+    if (db.customShortcuts) {
+      apiFetch('/masters/customShortcuts', {
+        method: 'POST',
+        body: { items: db.customShortcuts },
+      }).catch(() => {});
+    }
+  }
 }
 
 function seedLocalDatabase() {
@@ -1632,13 +1698,6 @@ function fallbackLocalHandler(endpoint, config) {
 
       db.feedbacks.unshift(newTicket);
       saveLocalDB(db, clinicId);
-
-      // Also persist to global shared tickets list for instant admin visibility
-      try {
-        const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-        globalTickets.unshift(newTicket);
-        localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
-      } catch (e) {}
 
       return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
     }

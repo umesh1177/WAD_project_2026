@@ -79,7 +79,6 @@ const createFamily = async (req, res) => {
       registeredBy: registeredBy || 'Self',
       area: (area || '').trim(),
       phone: (phone || '').trim(),
-      address: (address || '').trim(),
       year: currentYear,
       sequence,
       clinicId,
@@ -130,7 +129,6 @@ const updateFamily = async (req, res) => {
         ...(registeredBy !== undefined && { registeredBy }),
         ...(area !== undefined && { area: area.trim() }),
         ...(phone !== undefined && { phone: phone.trim() }),
-        ...(address !== undefined && { address: address.trim() }),
       },
       { new: true }
     );

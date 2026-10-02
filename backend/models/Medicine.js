@@ -10,10 +10,8 @@ const MedicineSchema = new mongoose.Schema(
       enum: ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment', 'Drops', 'Other'],
       default: 'Tablet',
     },
-    defaultDosage: { type: String, default: '1-0-1' },
-    defaultTiming: { type: String, default: 'AF' },
+    defaultDosage: { type: String, default: '1-0-1 AF' },
     unitPrice: { type: Number, default: 0 },
-    inStock: { type: Number, default: 100 },
     clinicId: { type: String, default: 'demo' },
   },
   { timestamps: true }
