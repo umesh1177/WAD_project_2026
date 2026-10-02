@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
   token: { type: String, required: true },
-  patientId: { type: String, ref: 'Patient' },
+  patientId: { type: String },
   name: { type: String },
   familyHead: { type: String },
   phone: { type: String },

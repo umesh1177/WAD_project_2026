@@ -2807,7 +2807,7 @@ function setupPatientSearch(container, db, onSelect) {
         if (
           pat.name.toLowerCase().includes(q) ||
           (pat.id || '').includes(q) ||
-          fam.headName.toLowerCase().includes(q) ||
+          (fam.headName || '').toLowerCase().includes(q) ||
           (fam.id || '').includes(q) ||
           (fam.area || '').toLowerCase().includes(q)
         ) {
