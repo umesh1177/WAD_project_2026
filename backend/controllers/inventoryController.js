@@ -32,14 +32,10 @@ const createInventoryItem = async (req, res) => {
 
     const newItem = new Inventory({
       itemName: itemName.trim(),
-      category: category || 'Pharmacy',
       batchNo: (batchNo || '').trim(),
-      expiryDate: (expiryDate || '').trim(),
       quantity: Number(quantity || 0),
       reorderLevel: Number(reorderLevel || 10),
-      unit: unit || 'Strips',
       unitPrice: Number(unitPrice || 0),
-      supplier: (supplier || '').trim(),
       clinicId,
     });
 

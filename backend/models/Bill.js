@@ -14,7 +14,6 @@ const BillSchema = new mongoose.Schema(
     patientId: { type: String, required: true, index: true },
     patientName: { type: String, required: true },
     familyId: { type: String, default: '' },
-    doctorId: { type: String, default: 'demo' },
     clinicId: { type: String, default: 'demo', index: true },
     items: [BillItemSchema],
     totalCharge: { type: Number, required: true, default: 0 },

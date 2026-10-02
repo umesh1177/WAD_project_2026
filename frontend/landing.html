@@ -1075,20 +1075,11 @@
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to send your message.');
-        btn.innerHTML = '<i class="ri-check-line"></i> Message Sent! We\'ll be in touch.';
+        btn.innerHTML = '<i class="ri-check-line"></i> Message Sent! Saved to MongoDB.';
         form.reset();
       } catch (error) {
-        if (error instanceof TypeError) {
-          const offlineTicket = { ...ticket, id: `public-${Date.now()}`, ticketNo: `WEB-${Date.now()}`, status: 'Pending', createdAt: new Date().toISOString(), replies: [] };
-          const saved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
-          saved.unshift(offlineTicket);
-          localStorage.setItem('dhyey-public-feedback', JSON.stringify(saved));
-          btn.innerHTML = '<i class="ri-check-line"></i> Saved for Support Review';
-          form.reset();
-        } else {
-          btn.innerHTML = '<i class="ri-error-warning-line"></i> Unable to send';
-          alert(error.message);
-        }
+        btn.innerHTML = '<i class="ri-error-warning-line"></i> Unable to send';
+        alert(error.message || 'Failed to submit message to server.');
       } finally {
         btn.disabled = false;
         setTimeout(() => {
@@ -1207,32 +1198,19 @@
           submittedFrom: 'Landing Page'
         };
 
-        let persistedOnServer = false;
         try {
           const response = await fetch('/api/clinics/register-request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(clinicData)
           });
-          persistedOnServer = response.ok;
           if (!response.ok) {
             const error = await response.json().catch(() => ({}));
             throw new Error(error.message || 'The server rejected this clinic application.');
           }
         } catch (apiErr) {
-          console.warn('Clinic application API unavailable; saving an offline request copy.', apiErr);
-        }
-
-        // Keep an offline copy so the admin portal remains usable when the API is unavailable.
-        try {
-          const stored = JSON.parse(localStorage.getItem('dhyey-clinic-requests') || '[]');
-          if (!stored.some((request) => request.id === clinicData.id)) {
-            stored.unshift({ ...clinicData, persistence: persistedOnServer ? 'server' : 'offline' });
-            localStorage.setItem('dhyey-clinic-requests', JSON.stringify(stored));
-          }
-        } catch (storageErr) {
-          console.error('Unable to save the clinic application locally:', storageErr);
-          alert('The clinic application could not be saved. Please try again.');
+          console.error('Clinic application API error:', apiErr);
+          alert('Error submitting clinic application: ' + apiErr.message);
           submitBtn.disabled = false;
           submitBtn.innerHTML = origText;
           return;
@@ -1480,22 +1458,7 @@
           }
         } catch (e) {}
 
-        // 2. Search local clinic database keys
-        if (!found) {
-          for (let i = 0; i < localStorage.length; i++) {
-            let key = localStorage.key(i);
-            if (key && (key.startsWith('clinic-db-') || key.startsWith('clinic_db_'))) {
-              try {
-                let db = JSON.parse(localStorage.getItem(key) || '{}');
-                let match = (db.certificates || []).find((c) => (c.certNo || '').toLowerCase() === code.toLowerCase());
-                if (match) {
-                  found = match;
-                  break;
-                }
-              } catch (e) {}
-            }
-          }
-        }
+        // Verification via MongoDB API endpoint
 
         if (found) {
           const splitDate = (d) => {

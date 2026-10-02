@@ -822,36 +822,46 @@
             }
         }, 150);
 
-        // Update active clinics count & doctor count from admin storage
-        try {
-            const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-            const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
-            if (adminClinics.length > 0) {
-                document.getElementById('statClinicsCount').textContent = `${adminClinics.length}+`;
-            }
-            if (adminDocs.length > 0) {
-                document.getElementById('statDoctorsCount').textContent = `${adminDocs.length}+`;
-            }
+        // Update active clinics count & doctor count from MongoDB API
+        (async () => {
+            try {
+                const [clinicsRes, docsRes] = await Promise.all([
+                    fetch('/api/clinics').then(r => r.json()).catch(() => null),
+                    fetch('/api/admin/doctors').then(r => r.json()).catch(() => null)
+                ]);
 
-            // Populate dynamic doctor chips if any were created in Admin Portal
-            const chips = document.getElementById('quickChipsContainer');
-            if (adminDocs.length > 0) {
-                adminDocs.slice(0, 2).forEach(doc => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.className = 'quick-chip';
-                    const docShortName = doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name.split(' ')[0] || doc.name}`;
-                    btn.innerHTML = `<i class="fa-solid fa-stethoscope" style="color:#095c54"></i> ${docShortName} (${doc.clinic || 'Clinic'})`;
-                    btn.onclick = () => {
-                        window.selectRole('doctor', document.getElementById('btnRoleDoctor'));
-                        document.getElementById('username').value = doc.email;
-                        document.getElementById('password').value = doc.password || 'Password@123';
-                        document.getElementById('loginForm').dispatchEvent(new Event('submit'));
-                    };
-                    chips.appendChild(btn);
-                });
-            }
-        } catch(e) {}
+                const adminClinics = (clinicsRes && clinicsRes.data) ? clinicsRes.data : [];
+                const adminDocs = (docsRes && docsRes.data) ? docsRes.data : [];
+
+                if (adminClinics.length > 0) {
+                    const el = document.getElementById('statClinicsCount');
+                    if (el) el.textContent = `${adminClinics.length}+`;
+                }
+                if (adminDocs.length > 0) {
+                    const el = document.getElementById('statDoctorsCount');
+                    if (el) el.textContent = `${adminDocs.length}+`;
+                }
+
+                // Populate dynamic doctor chips if any were registered
+                const chips = document.getElementById('quickChipsContainer');
+                if (chips && adminDocs.length > 0) {
+                    adminDocs.slice(0, 2).forEach(doc => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'quick-chip';
+                        const docShortName = (doc.name || '').startsWith('Dr.') ? doc.name : `Dr. ${(doc.name || 'Doctor').split(' ')[0]}`;
+                        btn.innerHTML = `<i class="fa-solid fa-stethoscope" style="color:#095c54"></i> ${docShortName} (${doc.clinic || 'Clinic'})`;
+                        btn.onclick = () => {
+                            window.selectRole('doctor', document.getElementById('btnRoleDoctor'));
+                            document.getElementById('username').value = doc.email || doc.username;
+                            document.getElementById('password').value = doc.password || 'Password@123';
+                            document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                        };
+                        chips.appendChild(btn);
+                    });
+                }
+            } catch(e) {}
+        })();
 
         // Global functions on window
         window.selectRole = function(role, btnElement) {

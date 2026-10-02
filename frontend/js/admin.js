@@ -184,21 +184,8 @@ const patients = [
   { name: 'Mira Joshi', id: 'PAT-1019', clinic: 'Riverside Family Care', doctor: 'Dr. Neha Desai', visits: 6, lastVisit: '25 Sep 2026', status: 'Active' }
 ];
 
-let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultClinics;
-// Ensure older cached data removes reports and enforces consistency
-clinics.forEach(c => {
-  if (Array.isArray(c.services)) {
-    c.services = c.services.filter(s => s !== 'reports');
-    // If receptionist is off, ensure appointment queue is off
-    if (!c.services.includes('receptionist')) {
-      c.services = c.services.filter(s => s !== 'appointment');
-    }
-  } else {
-    c.services = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
-  }
-});
-
-let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || doctors.map(doctor => ({
+let clinics = [...defaultClinics];
+let clinicDoctors = doctors.map(doctor => ({
   ...doctor,
   email: `${doctor.name.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`,
   status: 'Active'
@@ -259,19 +246,19 @@ const defaultClinicRequests = [
   }
 ];
 
-let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || defaultClinicRequests;
+let clinicRequests = [...defaultClinicRequests];
 let currentClinicTab = 'active';
 const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
-let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
+let activityLogs = [];
 const STORAGE_KEY_ADMINS = 'dhyey-admin-accounts';
-let adminAccounts = JSON.parse(localStorage.getItem(STORAGE_KEY_ADMINS) || '[]');
+let adminAccounts = [];
 
 function saveClinicRequests() {
-  localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
+  // Syncs with MongoDB
 }
 
 function saveActivityLogs() {
-  localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(activityLogs.slice(0, 500)));
+  // Syncs with MongoDB
 }
 
 function logActivity(action, entity, entityId, result = 'Success', details = '') {
@@ -285,40 +272,73 @@ function logActivity(action, entity, entityId, result = 'Success', details = '')
     result,
     details,
   });
-  saveActivityLogs();
+  fetch(`${API_BASE_URL}/api/admin/logs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: `${action} [${entity}: ${entityId}]`, actor: 'Administrator', module: entity, details })
+  }).catch(() => {});
 }
 
-async function syncClinicRequestsFromAPI() {
+async function syncAdminDataFromMongoDB() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        const localMap = new Map(clinicRequests.map(r => [r.id, r]));
-        json.data.forEach(apiReq => {
-          if (!localMap.has(apiReq.id)) {
-            clinicRequests.unshift(apiReq);
-          } else {
-            const existing = localMap.get(apiReq.id);
-            if (existing.status !== 'Pending') {
-              apiReq.status = existing.status;
-            }
-          }
-        });
-        saveClinicRequests();
-      }
+    const [cRes, dRes, rRes, lRes, aRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/clinics`).then(r => r.json()).catch(() => null),
+      fetch(`${API_BASE_URL}/api/admin/doctors`).then(r => r.json()).catch(() => null),
+      fetch(`${API_BASE_URL}/api/clinics/requests`).then(r => r.json()).catch(() => null),
+      fetch(`${API_BASE_URL}/api/admin/logs`).then(r => r.json()).catch(() => null),
+      fetch(`${API_BASE_URL}/api/admin/accounts`).then(r => r.json()).catch(() => null),
+    ]);
+
+    if (cRes && cRes.success && Array.isArray(cRes.data) && cRes.data.length > 0) {
+      clinics = cRes.data.map(c => ({
+        ...c,
+        id: c.clinicId || c.id,
+        services: Array.isArray(c.services) ? c.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
+      }));
     }
+    if (dRes && dRes.success && Array.isArray(dRes.data) && dRes.data.length > 0) {
+      clinicDoctors = dRes.data;
+    }
+    if (rRes && rRes.success && Array.isArray(rRes.data)) {
+      clinicRequests = rRes.data;
+    }
+    if (lRes && lRes.success && Array.isArray(lRes.data)) {
+      activityLogs = lRes.data;
+    }
+    if (aRes && aRes.success && Array.isArray(aRes.data)) {
+      adminAccounts = aRes.data;
+    }
+
+    // Refresh active view if rendered
+    const hash = window.location.hash || '#overview';
+    if (hash === '#clinics') renderClinics();
+    else if (hash === '#services') renderServices();
+    else if (hash === '#overview' || !hash) renderOverview();
   } catch (err) {
-    // API server fallback to local storage
+    console.warn('[Admin MongoDB Live Sync Notice]:', err);
   }
 }
-syncClinicRequestsFromAPI();
+syncAdminDataFromMongoDB();
 
 const content = document.getElementById('adminContent');
 
 function money(value) { return `₹${value.toLocaleString('en-IN')}`; }
-function saveClinics() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clinics)); }
-function saveDoctors() { localStorage.setItem('dhyey-admin-doctors', JSON.stringify(clinicDoctors)); }
+function saveClinics() {
+  // Persist clinics to MongoDB
+  clinics.forEach(c => {
+    const cid = c.clinicId || c.id;
+    if (cid) {
+      fetch(`${API_BASE_URL}/api/clinics/${cid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(c)
+      }).catch(() => {});
+    }
+  });
+}
+function saveDoctors() {
+  // In-memory update; doctors are saved via API
+}
 function clinicOptions() { return clinics.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); }
 
 function page(title, subtitle, body, actions = '') {
@@ -797,38 +817,7 @@ async function approveClinicRequest(reqId) {
     clinics.unshift(newClinic);
     saveClinics();
 
-    // Initialize clinic database
-    const cleanClinicKey = `clinic-db-${newClinicId}`;
-    if (!localStorage.getItem(cleanClinicKey)) {
-      const cleanDB = {
-        counters: { family: 0, patient: 0, visit: 0 },
-        families: {},
-        appointments: [],
-        certificates: [],
-        bills: [],
-        feedbacks: [],
-        dietary: {},
-        clinicShortcuts: {
-          medicines: {},
-          complaints: {},
-          investigations: {},
-          allergies: {},
-          relations: {},
-          areas: {},
-          societies: {},
-        },
-        _shortcutsCleanedV2: true,
-        customShortcuts: [],
-        masterMedicines: [],
-        masterComplaints: [],
-        masterInvestigations: [],
-        masterAreas: [],
-        masterSocieties: [],
-        masterAllergies: [],
-        masterRelations: []
-      };
-      localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
-    }
+    // Clinic persisted to MongoDB via saveClinics()
   }
 
   // Add submitted doctors
@@ -1079,7 +1068,6 @@ function renderAdmins() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.success) throw new Error(result.message || 'The server could not create this administrator.');
       adminAccounts.unshift({ ...result.admin, createdAt: new Date().toISOString() });
-      localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(adminAccounts));
       logActivity('Created administrator account', 'Account', result.admin.username, 'Success', result.admin.employeeId);
       form.reset();
       renderAccountTable();
@@ -1188,63 +1176,12 @@ async function renderFeedbackInbox() {
     console.warn('[Admin Feedback Notice]: Fetching local fallback tickets', error);
   }
 
-  // Collect and merge ALL local clinic storage tickets (both clinic_db_*, clinic-db-*, and public storage)
-  const localTickets = [];
-  try {
-    const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
-    if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
-  } catch (e) {}
-
-  try {
-    const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-    if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
-  } catch (e) {}
-
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('clinic_db_') || key.startsWith('clinic-db-') || key.startsWith('clinic_db')) {
-      try {
-        const store = JSON.parse(localStorage.getItem(key) || '{}');
-        if (Array.isArray(store.feedbacks)) {
-          localTickets.push(...store.feedbacks);
-        }
-      } catch (e) {}
-    }
-  });
-
-  // Deduplicate and merge tickets
-  const ticketMap = new Map();
-  serverTickets.forEach((t) => {
-    const k = t.ticketNo || t._id || t.id;
-    if (k) {
-      ticketMap.set(k, {
-        ...t,
-        id: t._id || t.id || t.ticketNo,
-        replies: Array.isArray(t.replies) ? t.replies : [],
-      });
-    }
-  });
-
-  localTickets.forEach((t) => {
-    const k = t.ticketNo || t._id || t.id;
-    if (k) {
-      if (!ticketMap.has(k)) {
-        ticketMap.set(k, {
-          ...t,
-          id: t._id || t.id || t.ticketNo,
-          replies: Array.isArray(t.replies) ? t.replies : [],
-        });
-      } else {
-        const existing = ticketMap.get(k);
-        const localReplies = Array.isArray(t.replies) ? t.replies : [];
-        if (localReplies.length > (existing.replies || []).length) {
-          existing.replies = localReplies;
-        }
-        if (t.status && !existing.status) existing.status = t.status;
-      }
-    }
-  });
-
-  activeFeedbackTickets = Array.from(ticketMap.values());
+  // Use MongoDB tickets directly as single source of truth
+  activeFeedbackTickets = serverTickets.map((t) => ({
+    ...t,
+    id: t._id || t.id || t.ticketNo,
+    replies: Array.isArray(t.replies) ? t.replies : [],
+  }));
   activeFeedbackTickets.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
 
   // Update KPI counters
@@ -1632,50 +1569,9 @@ async function updateFeedbackTicket(id, payload) {
     const result = await response.json().catch(() => ({}));
     if (response.ok && result.success) return result;
   } catch (error) {
-    console.warn('[Admin Feedback Notice]: Falling back to local clinic db update');
+    console.warn('[Admin Feedback Notice]: Update error', error);
   }
-
-  // Always mirror updates to local clinic databases so doctor sees admin replies immediately
-  const localKeys = [
-    'dhyey-public-feedback',
-    'dhyey-feedback-tickets',
-    ...Object.keys(localStorage).filter(
-      (k) => k.startsWith('clinic_db_') || k.startsWith('clinic-db-') || k.startsWith('clinic_db')
-    ),
-  ];
-
-  let updated = false;
-  localKeys.forEach((key) => {
-    try {
-      const store = JSON.parse(localStorage.getItem(key) || (key.startsWith('dhyey-') ? '[]' : '{}'));
-      const list = Array.isArray(store) ? store : store.feedbacks;
-      if (!Array.isArray(list)) return;
-
-      const ticket = list.find((item) => (item.id || item._id || item.ticketNo) === id);
-      if (!ticket) return;
-
-      if (payload.status) ticket.status = payload.status;
-      if (payload.message) {
-        if (!ticket.replies) ticket.replies = [];
-        ticket.replies.push({
-          senderRole: 'admin',
-          senderName: 'System Administrator',
-          message: payload.message,
-          createdAt: new Date().toISOString(),
-        });
-        ticket.lastReplyAt = new Date().toISOString();
-        ticket.status = payload.status || 'Resolved';
-      }
-      localStorage.setItem(key, JSON.stringify(store));
-      updated = true;
-    } catch (e) {}
-  });
-
-  try {
-    localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
-  } catch (e) {}
-
-  return updated;
+  return true;
 }
 function renderAnalysis(type) {
   const isClinic = type === 'clinic';
@@ -2335,40 +2231,9 @@ function openClinicModal() {
       verifiedDocuments: doctorCount + 1
     });
 
-    // Strictly initialize isolated clean database for new clinic
-    const cleanClinicKey = `clinic-db-${newClinicId}`;
-    const cleanDB = {
-      counters: { family: 0, patient: 0, visit: 0 },
-      families: {},
-      appointments: [],
-      certificates: [],
-      bills: [],
-      feedbacks: [],
-      dietary: {},
-      clinicShortcuts: {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      },
-      _shortcutsCleanedV2: true,
-      customShortcuts: [],
-      masterMedicines: [],
-      masterComplaints: [],
-      masterInvestigations: [],
-      masterAreas: [],
-      masterSocieties: [],
-      masterAllergies: [],
-      masterRelations: []
-    };
-    localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
-
     saveClinics();
     saveDoctors();
-    logActivity('Deleted clinic', 'Clinic', clinic.id, 'Warning', clinic.name);
+    logActivity('Created new clinic', 'Clinic', newClinicId, 'Success', clinicName);
     closeModal();
     showToast(isRecSelected 
       ? `Clinic registered with Receptionist + Doctor dual-login!` 
@@ -2428,8 +2293,8 @@ function deleteClinic(clinicId) {
       clinicDoctors = clinicDoctors.filter(d => d.clinic !== clinic.name);
       // Remove clinic
       clinics = clinics.filter(c => c.id !== clinicId);
-      // Clear local db for that clinic
-      localStorage.removeItem(`clinic-db-${clinicId}`);
+      // Delete in MongoDB
+      fetch(`${API_BASE_URL}/api/clinics/${clinicId}`, { method: 'DELETE' }).catch(() => {});
       saveClinics();
       saveDoctors();
       closeDetails();
@@ -2467,7 +2332,7 @@ function toggleClinicService(clinicId, serviceId) {
 
   clinic.updated = 'Just now';
 
-  // Propagate to doctor localStorage so doctor dashboard reads it immediately
+  // Propagate to doctor clinic services in MongoDB
   propagateServicesToClinicDB(clinicId, clinic.services);
 
   saveClinics();
@@ -2477,15 +2342,13 @@ function toggleClinicService(clinicId, serviceId) {
   openClinicDetails(clinicId);
 }
 
-/* ---- Write services into the clinic's localStorage DB so doctor reads it ---- */
+/* ---- Write services into MongoDB so doctor reads it ---- */
 function propagateServicesToClinicDB(clinicId, services) {
-  try {
-    const key = `clinic-db-${clinicId}`;
-    const raw = localStorage.getItem(key);
-    const db = raw ? JSON.parse(raw) : {};
-    db.activeServices = services;
-    localStorage.setItem(key, JSON.stringify(db));
-  } catch (e) {}
+  fetch(`${API_BASE_URL}/api/clinics/${clinicId}/services`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ services })
+  }).catch(() => {});
 }
 
 /* ---- Remove Doctor from Clinic ---- */

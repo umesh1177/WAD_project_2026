@@ -21,8 +21,6 @@ const PrescriptionSchema = new mongoose.Schema(
     ],
     dietaryAdvice: { type: String, default: '' },
     dietaryCodes: [{ type: String }],
-    printedCount: { type: Number, default: 0 },
-    lastPrintedAt: { type: Date },
   },
   { timestamps: true }
 );

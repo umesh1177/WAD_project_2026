@@ -721,16 +721,6 @@ export async function renderFeedbackView(container) {
           db.feedbacks = tickets;
           saveLocalDB(db, clinicId);
 
-          try {
-            const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-            const gIdx = globalTickets.findIndex((t) => (t.id || t._id || t.ticketNo) === id);
-            if (gIdx !== -1 && res?.data) {
-              globalTickets[gIdx] = { ...globalTickets[gIdx], ...res.data, id: res.data._id || res.data.id || id };
-              localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
-            }
-            localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
-          } catch (e) {}
-
           render();
         } catch (err) {
           showToast(err.message || 'Error sending reply', 'error');
@@ -813,17 +803,6 @@ export async function renderFeedbackView(container) {
           tickets.unshift(createdTicket);
           db.feedbacks = tickets;
           saveLocalDB(db, clinicId);
-
-          // Save to global shared tickets store for immediate cross-tab Admin visibility
-          try {
-            const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-            const tKey = createdTicket.ticketNo || createdTicket.id || createdTicket._id;
-            if (!globalTickets.some((t) => (t.ticketNo || t.id || t._id) === tKey)) {
-              globalTickets.unshift(createdTicket);
-              localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
-            }
-            localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
-          } catch (e) {}
 
           submitForm.reset();
           render();

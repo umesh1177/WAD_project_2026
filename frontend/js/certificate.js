@@ -23,25 +23,21 @@ export async function renderCertificateView(container) {
   const clinicId = session?.profile?.activeClinicId || 'demo';
 
   // Dynamic clinic details resolution
-  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-  const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
   const activeClinicObj = (session?.profile?.clinics || []).find(c => c.id === clinicId) || session?.profile?.clinics?.[0];
-  const matchedAdminClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinicObj?.name || c.id === activeClinicObj?.id);
-  const matchedAdminDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
 
-  const clinicName = matchedAdminClinic?.name || activeClinicObj?.name || session?.profile?.clinicName || 'Dhyey Clinic & Nursing Home';
-  const clinicAddress = matchedAdminClinic?.address || matchedAdminClinic?.location || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat';
-  const clinicPhone = matchedAdminClinic?.phone || '9876543210';
-  const clinicEmail = matchedAdminClinic?.email || '';
+  const clinicName = activeClinicObj?.name || session?.profile?.clinicName || 'Dhyey Clinic & Nursing Home';
+  const clinicAddress = activeClinicObj?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat';
+  const clinicPhone = activeClinicObj?.phone || '9876543210';
+  const clinicEmail = activeClinicObj?.email || '';
 
-  const doctorName = session?.profile?.name || session?.user?.name || matchedAdminDoc?.name || 'Dr. Chirag Paghdal';
-  const doctorDegree = session?.profile?.degree || matchedAdminDoc?.specialty || 'B.H.M.S.';
-  const doctorRegNo = session?.profile?.regNo || matchedAdminDoc?.registration || 'G-9035';
-
-  // Signature stored per clinic or doctor
-  let docSignature = localStorage.getItem(`clinic_doc_signature_${clinicId}`) || localStorage.getItem(`clinic_doc_signature_${doctorName}`) || session?.profile?.signature || '';
+  const doctorName = session?.profile?.name || session?.user?.name || 'Dr. Chirag Paghdal';
+  const doctorDegree = session?.profile?.degree || 'B.H.M.S.';
+  const doctorRegNo = session?.profile?.regNo || 'G-9035';
 
   const db = getLocalDB(clinicId);
+
+  // Signature stored per clinic in DB
+  let docSignature = db.doctorSignature || session?.profile?.signature || '';
 
   // Initialize DB collections if needed
   if (!db.certificateTemplates || db.certificateTemplates.length === 0) {
@@ -1360,8 +1356,8 @@ export async function renderCertificateView(container) {
     // Remove Saved Signature
     if (btnRemoveSavedSig) {
       btnRemoveSavedSig.addEventListener('click', () => {
-        localStorage.removeItem(`clinic_doc_signature_${clinicId}`);
-        localStorage.removeItem(`clinic_doc_signature_${doctorName}`);
+        db.doctorSignature = '';
+        saveLocalDB(db, clinicId);
         docSignature = '';
         closeModal();
         renderView();
@@ -1387,8 +1383,8 @@ export async function renderCertificateView(container) {
       }
 
       docSignature = finalSig;
-      localStorage.setItem(`clinic_doc_signature_${clinicId}`, finalSig);
-      localStorage.setItem(`clinic_doc_signature_${doctorName}`, finalSig);
+      db.doctorSignature = finalSig;
+      saveLocalDB(db, clinicId);
 
       closeModal();
       renderView();

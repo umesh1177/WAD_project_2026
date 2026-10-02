@@ -24,10 +24,8 @@ const createDiagnosis = async (req, res) => {
 
     const newDiag = new Diagnosis({
       name: name.trim(),
-      code: (code || '').trim(),
       category: category || 'General',
       description: description || '',
-      commonTreatments: commonTreatments || [],
       clinicId,
     });
 

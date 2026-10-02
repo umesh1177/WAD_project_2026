@@ -3,29 +3,22 @@ const mongoose = require('mongoose');
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) {
+  if (isConnected && mongoose.connection.readyState === 1) {
     return;
   }
 
-  const uri = process.env.MONGO_URI;
-
-  if (!uri) {
-    console.error('[MongoDB Error]: MONGO_URI environment variable is not set.');
-    console.error('[MongoDB Error]: Please set MONGO_URI in your .env file or deployment environment.');
-    return;
-  }
+  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/dhyey_clinic_db';
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 8000,
     });
     isConnected = true;
-    console.log(`[MongoDB Atlas Connected]: Host=${conn.connection.host}, Database=${conn.connection.name}`);
+    console.log(`[MongoDB Connected]: Host=${conn.connection.host}:${conn.connection.port}, Database=${conn.connection.name}`);
   } catch (error) {
-    console.warn(`[MongoDB Notice]: Could not connect to MongoDB Atlas (${error.message}).`);
-    console.warn('[MongoDB Notice]: Please check network/IP whitelist in MongoDB Atlas dashboard.');
+    console.error(`[MongoDB Connection Error]: ${error.message}`);
+    console.warn('[MongoDB Notice]: Ensure MongoDB daemon (mongod) is running at ' + uri);
   }
 };
 
 module.exports = connectDB;
-

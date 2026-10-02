@@ -71,23 +71,8 @@ function fallbackLocalLogin(username, password) {
     return doctorSession;
   }
 
-  // Receptionist Default Demo Login (Verified with Clinic Receptionist Service)
+  // Receptionist Default Demo Login
   if ((u === 'reception' || u === 'receptionist') && (p === '123' || p === 'reception' || p === '123456')) {
-    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-    const demoClinic = adminClinics.find(c => c.id === 'demo' || c.id === 'CLN-001') || {
-      id: 'demo',
-      name: 'Dhyey Clinic & Nursing Home',
-      address: '',
-      phone: '',
-      city: '',
-      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
-    };
-
-    const hasReceptionistService = Array.isArray(demoClinic.services) ? demoClinic.services.includes('receptionist') : true;
-    if (!hasReceptionistService) {
-      throw new Error('This clinic has disabled the Receptionist Service. Receptionist portal access is blocked.');
-    }
-
     const receptionistSession = {
       role: 'receptionist',
       profile: {
@@ -95,12 +80,12 @@ function fallbackLocalLogin(username, password) {
         username: 'reception',
         name: 'Front Desk Receptionist',
         role: 'receptionist',
-        clinicName: demoClinic.name || 'Dhyey Clinic & Nursing Home',
-        clinicAddress: demoClinic.address || demoClinic.location || '',
-        clinicPhone: demoClinic.phone || demoClinic.contact || '',
-        clinicCity: demoClinic.city || demoClinic.district || '',
-        activeClinicId: demoClinic.id || 'demo',
-        services: demoClinic.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+        clinicName: 'Dhyey Clinic & Nursing Home',
+        clinicAddress: 'Mota Varachha, Surat',
+        clinicPhone: '+91 98765 43210',
+        clinicCity: 'Surat',
+        activeClinicId: 'demo',
+        services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
       },
       token: 'mock-receptionist-token'
     };
@@ -109,114 +94,27 @@ function fallbackLocalLogin(username, password) {
     return receptionistSession;
   }
 
-  // Check dynamic receptionists from Admin Portal clinics
-  try {
-    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-    for (const c of adminClinics) {
-      if (c.receptionist && Array.isArray(c.services) && c.services.includes('receptionist')) {
-        const rec = c.receptionist;
-        const emailMatch = (rec.email || '').trim().toLowerCase() === u;
-        const phoneMatch = String(rec.phone || '').trim() === u;
-        const nameMatch = (rec.name || '').trim().toLowerCase() === u;
-        const pwdMatch = !rec.password || rec.password === p || p === '123' || p === 'reception';
-        if ((emailMatch || phoneMatch || nameMatch) && pwdMatch) {
-          if (rec.status === 'Suspended') {
-            throw new Error('This receptionist account has been suspended by the administrator.');
-          }
-          const receptionistSession = {
-            role: 'receptionist',
-            profile: {
-              id: rec.id || `rec-${c.id}`,
-              username: rec.email || rec.name,
-              name: rec.name,
-              role: 'receptionist',
-              clinicName: c.name,
-              clinicAddress: c.address || '',
-              clinicPhone: c.phone || '',
-              clinicCity: c.city || '',
-              activeClinicId: c.id,
-              services: c.services || []
-            },
-            token: 'mock-receptionist-token-' + c.id
-          };
-          setAuthSession(receptionistSession);
-          showToast(`Signed in as ${rec.name}`);
-          return receptionistSession;
-        }
-      }
-    }
-  } catch (e) {
-    if (e.message && e.message.includes('suspended')) throw e;
-  }
-
-  // Check doctors registered in Admin Portal
-  try {
-    const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
-    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-
-    const doc = adminDocs.find((d) => {
-      const emailMatch = (d.email || '').trim().toLowerCase() === u;
-      const usernameMatch = (d.username || '').trim().toLowerCase() === u;
-      const nameMatch = (d.name || '').trim().toLowerCase() === u;
-      const pwdMatch = !d.password || d.password === p;
-      return (emailMatch || usernameMatch || nameMatch) && pwdMatch;
-    });
-
-    if (doc) {
-      if (doc.status === 'Suspended') {
-        throw new Error('This doctor account has been suspended by the administrator.');
-      }
-      const matchedClinic = adminClinics.find((c) => c.name === doc.clinic || c.id === doc.clinicId) || {
-        id: doc.clinicId || ('CLN-' + (doc.clinic || 'custom').replace(/\s+/g, '_')),
-        name: doc.clinic || 'Clinic',
-        services: Array.isArray(doc.services) ? doc.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
-      };
-      const clinicServices = Array.isArray(matchedClinic.services)
-        ? matchedClinic.services
-        : (Array.isArray(doc.services) ? doc.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']);
-      const clinicId = matchedClinic.id || doc.clinicId || 'CLN-001';
-
-      const doctorSession = {
+  // Doctor Mehul Demo Account
+  if (u === 'mehul' && (p === '123' || p === 'password123')) {
+    const doctorSession = {
+      role: 'doctor',
+      profile: {
+        id: 'doc_mehul',
+        username: 'mehul',
+        name: 'Dr. Mehul Patel',
+        degree: 'M.D. (Medicine)',
+        regNo: 'G-12844',
+        clinics: [{ id: 'CLN-002', name: 'Aashirwad Multispeciality Clinic' }],
+        activeClinicId: 'CLN-002',
         role: 'doctor',
-        profile: {
-          id: doc.id || doc.email || 'doc_' + Math.random().toString(36).slice(2, 7),
-          username: doc.email || doc.name,
-          name: doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`,
-          degree: doc.specialty || 'General Practitioner',
-          regNo: doc.registration || 'REG-2026',
-          clinics: [{ id: clinicId, name: matchedClinic.name || doc.clinic, services: clinicServices }],
-          activeClinicId: clinicId,
-          role: 'doctor',
-          services: clinicServices,
-        },
-        token: 'mock-doctor-token-' + (doc.email || 'admin-doc'),
-      };
-      setAuthSession(doctorSession);
-      showToast(`Signed in as ${doctorSession.profile.name}`);
-      return doctorSession;
-    }
-  } catch (e) {
-    if (e.message && e.message.includes('suspended')) throw e;
+        services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+      },
+      token: 'mock-doctor-mehul-token'
+    };
+    setAuthSession(doctorSession);
+    showToast('Signed in as Dr. Mehul Patel');
+    return doctorSession;
   }
-
-  // Check custom local doctors master db
-  try {
-    const stored = localStorage.getItem('clinic-master-db');
-    if (stored) {
-      const masterDb = JSON.parse(stored);
-      const doctor = masterDb.doctors.find((d) => d.username === u && d.password === p);
-      if (doctor) {
-        const session = {
-          role: 'doctor',
-          profile: doctor,
-          token: 'mock-doctor-token-' + doctor.id,
-        };
-        setAuthSession(session);
-        showToast(`Signed in as Dr. ${doctor.username}`);
-        return session;
-      }
-    }
-  } catch (e) {}
 
   throw new Error('Invalid username or password');
 }

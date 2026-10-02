@@ -55,9 +55,7 @@ const createMedicine = async (req, res) => {
       category: category || 'General',
       form: form || 'Tablet',
       defaultDosage: defaultDosage || '1-0-1',
-      defaultTiming: defaultTiming || 'AF',
       unitPrice: Number(unitPrice || 0),
-      inStock: Number(inStock || 100),
       clinicId,
     });
 

@@ -18,21 +18,30 @@ import {
   getAuthSession
 } from './api.js';
 
-const QUEUE_STORAGE_KEY = 'clinic_consultation_queue';
-
 export async function renderPatientQueueView(container, onSelectPatientForConsultation) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
   const db = getLocalDB(clinicId);
 
-  // Sync patient queue from DB or localStorage
+  // Sync patient queue from DB or live MongoDB queue
   let queue = db.patientQueue || [];
-  if (!queue || queue.length === 0) {
-    try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-      if (raw) queue = JSON.parse(raw);
-    } catch (e) {}
-  }
+  try {
+    const qRes = await apiFetch('/queue');
+    if (qRes && qRes.success && Array.isArray(qRes.data) && qRes.data.length > 0) {
+      queue = qRes.data.map(q => ({
+        token: q.token || ('T-' + String(q._id).slice(-3)),
+        patientId: q.patientId,
+        patientName: q.patientName,
+        familyId: q.familyId,
+        time: q.appointmentTime || '10:00',
+        date: q.appointmentDate,
+        complaint: q.reason || '',
+        vitals: q.vitals || {},
+        status: q.status === 'scheduled' ? 'Waiting' : (q.status === 'in-progress' ? 'In Consultation' : (q.status === 'completed' ? 'Completed' : 'Waiting'))
+      }));
+      db.patientQueue = queue;
+    }
+  } catch (e) {}
 
   // Filter state - default to 'pending'
   let currentQueueTab = 'pending'; // 'pending' | 'completed'
@@ -287,7 +296,6 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
           item.status = 'In Consultation';
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
         }
 
         // Navigate doctor directly to consultation view with preselected patient!
@@ -307,7 +315,7 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       });
     });
 
-    // Mark Done Button
+        // Mark Done Button
     container.querySelectorAll('.btn-mark-queue-done').forEach((btn) => {
       btn.addEventListener('click', () => {
         const token = btn.getAttribute('data-token');
@@ -316,7 +324,6 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
           item.status = 'Completed';
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
           renderView();
           showToast(`Token ${token} marked as Completed`);
         }
@@ -331,7 +338,6 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
           queue = queue.filter((q) => q.token !== token);
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
           renderView();
           showToast(`Token ${token} removed from queue`);
         }
@@ -442,7 +448,6 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       item.status = 'In Consultation';
       db.patientQueue = queue;
       saveLocalDB(db, clinicId);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
 
       if (typeof onSelectPatientForConsultation === 'function') {
         onSelectPatientForConsultation({ familyId: item.familyId, patientId: item.patientId });
@@ -616,7 +621,19 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       queue.push(newEntry);
       db.patientQueue = queue;
       saveLocalDB(db, clinicId);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+
+      // Push walk-in directly to MongoDB queue
+      apiFetch('/queue/push', {
+        method: 'POST',
+        body: {
+          patientId: newEntry.patientId,
+          patientName: newEntry.patientName,
+          familyId: newEntry.familyId,
+          complaint: newEntry.complaint,
+          token: newEntry.token,
+          vitals: newEntry.vitals,
+        },
+      }).catch((e) => console.warn('Queue push note:', e));
 
       closeModal();
       showToast(`✅ Added ${patientName} to Patient Queue (${nextToken})`);
@@ -624,21 +641,13 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
     });
   }
 
-  // Cross-tab real-time sync with Receptionist desk
-  const storageHandler = (e) => {
-    if (e.key === QUEUE_STORAGE_KEY || (e.key && e.key.startsWith('clinic_db_'))) {
-      const freshDb = getLocalDB(clinicId);
-      queue = freshDb.patientQueue || [];
-      if (!queue || queue.length === 0) {
-        try {
-          const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-          if (raw) queue = JSON.parse(raw);
-        } catch (err) {}
-      }
-      renderView();
-    }
+  // Cross-component real-time sync
+  const customSyncHandler = () => {
+    const freshDb = getLocalDB(clinicId);
+    queue = freshDb.patientQueue || [];
+    renderView();
   };
-  window.addEventListener('storage', storageHandler);
+  window.addEventListener('clinic-queue-updated', customSyncHandler);
 
   // Initial render
   renderView();
