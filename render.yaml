@@ -2,33 +2,33 @@
 # Render.com Deployment Configuration
 # ============================================================
 # Deploy at: https://render.com
-# Connect your GitHub repo and Render will use this file.
+# Connect your GitHub repo → Render detects this file automatically.
 
 services:
   - type: web
     name: dhyey-clinic-cms
     runtime: node
-    region: singapore  # closest to India
+    region: singapore   # closest to India
     plan: free
 
-    # Build command: install backend dependencies
-    buildCommand: npm install --prefix backend
+    # Build from repo root so both frontend/ and backend/ are available.
+    # Install backend npm packages explicitly.
+    buildCommand: cd backend && npm install
 
-    # Start command
-    startCommand: npm start
+    # Start the Node server from the backend directory
+    startCommand: cd backend && node server.js
 
-    # Health check
+    # Health check endpoint
     healthCheckPath: /api/health
 
-    # Environment variables (set these in Render dashboard)
+    # Environment variables
+    # MONGO_URI and JWT_SECRET must be set manually in the Render dashboard
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000  # Render assigns port 10000 by default
-      - key: MONGO_URI
-        sync: false    # Set manually in Render dashboard (keep secret)
-      - key: JWT_SECRET
-        sync: false    # Set manually in Render dashboard (keep secret)
       - key: JWT_EXPIRE
         value: 30d
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false

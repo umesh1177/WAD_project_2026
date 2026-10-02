@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Clinic Management System & Admin Portal",
   "scripts": {
-    "start": "npm --prefix backend start",
-    "dev": "npm --prefix backend run dev",
-    "install-backend": "npm --prefix backend install"
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && npm run dev",
+    "build": "cd backend && npm install"
   },
   "engines": {
     "node": ">=18.0.0"
