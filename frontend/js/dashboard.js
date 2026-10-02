@@ -40,38 +40,79 @@ export async function renderDashboard(container, onSelectPatient) {
     let appointments = [];
     let followUps = [];
     let bills = [];
+    let familiesMap = { ...(db.families || {}) };
+    let backendVisits = [];
 
+    // Real-time Database: Fetch live Families & Patients
+    try {
+      const famRes = await apiFetch('/families');
+      if (famRes && famRes.data && Array.isArray(famRes.data) && famRes.data.length > 0) {
+        famRes.data.forEach((f) => {
+          const fid = f.famId || f.id || f._id;
+          if (fid) {
+            familiesMap[fid] = {
+              ...(familiesMap[fid] || {}),
+              ...f,
+              id: fid,
+              headName: f.headName || f.name,
+              patients: f.patients || familiesMap[fid]?.patients || {},
+            };
+          }
+        });
+      }
+    } catch (e) {}
+
+    // Real-time Database: Fetch live Consultations / Visits
+    try {
+      const conRes = await apiFetch('/consultations');
+      if (conRes && conRes.data && Array.isArray(conRes.data)) {
+        backendVisits = conRes.data;
+      }
+    } catch (e) {}
+
+    // Real-time Database: Fetch Appointments
     try {
       const aptRes = await apiFetch('/appointments');
-      if (aptRes && aptRes.data && aptRes.data.length > 0) appointments = aptRes.data;
-      else appointments = db.appointments || [];
+      if (aptRes && aptRes.data && Array.isArray(aptRes.data) && aptRes.data.length > 0) {
+        appointments = aptRes.data;
+      } else {
+        appointments = db.appointments || [];
+      }
     } catch (e) {
       appointments = db.appointments || [];
     }
 
+    // Real-time Database: Fetch Follow-ups
     try {
       const fuRes = await apiFetch('/followups');
-      if (fuRes && fuRes.data && fuRes.data.length > 0) followUps = fuRes.data;
-      else followUps = db.followups || [];
+      if (fuRes && fuRes.data && Array.isArray(fuRes.data) && fuRes.data.length > 0) {
+        followUps = fuRes.data;
+      } else {
+        followUps = db.followups || [];
+      }
     } catch (e) {
       followUps = db.followups || [];
     }
 
+    // Real-time Database: Fetch Invoices & Bills
     try {
       const billRes = await apiFetch('/billing');
-      if (billRes && billRes.data && billRes.data.length > 0) bills = billRes.data;
-      else bills = db.bills || [];
+      if (billRes && billRes.data && Array.isArray(billRes.data) && billRes.data.length > 0) {
+        bills = billRes.data;
+      } else {
+        bills = db.bills || [];
+      }
     } catch (e) {
       bills = db.bills || [];
     }
 
-    const families = Object.values(db.families || {});
+    const families = Object.values(familiesMap);
     const flatPatients = [];
-    const allVisits = [];
+    const visitMap = new Map();
 
     families.forEach((fam) => {
       Object.values(fam.patients || {}).forEach((pat) => {
-        const visits = pat.visits || [];
+        const visits = Array.isArray(pat.visits) ? pat.visits : [];
         const totalDue = visits.reduce((s, v) => s + (Number(v.due) || 0), 0);
         const lastVisit = visits.length > 0 ? visits[visits.length - 1] : null;
 
@@ -84,7 +125,8 @@ export async function renderDashboard(container, onSelectPatient) {
         });
 
         visits.forEach((v, idx) => {
-          allVisits.push({
+          const vKey = v.caseId || v.id || `${fam.id}-${pat.id}-${v.date}-${idx}`;
+          visitMap.set(vKey, {
             ...v,
             isFirstVisit: idx === 0,
             famId: fam.id,
@@ -99,6 +141,29 @@ export async function renderDashboard(container, onSelectPatient) {
         });
       });
     });
+
+    // Merge backend consultations if available
+    backendVisits.forEach((bv, idx) => {
+      const vKey = bv.caseId || bv._id || bv.id || `bv-${idx}`;
+      if (!visitMap.has(vKey)) {
+        const patObj = flatPatients.find((p) => p.pat.id === bv.patientId || p.pat.name === bv.patientName);
+        visitMap.set(vKey, {
+          ...bv,
+          isFirstVisit: false,
+          famId: bv.familyId || patObj?.fam?.id || '',
+          famHead: patObj?.fam?.headName || bv.patientName || 'Family Head',
+          patId: bv.patientId || patObj?.pat?.id || '',
+          patName: bv.patientName || patObj?.pat?.name || 'Patient',
+          patAge: bv.patientAge || patObj?.pat?.age || '',
+          patGender: bv.patientGender || patObj?.pat?.gender || '',
+          patPhone: bv.patientPhone || patObj?.pat?.phone || '',
+          area: patObj?.fam?.area || '',
+        });
+      }
+    });
+
+    const allVisits = Array.from(visitMap.values());
+    allVisits.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
     return {
       db,
@@ -144,30 +209,13 @@ export async function renderDashboard(container, onSelectPatient) {
       return fDate === dateFilter || (fDate <= dateFilter && (f.status || '').toLowerCase() !== 'completed');
     });
 
-    const diagCountMap = {};
-    allVisits.forEach((v) => {
-      const d = (v.diagnosis || v.complaint || '').trim();
-      if (d) {
-        diagCountMap[d] = (diagCountMap[d] || 0) + 1;
-      }
-    });
-    const topDiagnoses = Object.entries(diagCountMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-    const maxDiagCount = topDiagnoses.length > 0 ? topDiagnoses[0][1] : 1;
-
-    const topDuesPatients = flatPatients
-      .filter((p) => p.totalDue > 0)
-      .sort((a, b) => b.totalDue - a.totalDue)
-      .slice(0, 5);
-
     container.innerHTML = `
-      <div class="cms-dash-container">
+      <div class="cms-dash-container" style="max-width: 100%; width: 100%;">
         
         <!-- Header Controls & Date Presets -->
         <div class="cms-dash-header">
           <div class="cms-dash-filter-group">
-            <span class="font-display" style="font-weight: 800; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; color: var(--primary);">
+            <span class="font-display" style="font-weight: 800; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; color: var(--primary);">
               <i class="fa-solid fa-chart-pie"></i> Clinical Dashboard
             </span>
 
@@ -202,7 +250,7 @@ export async function renderDashboard(container, onSelectPatient) {
           </div>
         </div>
 
-        <!-- 5 Balanced High-Impact KPI Cards (Pending Follow-up removed as requested) -->
+        <!-- 5 Balanced High-Impact KPI Cards -->
         <div class="cms-dash-kpi-grid">
           
           <!-- KPI 1: OPD Visits -->
@@ -290,10 +338,10 @@ export async function renderDashboard(container, onSelectPatient) {
 
         </div>
 
-        <!-- Main Workspace Layout: 1.75fr Table Section, 1fr Analytics Widgets -->
-        <div class="cms-dash-layout-grid">
+        <!-- Expanded Full-Width Main Workspace Layout -->
+        <div class="cms-dash-layout-grid" style="display: block; width: 100%;">
           
-          <div class="cms-dash-table-card">
+          <div class="cms-dash-table-card" style="width: 100%;">
             
             <div class="cms-dash-tab-nav">
               <button type="button" class="cms-dash-tab-btn ${activeTab === 'visits' ? 'active' : ''}" data-tab="visits">
@@ -329,7 +377,7 @@ export async function renderDashboard(container, onSelectPatient) {
             </div>
 
             <div class="cms-dash-toolbar">
-              <div style="font-weight: 800; font-size: 13px; color: var(--text);">
+              <div style="font-weight: 800; font-size: 13.5px; color: var(--text);">
                 ${
                   activeTab === 'visits' ? `OPD Consultations on ${fmtDate(dateFilter)}` :
                   activeTab === 'appointments' ? `Appointments Scheduled on ${fmtDate(dateFilter)}` :
@@ -340,121 +388,12 @@ export async function renderDashboard(container, onSelectPatient) {
                 }
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="text" id="dash-tab-search" class="cms-input cms-dash-search-input" placeholder="Search table..." value="${searchQuery}" />
+                <input type="text" id="dash-tab-search" class="cms-input cms-dash-search-input" placeholder="Search table..." value="${searchQuery}" style="min-width: 250px;" />
               </div>
             </div>
 
             <div class="cms-table-wrapper cms-dash-table-body" id="dash-active-table-body">
               ${renderActiveTableHTML(data, targetVisits, targetApts, targetFollowUps)}
-            </div>
-
-          </div>
-
-          <div class="cms-dash-side-col">
-            
-            <div class="cms-dash-widget-card">
-              <div class="cms-widget-header">
-                <div class="cms-widget-title" style="color: #dc2626;">
-                  <i class="fa-solid fa-triangle-exclamation"></i>
-                  <span>Top Outstanding Dues</span>
-                </div>
-                <span class="cms-pill font-mono" style="background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 800;">
-                  Total: ${fmtMoney(totalClinicDue)}
-                </span>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                ${
-                  topDuesPatients.length === 0
-                    ? `<div style="padding: 20px; text-align: center; color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> All accounts settled!</div>`
-                    : topDuesPatients
-                        .map(
-                          ({ fam, pat, totalDue, lastVisit }) => `
-                      <div class="cms-due-item-row" data-famid="${fam.id}" data-patid="${pat.id}" title="Click to view patient case consultation">
-                        <div>
-                          <div style="font-weight: 800; font-size: 13px;">${pat.name} <span class="cms-kbd" style="font-size: 10px; margin-left: 4px;">PT ${pat.id}</span></div>
-                          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                            Head: <b>${fam.headName}</b> &middot; Last: ${lastVisit ? fmtDate(lastVisit.date) : '—'}
-                          </div>
-                        </div>
-                        <div style="text-align: right;">
-                          <span class="cms-pill font-mono" style="background: #fee2e2; color: #dc2626; font-weight: 800; font-size: 12px;">${fmtMoney(totalDue)}</span>
-                        </div>
-                      </div>
-                    `
-                        )
-                        .join('')
-                }
-              </div>
-            </div>
-
-            <div class="cms-dash-widget-card">
-              <div class="cms-widget-header">
-                <div class="cms-widget-title" style="color: #0284c7;">
-                  <i class="fa-solid fa-chart-simple"></i>
-                  <span>Top Clinical Diagnoses</span>
-                </div>
-                <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Overall Trends</span>
-              </div>
-
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                ${
-                  topDiagnoses.length === 0
-                    ? `<div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 12px;">No diagnosis records available.</div>`
-                    : topDiagnoses
-                        .map(([diag, count]) => {
-                          const pct = Math.round((count / maxDiagCount) * 100);
-                          return `
-                        <div class="cms-diag-bar-row">
-                          <div class="cms-diag-bar-labels">
-                            <span style="color: var(--text); font-weight: 700;">${diag}</span>
-                            <span class="font-mono" style="color: var(--primary); font-weight: 800;">${count} Cases</span>
-                          </div>
-                          <div class="cms-diag-progress-track">
-                            <div class="cms-diag-progress-fill" style="width: ${pct}%;"></div>
-                          </div>
-                        </div>
-                      `;
-                        })
-                        .join('')
-                }
-              </div>
-            </div>
-
-            <div class="cms-dash-widget-card">
-              <div class="cms-widget-header">
-                <div class="cms-widget-title" style="color: var(--text);">
-                  <i class="fa-solid fa-bolt"></i>
-                  <span>Quick Action Center</span>
-                </div>
-              </div>
-
-              <div class="cms-dash-shortcut-grid">
-                <button type="button" class="cms-dash-action-btn" id="act-btn-case">
-                  <span><i class="fa-solid fa-clipboard-user" style="color: var(--primary); margin-right: 6px;"></i> Case Entry</span>
-                  <span class="cms-kbd font-mono">F3</span>
-                </button>
-                <button type="button" class="cms-dash-action-btn" id="act-btn-family">
-                  <span><i class="fa-solid fa-people-roof" style="color: #059669; margin-right: 6px;"></i> Family Reg</span>
-                  <span class="cms-kbd font-mono">F1</span>
-                </button>
-                <button type="button" class="cms-dash-action-btn" id="act-btn-member">
-                  <span><i class="fa-solid fa-user-plus" style="color: #7c3aed; margin-right: 6px;"></i> Add Member</span>
-                  <span class="cms-kbd font-mono">F2</span>
-                </button>
-                <button type="button" class="cms-dash-action-btn" id="act-btn-cert">
-                  <span><i class="fa-solid fa-certificate" style="color: #d97706; margin-right: 6px;"></i> Medical Cert</span>
-                  <span class="cms-kbd font-mono">F6</span>
-                </button>
-                <button type="button" class="cms-dash-action-btn" id="act-btn-reports">
-                  <span><i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 6px;"></i> Reports</span>
-                  <span class="cms-kbd font-mono">F5</span>
-                </button>
-                <button type="button" class="cms-dash-action-btn" id="act-btn-masters">
-                  <span><i class="fa-solid fa-layer-group" style="color: #dc2626; margin-right: 6px;"></i> Master Data</span>
-                  <span class="cms-kbd font-mono">F7</span>
-                </button>
-              </div>
             </div>
 
           </div>
@@ -865,35 +804,6 @@ export async function renderDashboard(container, onSelectPatient) {
 
     container.querySelector('#btn-quick-add-family')?.addEventListener('click', () => {
       document.querySelector('.cms-nav-item[data-view="family"]')?.click();
-    });
-
-    container.querySelector('#act-btn-case')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="case"]')?.click();
-    });
-    container.querySelector('#act-btn-family')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="family"]')?.click();
-    });
-    container.querySelector('#act-btn-member')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="patient"]')?.click();
-    });
-    container.querySelector('#act-btn-cert')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="certificates"]')?.click();
-    });
-    container.querySelector('#act-btn-reports')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="reports"]')?.click();
-    });
-    container.querySelector('#act-btn-masters')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="masters"]')?.click();
-    });
-
-    container.querySelectorAll('.cms-due-item-row').forEach((row) => {
-      row.addEventListener('click', () => {
-        const famId = row.getAttribute('data-famid');
-        const patId = row.getAttribute('data-patid');
-        if (famId && patId && onSelectPatient) {
-          onSelectPatient(famId, patId);
-        }
-      });
     });
 
     attachTableInteractions();

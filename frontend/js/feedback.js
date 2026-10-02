@@ -133,73 +133,63 @@ export async function renderFeedbackView(container) {
     }
 
     container.innerHTML = `
-      <div class="cms-feedback-container" style="display: flex; flex-direction: column; gap: 20px; max-width: 1350px; margin: 0 auto; width: 100%;">
+      <div class="cms-feedback-container" style="display: flex; flex-direction: column; gap: 16px; max-width: 1350px; margin: 0 auto; width: 100%;">
         
-        <!-- Header Hero Banner -->
-        <div class="cms-card" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%); border: 1px solid rgba(37, 99, 235, 0.2); padding: 22px 26px; border-radius: var(--radius-lg); position: relative; overflow: hidden;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 2;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                <span class="cms-pill" style="background: var(--primary); color: #fff; font-weight: 700; font-size: 11px; padding: 3px 10px; border-radius: 999px;">
-                  <i class="fa-solid fa-headset"></i> DOCTOR HELPDESK &amp; FEEDBACK
-                </span>
-                <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">
-                  Doctor: <b>${doctorName}</b> &middot; Active: <b>${activeClinic.name}</b>
-                </span>
+        <!-- Header & KPI Banner -->
+        <div class="cms-card" style="padding: 16px 20px; border-radius: var(--radius-lg); border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(37,99,235,0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <i class="fa-solid fa-headset"></i>
               </div>
-              <h1 class="font-display" style="font-size: 22px; font-weight: 800; color: var(--text-main); margin: 0 0 4px 0;">
-                Doctor Helpdesk, Clinic Requests &amp; Admin Feedback Center
+              <h1 class="font-display" style="font-size: 18px; font-weight: 800; color: var(--text-main); margin: 0;">
+                Doctor Helpdesk &amp; Feedback
               </h1>
-              <p style="font-size: 13.5px; color: var(--text-muted); margin: 0; max-width: 820px; line-height: 1.5;">
-                Submit requests for new clinic registrations, recommend software features, report technical issues, or communicate directly with the system administrator with real-time status tracking and official replies.
-              </p>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <a href="#section-compose-ticket" id="btn-scroll-compose" class="cms-btn cms-btn-primary" style="padding: 10px 18px; font-weight: 700; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
-                <i class="fa-solid fa-paper-plane"></i> Send New Request / Feedback
-              </a>
-            </div>
+            <a href="#section-compose-ticket" id="btn-scroll-compose" class="cms-btn cms-btn-primary" style="padding: 8px 16px; font-size: 12.5px; font-weight: 700; border-radius: var(--radius-md);">
+              <i class="fa-solid fa-paper-plane"></i> Send New Request / Feedback
+            </a>
           </div>
 
           <!-- KPI Stats Bar -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.06);">
-            <div style="background: var(--surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37,99,235,0.12); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <div style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(37,99,235,0.12); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 17px;">
                 <i class="fa-solid fa-ticket"></i>
               </div>
               <div>
-                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Requests</div>
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Requests</div>
                 <div style="font-size: 20px; font-weight: 800; color: var(--text-main); line-height: 1.2;">${stats.total}</div>
               </div>
             </div>
 
-            <div style="background: var(--surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(245,158,11,0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <div style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(245,158,11,0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 17px;">
                 <i class="fa-solid fa-clock-rotate-left"></i>
               </div>
               <div>
-                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Pending Admin Review</div>
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Pending Admin Review</div>
                 <div style="font-size: 20px; font-weight: 800; color: #d97706; line-height: 1.2;">${stats.pending}</div>
               </div>
             </div>
 
-            <div style="background: var(--surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16,185,129,0.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <div style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16,185,129,0.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 17px;">
                 <i class="fa-solid fa-circle-check"></i>
               </div>
               <div>
-                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Resolved &amp; Answered</div>
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Resolved &amp; Answered</div>
                 <div style="font-size: 20px; font-weight: 800; color: #059669; line-height: 1.2;">${stats.resolved}</div>
               </div>
             </div>
 
-            <div style="background: var(--surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
-              <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(99,102,241,0.12); color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <div style="background: var(--bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px;">
+              <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(99,102,241,0.12); color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 17px;">
                 <i class="fa-solid fa-hospital-user"></i>
               </div>
               <div>
-                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Clinic Requests</div>
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Clinic Requests</div>
                 <div style="font-size: 20px; font-weight: 800; color: #4f46e5; line-height: 1.2;">${stats.clinicReqs}</div>
               </div>
             </div>

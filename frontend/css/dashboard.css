@@ -217,18 +217,10 @@
   border-top: 1px dashed var(--border);
 }
 
-/* 2-Column Balanced Main Layout: Left 68% Main Table, Right 32% Side Widgets */
+/* Expanded Full-Width Main Table Layout */
 .cms-dash-layout-grid {
-  display: grid;
-  grid-template-columns: 1.75fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 1080px) {
-  .cms-dash-layout-grid {
-    grid-template-columns: 1fr;
-  }
+  display: block;
+  width: 100%;
 }
 
 /* Main Table Section */
