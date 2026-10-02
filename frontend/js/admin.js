@@ -239,6 +239,8 @@ let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'n
 let currentClinicTab = 'active';
 const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
 let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
+const STORAGE_KEY_ADMINS = 'dhyey-admin-accounts';
+let adminAccounts = JSON.parse(localStorage.getItem(STORAGE_KEY_ADMINS) || '[]');
 
 function saveClinicRequests() {
   localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
@@ -999,6 +1001,66 @@ function renderLogs() {
   document.getElementById('logResult').addEventListener('change', update);
   document.getElementById('logEntity').addEventListener('change', update);
   update();
+}
+
+function renderAdmins() {
+  page('Admin account management', 'Create verified administrator accounts with strong credentials and an auditable identity.', '', '');
+  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    <div class="admin-grid">
+      <section class="admin-card">
+        <div class="admin-card-header"><div><h2>Add administrator</h2><span>New accounts are created on the authenticated server.</span></div><i class="fa-solid fa-user-shield"></i></div>
+        <form id="adminForm" class="clinic-form-grid">
+          <div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input" name="name" required minlength="3" autocomplete="name"></div>
+          <div class="form-group"><label class="form-label">Work email <span class="req">*</span></label><input class="form-input" name="email" type="email" required autocomplete="email"></div>
+          <div class="form-group"><label class="form-label">Username <span class="req">*</span></label><input class="form-input" name="username" required pattern="[A-Za-z][A-Za-z0-9._-]{4,29}" minlength="5" maxlength="30" autocomplete="username"><small class="clinic-form-help">5-30 characters; letters, numbers, dots, underscores, or hyphens.</small></div>
+          <div class="form-group"><label class="form-label">Employee ID <span class="req">*</span></label><input class="form-input" name="employeeId" required pattern="[A-Za-z]{2,6}-[0-9]{4,12}" placeholder="ADM-20260001"><small class="clinic-form-help">Format: ADM-20260001</small></div>
+          <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input class="form-input" name="password" type="password" required minlength="12" autocomplete="new-password"><small class="clinic-form-help">At least 12 characters with uppercase, lowercase, number, and symbol.</small></div>
+          <div class="form-group"><label class="form-label">Confirm password <span class="req">*</span></label><input class="form-input" name="confirmPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+          <div class="form-group full-width"><label class="form-check-label"><input type="checkbox" name="attestation" required> I confirm this person is an authorized administrator.</label></div>
+          <div class="full-width"><button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Create admin account</button></div>
+        </form>
+      </section>
+      <section class="admin-card">
+        <div class="admin-card-header"><div><h2>Accounts created this session</h2><span>Passwords are never stored or displayed in this panel.</span></div></div>
+        <div id="adminAccountsTable"></div>
+      </section>
+    </div>
+  `);
+  const accountTable = document.getElementById('adminAccountsTable');
+  const renderAccountTable = () => {
+    accountTable.innerHTML = table(['Name', 'Username', 'Email', 'Employee ID', 'Created'], adminAccounts.map((admin) => `<tr><td>${admin.name}</td><td>${admin.username}</td><td>${admin.email}</td><td>${admin.employeeId}</td><td>${new Date(admin.createdAt).toLocaleString('en-IN')}</td></tr>`).join(''), 'No new accounts created in this session.');
+  };
+  renderAccountTable();
+  document.getElementById('adminForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const password = String(data.get('password'));
+    if (password !== String(data.get('confirmPassword'))) return showToast('Passwords do not match.', 'error');
+    if (!data.get('attestation')) return showToast('Confirm that the administrator is authorized.', 'error');
+    const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const response = await fetch('/api/auth/register-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
+        body: JSON.stringify({ name: data.get('name'), email: data.get('email'), username: data.get('username'), employeeId: data.get('employeeId'), password })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.message || 'The server could not create this administrator.');
+      adminAccounts.unshift({ ...result.admin, createdAt: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(adminAccounts));
+      logActivity('Created administrator account', 'Account', result.admin.username, 'Success', result.admin.employeeId);
+      form.reset();
+      renderAccountTable();
+      showToast('Administrator account created and validated successfully.');
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
 
 function renderAnalysis(type) {
@@ -1939,6 +2001,7 @@ function navigate(view = location.hash.slice(1) || 'overview') {
   else if (view === 'clinics') renderClinics();
   else if (view === 'services') renderServices();
   else if (view === 'logs') renderLogs();
+  else if (view === 'admins') renderAdmins();
   else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', ''));
   else renderOverview();
 }
@@ -2113,6 +2176,7 @@ document.addEventListener('keydown', event => {
   if (event.key === 'F3') { event.preventDefault(); location.hash = 'analysis-clinic'; navigate('analysis-clinic'); }
   if (event.key === 'F4') { event.preventDefault(); location.hash = 'services'; navigate('services'); }
   if (event.key === 'F5') { event.preventDefault(); location.hash = 'logs'; navigate('logs'); }
+  if (event.key === 'F6') { event.preventDefault(); location.hash = 'admins'; navigate('admins'); }
   if (event.key === 'Escape') { closeModal(); closeDetails(); closeAccountMenu(); }
 });
 
