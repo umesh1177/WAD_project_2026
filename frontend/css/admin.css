@@ -9,6 +9,23 @@
 .admin-brand-logo { background: var(--primary-teal, #095c54); }
 .admin-brand-title { color: var(--primary-teal, #095c54); }
 .sidebar.is-collapsed { width: 0; min-width: 0; overflow: hidden; border: 0; }
+
+/* Mobile sidebar backdrop overlay (admin + receptionist portals) */
+.cms-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.cms-sidebar-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
 .admin-subnav-link {
   color: var(--text-muted);
   font-size: 12px;

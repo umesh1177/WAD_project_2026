@@ -3238,23 +3238,32 @@ if (menuToggleBtn && adminSidebar) {
     document.body.appendChild(adminBackdrop);
   }
 
+  function toggleAdminSidebar() {
+    if (window.innerWidth <= 768) {
+      const isOpen = adminSidebar.classList.toggle('mobile-open');
+      adminBackdrop.classList.toggle('active', isOpen);
+    } else {
+      adminSidebar.classList.toggle('is-collapsed');
+    }
+  }
+
+  function closeAdminSidebar() {
+    if (window.innerWidth <= 768) {
+      adminSidebar.classList.remove('mobile-open');
+      adminBackdrop.classList.remove('active');
+    }
+  }
+
   menuToggleBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const isOpen = adminSidebar.classList.toggle('mobile-open');
-    adminBackdrop.classList.toggle('active', isOpen);
+    toggleAdminSidebar();
   });
 
-  adminBackdrop.addEventListener('click', () => {
-    adminSidebar.classList.remove('mobile-open');
-    adminBackdrop.classList.remove('active');
-  });
+  adminBackdrop.addEventListener('click', closeAdminSidebar);
 
   document.querySelectorAll('.sidebar a').forEach(link => {
     link.addEventListener('click', () => {
-      if (window.innerWidth <= 768) {
-        adminSidebar.classList.remove('mobile-open');
-        adminBackdrop.classList.remove('active');
-      }
+      closeAdminSidebar();
     });
   });
 }
