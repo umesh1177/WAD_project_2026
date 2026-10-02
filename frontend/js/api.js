@@ -1618,6 +1618,14 @@ function fallbackLocalHandler(endpoint, config) {
 
       db.feedbacks.unshift(newTicket);
       saveLocalDB(db, clinicId);
+
+      // Also persist to global shared tickets list for instant admin visibility
+      try {
+        const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+        globalTickets.unshift(newTicket);
+        localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
+      } catch (e) {}
+
       return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
     }
 

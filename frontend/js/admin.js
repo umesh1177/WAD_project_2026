@@ -1168,24 +1168,54 @@ async function renderFeedbackInbox() {
   `);
 
   const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
-  activeFeedbackTickets = [];
+  let serverTickets = [];
 
   try {
     const response = await fetch('/api/feedback/admin/all', {
       headers: { Authorization: `Bearer ${session?.token || 'mock-admin-token'}` },
     });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load feedback.');
-    activeFeedbackTickets = result.data || [];
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && result.success && Array.isArray(result.data)) {
+      serverTickets = result.data;
+    }
   } catch (error) {
-    activeFeedbackTickets = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith('clinic-db-'))
-      .forEach((key) => {
-        const clinicDb = JSON.parse(localStorage.getItem(key) || '{}');
-        if (Array.isArray(clinicDb.feedbacks)) activeFeedbackTickets.push(...clinicDb.feedbacks);
-      });
+    console.warn('[Admin Feedback Notice]: Fetching local fallback tickets');
   }
+
+  // Collect and merge ALL local clinic storage tickets (both clinic_db_*, clinic-db-*, and public storage)
+  const localTickets = [];
+  const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
+  if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
+
+  const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+  if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
+
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('clinic_db_') || key.startsWith('clinic-db-') || key.startsWith('clinic_db')) {
+      try {
+        const store = JSON.parse(localStorage.getItem(key) || '{}');
+        if (Array.isArray(store.feedbacks)) {
+          localTickets.push(...store.feedbacks);
+        }
+      } catch (e) {}
+    }
+  });
+
+  // Deduplicate and merge tickets
+  const ticketMap = new Map();
+  serverTickets.forEach((t) => {
+    const k = t.ticketNo || t.id || t._id;
+    if (k) ticketMap.set(k, t);
+  });
+  localTickets.forEach((t) => {
+    const k = t.ticketNo || t.id || t._id;
+    if (k && !ticketMap.has(k)) {
+      ticketMap.set(k, t);
+    }
+  });
+
+  activeFeedbackTickets = Array.from(ticketMap.values());
+  activeFeedbackTickets.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
 
   // Update KPI counters
   const updateKpis = () => {
@@ -1570,39 +1600,48 @@ async function updateFeedbackTicket(id, payload) {
       body: JSON.stringify(payload),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.success) throw new Error(result.message || 'Unable to update support request.');
-    return result;
+    if (response.ok && result.success) return result;
   } catch (error) {
-    const localSources = [
-      'dhyey-public-feedback',
-      ...Object.keys(localStorage).filter((key) => key.startsWith('clinic-db-')),
-    ];
-    let updated = false;
-    localSources.forEach((key) => {
-      const store = JSON.parse(localStorage.getItem(key) || (key === 'dhyey-public-feedback' ? '[]' : '{}'));
-      const list = key === 'dhyey-public-feedback' ? store : store.feedbacks;
+    console.warn('[Admin Feedback Notice]: Falling back to local clinic db update');
+  }
+
+  // Always mirror updates to local clinic databases so doctor sees admin replies immediately
+  const localKeys = [
+    'dhyey-public-feedback',
+    'dhyey-feedback-tickets',
+    ...Object.keys(localStorage).filter(
+      (k) => k.startsWith('clinic_db_') || k.startsWith('clinic-db-') || k.startsWith('clinic_db')
+    ),
+  ];
+
+  let updated = false;
+  localKeys.forEach((key) => {
+    try {
+      const store = JSON.parse(localStorage.getItem(key) || (key.startsWith('dhyey-') ? '[]' : '{}'));
+      const list = Array.isArray(store) ? store : store.feedbacks;
       if (!Array.isArray(list)) return;
-      const ticket = list.find((item) => (item.id || item.ticketNo) === id);
+
+      const ticket = list.find((item) => (item.id || item._id || item.ticketNo) === id);
       if (!ticket) return;
+
       if (payload.status) ticket.status = payload.status;
       if (payload.message) {
-        ticket.replies = [
-          ...(ticket.replies || []),
-          {
-            senderRole: 'admin',
-            senderName: 'System Administrator',
-            message: payload.message,
-            createdAt: new Date().toISOString(),
-          },
-        ];
+        if (!ticket.replies) ticket.replies = [];
+        ticket.replies.push({
+          senderRole: 'admin',
+          senderName: 'System Administrator',
+          message: payload.message,
+          createdAt: new Date().toISOString(),
+        });
+        ticket.lastReplyAt = new Date().toISOString();
         ticket.status = payload.status || 'Resolved';
       }
       localStorage.setItem(key, JSON.stringify(store));
       updated = true;
-    });
-    if (!updated) showToast(error.message, 'error');
-    return updated;
-  }
+    } catch (e) {}
+  });
+
+  return updated;
 }
 function renderAnalysis(type) {
   const isClinic = type === 'clinic';
