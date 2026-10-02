@@ -8,7 +8,8 @@
   }
   
   #cms-print-area, #cms-print-area *,
-  #cms-cert-print-area, #cms-cert-print-area * {
+  #cms-cert-print-area, #cms-cert-print-area *,
+  #cms-report-print-area, #cms-report-print-area * {
     visibility: visible !important;
   }
   
@@ -28,6 +29,19 @@
     z-index: 999999 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  #cms-report-print-area {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    color: #111111 !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important;
   }
 
   #cms-cert-print-area {
