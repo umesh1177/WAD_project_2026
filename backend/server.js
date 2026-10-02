@@ -323,6 +323,66 @@ app.get('/api/reports/stats', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Clinic info endpoint — used by receptionist portal for dynamic clinic branding
+app.get('/api/clinic/info', authMiddleware, async (req, res, next) => {
+  try {
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.query.clinicId || 'demo';
+    // Try fetching from Family model's clinic info (since we don't have a Clinic model yet)
+    const familyDoc = await Family.findOne({ clinicId }).lean();
+    // Build minimal clinic info from what we have
+    const clinicInfo = {
+      id: clinicId,
+      name: familyDoc?.clinicName || 'Dhyey Clinic & Nursing Home',
+      address: familyDoc?.clinicAddress || '',
+      phone: familyDoc?.clinicPhone || '',
+      city: familyDoc?.clinicCity || '',
+      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+    };
+    res.json({ success: true, data: clinicInfo });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Patient Queue endpoints — for receptionist cross-tab sync
+app.get('/api/queue', authMiddleware, async (req, res, next) => {
+  try {
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const today = new Date().toISOString().slice(0, 10);
+    const appointments = await Appointment.find({ clinicId, appointmentDate: today }).sort({ createdAt: 1 }).lean();
+    res.json({ success: true, data: appointments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/queue/push', authMiddleware, async (req, res, next) => {
+  try {
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const { patientId, patientName, familyId, complaint, vitals, token } = req.body;
+    const entry = new Appointment({
+      patientId,
+      patientName,
+      appointmentDate: new Date().toISOString().slice(0, 10),
+      appointmentTime: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      reason: complaint || 'OPD Consultation',
+      status: 'scheduled',
+      clinicId,
+      token: token || '',
+      vitals: vitals || {}
+    });
+    await entry.save();
+    res.json({ success: true, data: entry });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Receptionist portal static route
+app.get('/reception', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/pages/receptionist/dashboard.html'));
+});
+
 // API Routes Mounting (with singular & plural compatibility)
 app.use('/api/auth', authRoutes);
 app.use('/api/families', familyRoutes);

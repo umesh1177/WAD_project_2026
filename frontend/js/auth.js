@@ -77,6 +77,9 @@ function fallbackLocalLogin(username, password) {
     const demoClinic = adminClinics.find(c => c.id === 'demo' || c.id === 'CLN-001') || {
       id: 'demo',
       name: 'Dhyey Clinic & Nursing Home',
+      address: '',
+      phone: '',
+      city: '',
       services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
     };
 
@@ -93,6 +96,9 @@ function fallbackLocalLogin(username, password) {
         name: 'Front Desk Receptionist',
         role: 'receptionist',
         clinicName: demoClinic.name || 'Dhyey Clinic & Nursing Home',
+        clinicAddress: demoClinic.address || demoClinic.location || '',
+        clinicPhone: demoClinic.phone || demoClinic.contact || '',
+        clinicCity: demoClinic.city || demoClinic.district || '',
         activeClinicId: demoClinic.id || 'demo',
         services: demoClinic.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
       },
