@@ -181,7 +181,7 @@ const getFeedbackById = async (req, res, next) => {
 const addReply = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { message, senderRole, senderName, status } = req.body;
+    const { message, status } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({
@@ -201,8 +201,8 @@ const addReply = async (req, res, next) => {
       });
     }
 
-    const role = senderRole || (req.user?.role === 'admin' ? 'admin' : 'doctor');
-    const name = senderName || req.user?.name || (role === 'admin' ? 'System Administrator' : 'Doctor');
+    const role = req.user?.role === 'admin' ? 'admin' : 'doctor';
+    const name = req.user?.name || (role === 'admin' ? 'System Administrator' : 'Doctor');
 
     ticket.replies.push({
       senderRole: role,

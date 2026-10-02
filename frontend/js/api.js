@@ -321,13 +321,27 @@ export function saveSharedMasterCollection(type, list) {
   }
 }
 
-export function addSharedMasterItem(type, item) {
+export function addSharedMasterItem(type, item, currentDb = null) {
   const cleanItem = sanitizeSharedItem(item);
   const list = getSharedMasterCollection(type);
   const exists = list.some(existing => (existing.name && cleanItem.name && existing.name.toLowerCase() === cleanItem.name.toLowerCase()) || (existing.id && existing.id === cleanItem.id));
+
   if (!exists) {
     list.unshift(cleanItem);
     saveSharedMasterCollection(type, list);
+
+    // Auto-assign '-' shortcut if applicable
+    const shortcutKeys = ['complaints', 'investigations', 'medicines', 'allergies', 'relations'];
+    if (shortcutKeys.includes(type) && currentDb) {
+      if (!currentDb.clinicShortcuts) currentDb.clinicShortcuts = {};
+      if (!currentDb.clinicShortcuts[type]) currentDb.clinicShortcuts[type] = {};
+      if (cleanItem.name && !currentDb.clinicShortcuts[type][cleanItem.name]) {
+        currentDb.clinicShortcuts[type][cleanItem.name] = '-';
+        const session = getAuthSession();
+        const activeId = session?.profile?.activeClinicId || 'demo';
+        saveLocalDB(currentDb, activeId);
+      }
+    }
   }
   return list;
 }
@@ -1618,6 +1632,14 @@ function fallbackLocalHandler(endpoint, config) {
 
       db.feedbacks.unshift(newTicket);
       saveLocalDB(db, clinicId);
+
+      // Also persist to global shared tickets list for instant admin visibility
+      try {
+        const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+        globalTickets.unshift(newTicket);
+        localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
+      } catch (e) {}
+
       return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
     }
 
@@ -1627,3 +1649,38 @@ function fallbackLocalHandler(endpoint, config) {
 
   return { success: true, data: [] };
 }
+
+// ==========================================
+// UNIVERSAL DATALIST AUTOCOMPLETE INTERCEPTOR
+// ==========================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const input = e.target;
+    if (input.tagName === 'INPUT' && input.hasAttribute('list')) {
+      const listId = input.getAttribute('list');
+      if (!listId) return;
+
+      const datalist = document.getElementById(listId);
+      if (datalist && datalist.options.length > 0) {
+        const val = input.value.trim().toLowerCase();
+        if (val) {
+          const options = Array.from(datalist.options);
+
+          // Find first matching option (prioritize startsWith over includes)
+          let match = options.find(opt => opt.value.toLowerCase().startsWith(val));
+          if (!match) {
+            match = options.find(opt => opt.value.toLowerCase().includes(val));
+          }
+
+          if (match && match.value.toLowerCase() !== val) {
+            // Prevent immediate form submission so the doctor can confirm the autocompleted word
+            e.preventDefault();
+            input.value = match.value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      }
+    }
+  }
+});
+

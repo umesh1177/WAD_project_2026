@@ -167,9 +167,33 @@ function updateQueueBadge() {
 
 // ---- Interactions ----
 function setupInteractions() {
-  // Sidebar toggle
-  document.getElementById('rec-toggle-sidebar')?.addEventListener('click', () =>
-    document.getElementById('rec-sidebar')?.classList.toggle('collapsed'));
+  // Sidebar toggle — mobile off-canvas drawer + desktop collapse
+  const recSidebar = document.getElementById('rec-sidebar');
+  let recBackdrop = document.querySelector('.rec-sidebar-backdrop');
+  if (!recBackdrop) {
+    recBackdrop = document.createElement('div');
+    recBackdrop.className = 'cms-sidebar-backdrop rec-sidebar-backdrop';
+    document.body.appendChild(recBackdrop);
+  }
+  function toggleRecSidebar() {
+    if (window.innerWidth <= 768) {
+      const isOpen = recSidebar?.classList.toggle('mobile-open');
+      recBackdrop.classList.toggle('active', isOpen);
+    } else {
+      recSidebar?.classList.toggle('collapsed');
+    }
+  }
+  function closeRecSidebar() {
+    if (window.innerWidth <= 768) {
+      recSidebar?.classList.remove('mobile-open');
+      recBackdrop.classList.remove('active');
+    }
+  }
+  document.getElementById('rec-toggle-sidebar')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleRecSidebar();
+  });
+  recBackdrop.addEventListener('click', closeRecSidebar);
 
   // Theme toggle
   document.getElementById('rec-theme-toggle')?.addEventListener('click', () => {
@@ -198,9 +222,12 @@ function setupInteractions() {
     setTimeout(() => window.location.replace('../login.html?logout=true'), 200);
   });
 
-  // Nav items
+  // Nav items — close mobile drawer on navigation
   document.querySelectorAll('#rec-nav .cms-nav-item').forEach(item => {
-    item.addEventListener('click', () => navigateTo(item.dataset.view));
+    item.addEventListener('click', () => {
+      closeRecSidebar();
+      navigateTo(item.dataset.view);
+    });
   });
 
   // Global search

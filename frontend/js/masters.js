@@ -1479,7 +1479,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('complaints', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
         if (!db.customComplaints) db.customComplaints = [];
         if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
@@ -1505,7 +1505,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('investigations', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
         if (!db.customInvestigations) db.customInvestigations = [];
         if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
@@ -1520,7 +1520,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('areas', { id: itemData?.id, name, city, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() });
+          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1544,7 +1544,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('medicines', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1568,7 +1568,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('allergies', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1592,7 +1592,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('relations', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1605,7 +1605,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('societies', { id: itemData?.id, name, area, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() });
+          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);

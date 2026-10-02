@@ -22,6 +22,16 @@
       }
     })();
   </script>
+  <!-- PWA Meta Tags & Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#095c54" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Dhyey CMS" />
+  <link rel="icon" type="image/svg+xml" href="/assets/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/assets/icons/icon.svg" />
+
   <link rel="stylesheet" href="../../css/receptionist.css">
   <link rel="stylesheet" href="../../css/admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -64,6 +74,10 @@
             <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-user-shield"></i></span>Admin accounts</span>
             <span class="badge-key">F6</span>
           </a>
+          <a class="nav-item" href="#feedback" data-view="feedback">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-comments"></i></span>Complaints & feedback</span>
+            <span class="badge-key">F7</span>
+          </a>
         </nav>
       </div>
       <div class="sidebar-footer-guide">
@@ -95,7 +109,7 @@
 
       <section class="content-body" id="adminContent" aria-live="polite"></section>
       <footer class="bottom-ticker-bar">
-        <div>Dhyey Clinic · Admin Portal | F1 Overview | F2 Clinics | F3 Analysis | F4 Services | F5 Logs | F6 Admins</div>
+        <div>Dhyey Clinic · Admin Portal | F1 Overview | F2 Clinics | F3 Analysis | F4 Services | F5 Logs | F6 Admins | F7 Feedback</div>
         <div class="ticker-time" id="docClock"></div>
       </footer>
     </main>
@@ -104,5 +118,6 @@
   <div class="modal-overlay" id="detailsModal" aria-hidden="true"></div>
   <div class="toast-container" id="toastContainer"></div>
   <script src="../../js/admin.js"></script>
+  <script type="module" src="../../js/pwa.js"></script>
 </body>
 </html>

@@ -7,18 +7,25 @@ const connectDB = async () => {
     return;
   }
 
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/wad_clinic_management';
+  const uri = process.env.MONGO_URI;
+
+  if (!uri) {
+    console.error('[MongoDB Error]: MONGO_URI environment variable is not set.');
+    console.error('[MongoDB Error]: Please set MONGO_URI in your .env file or deployment environment.');
+    return;
+  }
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
     });
     isConnected = true;
-    console.log(`[MongoDB Connected]: ${conn.connection.host}/${conn.connection.name}`);
+    console.log(`[MongoDB Atlas Connected]: Host=${conn.connection.host}, Database=${conn.connection.name}`);
   } catch (error) {
-    console.warn(`[MongoDB Notice]: Could not connect to local MongoDB (${error.message}).`);
-    console.warn('[MongoDB Notice]: Ensure MongoDB is running on localhost:27017 for persistent DB storage.');
+    console.warn(`[MongoDB Notice]: Could not connect to MongoDB Atlas (${error.message}).`);
+    console.warn('[MongoDB Notice]: Please check network/IP whitelist in MongoDB Atlas dashboard.');
   }
 };
 
 module.exports = connectDB;
+

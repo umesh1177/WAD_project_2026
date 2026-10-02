@@ -217,18 +217,10 @@
   border-top: 1px dashed var(--border);
 }
 
-/* 2-Column Balanced Main Layout: Left 68% Main Table, Right 32% Side Widgets */
+/* Expanded Full-Width Main Table Layout */
 .cms-dash-layout-grid {
-  display: grid;
-  grid-template-columns: 1.75fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 1080px) {
-  .cms-dash-layout-grid {
-    grid-template-columns: 1fr;
-  }
+  display: block;
+  width: 100%;
 }
 
 /* Main Table Section */
@@ -462,3 +454,78 @@
   transform: translateY(-1px);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
 }
+
+/* =========================================================
+   DASHBOARD RESPONSIVE BREAKPOINTS
+   ========================================================= */
+
+@media (max-width: 1200px) {
+  .cms-dash-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .cms-dash-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .cms-dash-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cms-dash-presets {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cms-dash-preset-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+  }
+
+  .cms-dash-date-picker-wrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cms-dash-date-input {
+    flex: 1;
+    width: auto;
+  }
+
+  .cms-dash-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .cms-kpi-card-inner {
+    padding: 12px 14px;
+  }
+
+  .cms-kpi-val {
+    font-size: 22px;
+  }
+
+  .cms-dash-quick-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .cms-dash-quick-actions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .cms-dash-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

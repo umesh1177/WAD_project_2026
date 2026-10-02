@@ -16,6 +16,12 @@
   }
 })();
 
+const API_BASE_URL = window.location.origin.includes('5000')
+  ? ''
+  : window.location.port === '' || window.location.port === '80'
+  ? ''
+  : 'http://localhost:5000';
+
 const STORAGE_KEY = 'dhyey-admin-clinics';
 
 const PLATFORM_SERVICES = [
@@ -284,7 +290,7 @@ function logActivity(action, entity, entityId, result = 'Success', details = '')
 
 async function syncClinicRequestsFromAPI() {
   try {
-    const res = await fetch('/api/clinics/requests');
+    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`);
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
@@ -850,7 +856,7 @@ async function approveClinicRequest(reqId) {
 
   // Update backend API
   try {
-    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'Approved' })
@@ -875,7 +881,7 @@ async function rejectClinicRequest(reqId) {
 
   // Update backend API
   try {
-    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'Rejected' })
@@ -1065,7 +1071,7 @@ function renderAdmins() {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
-      const response = await fetch('/api/auth/register-admin', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
         body: JSON.stringify({ name: data.get('name'), email: data.get('email'), username: data.get('username'), employeeId: data.get('employeeId'), password })
@@ -1083,9 +1089,594 @@ function renderAdmins() {
     } finally {
       submit.disabled = false;
     }
+
   });
 }
 
+function escapeFeedbackHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+}
+
+let activeFeedbackTickets = [];
+
+async function renderFeedbackInbox() {
+  page(
+    'Complaints & Feedback Helpdesk',
+    'Monitor, triage, and reply to landing-page contact inquiries and clinic doctor support tickets in real-time.',
+    '',
+    `<button type="button" class="btn-secondary" id="btnRefreshFeedback"><i class="fa-solid fa-rotate"></i> Refresh Tickets</button>`
+  );
+
+  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    <!-- Top KPI Stats Banner -->
+    <div class="feedback-kpi-grid" id="feedbackKpiStats">
+      <div class="feedback-kpi-card">
+        <div class="feedback-kpi-icon total"><i class="fa-solid fa-comments"></i></div>
+        <div>
+          <div class="feedback-kpi-val" id="kpiTotalTickets">0</div>
+          <div class="feedback-kpi-label">Total Inquiries</div>
+        </div>
+      </div>
+      <div class="feedback-kpi-card">
+        <div class="feedback-kpi-icon pending"><i class="fa-solid fa-clock"></i></div>
+        <div>
+          <div class="feedback-kpi-val" id="kpiPendingTickets" style="color:#dc2626">0</div>
+          <div class="feedback-kpi-label">Pending / Action Needed</div>
+        </div>
+      </div>
+      <div class="feedback-kpi-card">
+        <div class="feedback-kpi-icon progress"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+        <div>
+          <div class="feedback-kpi-val" id="kpiProgressTickets" style="color:#d97706">0</div>
+          <div class="feedback-kpi-label">In Progress</div>
+        </div>
+      </div>
+      <div class="feedback-kpi-card">
+        <div class="feedback-kpi-icon resolved"><i class="fa-solid fa-circle-check"></i></div>
+        <div>
+          <div class="feedback-kpi-val" id="kpiResolvedTickets" style="color:#059669">0</div>
+          <div class="feedback-kpi-label">Resolved / Closed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Card & Filter Toolbar -->
+    <section class="admin-card">
+      <div class="feedback-filter-toolbar">
+        <div class="feedback-search-wrapper">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input class="form-input feedback-search-input" id="feedbackSearch" placeholder="Search ticket #, doctor, clinic, email, subject, or message...">
+        </div>
+        <select class="form-select" id="feedbackStatus" style="max-width:160px">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <select class="form-select" id="feedbackCategory" style="max-width:170px">
+          <option value="">All Sources</option>
+          <option value="landing">Landing Page Visitor</option>
+          <option value="doctor">Doctor Support Desk</option>
+        </select>
+      </div>
+
+      <div id="feedbackTable" style="margin-top:10px">
+        <div class="empty-results" style="padding:32px;text-align:center">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:var(--primary-teal);margin-bottom:8px"></i>
+          <div>Loading support requests...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal Mount Container -->
+    <div id="feedbackModalMount"></div>
+  `);
+
+  const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+  let serverTickets = [];
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/feedback/admin/all`, {
+      headers: { Authorization: `Bearer ${session?.token || 'mock-admin-token'}` },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && result.success && Array.isArray(result.data)) {
+      serverTickets = result.data;
+    }
+  } catch (error) {
+    console.warn('[Admin Feedback Notice]: Fetching local fallback tickets', error);
+  }
+
+  // Collect and merge ALL local clinic storage tickets (both clinic_db_*, clinic-db-*, and public storage)
+  const localTickets = [];
+  try {
+    const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
+    if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
+  } catch (e) {}
+
+  try {
+    const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+    if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
+  } catch (e) {}
+
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('clinic_db_') || key.startsWith('clinic-db-') || key.startsWith('clinic_db')) {
+      try {
+        const store = JSON.parse(localStorage.getItem(key) || '{}');
+        if (Array.isArray(store.feedbacks)) {
+          localTickets.push(...store.feedbacks);
+        }
+      } catch (e) {}
+    }
+  });
+
+  // Deduplicate and merge tickets
+  const ticketMap = new Map();
+  serverTickets.forEach((t) => {
+    const k = t.ticketNo || t._id || t.id;
+    if (k) {
+      ticketMap.set(k, {
+        ...t,
+        id: t._id || t.id || t.ticketNo,
+        replies: Array.isArray(t.replies) ? t.replies : [],
+      });
+    }
+  });
+
+  localTickets.forEach((t) => {
+    const k = t.ticketNo || t._id || t.id;
+    if (k) {
+      if (!ticketMap.has(k)) {
+        ticketMap.set(k, {
+          ...t,
+          id: t._id || t.id || t.ticketNo,
+          replies: Array.isArray(t.replies) ? t.replies : [],
+        });
+      } else {
+        const existing = ticketMap.get(k);
+        const localReplies = Array.isArray(t.replies) ? t.replies : [];
+        if (localReplies.length > (existing.replies || []).length) {
+          existing.replies = localReplies;
+        }
+        if (t.status && !existing.status) existing.status = t.status;
+      }
+    }
+  });
+
+  activeFeedbackTickets = Array.from(ticketMap.values());
+  activeFeedbackTickets.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
+
+  // Update KPI counters
+  const updateKpis = () => {
+    const total = activeFeedbackTickets.length;
+    const pending = activeFeedbackTickets.filter((t) => (t.status || 'Pending') === 'Pending').length;
+    const inProgress = activeFeedbackTickets.filter((t) => t.status === 'In Progress').length;
+    const resolved = activeFeedbackTickets.filter((t) => t.status === 'Resolved' || t.status === 'Closed').length;
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    setVal('kpiTotalTickets', total);
+    setVal('kpiPendingTickets', pending);
+    setVal('kpiProgressTickets', inProgress);
+    setVal('kpiResolvedTickets', resolved);
+  };
+  updateKpis();
+
+  const renderTable = () => {
+    const term = (document.getElementById('feedbackSearch')?.value || '').toLowerCase().trim();
+    const status = document.getElementById('feedbackStatus')?.value || '';
+    const category = document.getElementById('feedbackCategory')?.value || '';
+
+    const filtered = activeFeedbackTickets.filter((ticket) => {
+      const isLanding =
+        ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
+      const source = isLanding ? 'landing' : 'doctor';
+
+      const matchStatus = !status || ticket.status === status;
+      const matchSource = !category || source === category;
+      const matchText = `${ticket.ticketNo || ''} ${ticket.doctorName || ''} ${ticket.clinicName || ''} ${ticket.subject || ''} ${ticket.message || ''} ${ticket.categoryLabel || ''} ${ticket.category || ''} ${ticket.metaDetails?.email || ''} ${ticket.metaDetails?.phone || ''} ${ticket.metaDetails?.requestedClinicName || ''}`
+        .toLowerCase()
+        .includes(term);
+
+      return matchStatus && matchSource && matchText;
+    });
+
+    if (filtered.length === 0) {
+      document.getElementById('feedbackTable').innerHTML = `
+        <div class="empty-results" style="padding:48px 20px;text-align:center">
+          <i class="fa-solid fa-folder-open" style="font-size:36px;color:var(--text-muted);opacity:0.4;margin-bottom:12px;display:block"></i>
+          <div style="font-weight:700;font-size:15px;color:var(--text-main);margin-bottom:4px">No support requests match your criteria</div>
+          <div style="font-size:12px;color:var(--text-muted)">Try adjusting your search terms or filter selection.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const rows = filtered
+      .map((ticket) => {
+        const id = ticket.id || ticket._id || ticket.ticketNo;
+        const isLanding =
+          ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
+        const sourceLabel = isLanding ? 'Landing Page' : 'Doctor Panel';
+        const sourceClass = isLanding ? 'landing' : 'doctor';
+        const sourceIcon = isLanding ? 'fa-globe' : 'fa-user-doctor';
+
+        const st = ticket.status || 'Pending';
+        const stClass = st.toLowerCase().replace(/\s+/g, '-');
+        const repliesCount = (ticket.replies || []).length;
+        const submitterName = ticket.doctorName || ticket.senderName || ticket.metaDetails?.email || 'Anonymous';
+        const submitterSub = ticket.clinicName || ticket.metaDetails?.email || ticket.metaDetails?.phone || 'General Visitor';
+
+        return `
+        <tr data-ticket-id="${escapeFeedbackHtml(id)}" style="cursor:pointer">
+          <td style="width:130px">
+            <span class="font-mono" style="font-weight:800;color:var(--primary-teal);font-size:12.5px">${escapeFeedbackHtml(ticket.ticketNo || id)}</span>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+              ${new Date(ticket.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+              <span class="feedback-source-tag ${sourceClass}">
+                <i class="fa-solid ${sourceIcon}"></i> ${sourceLabel}
+              </span>
+            </div>
+            <div style="font-weight:700;color:var(--text-main);font-size:13px">${escapeFeedbackHtml(submitterName)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${escapeFeedbackHtml(submitterSub)}</div>
+          </td>
+          <td style="max-width:320px">
+            <div style="font-weight:700;color:var(--text-main);font-size:13px;margin-bottom:2px">
+              ${escapeFeedbackHtml(ticket.subject || 'General Inquiry')}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${escapeFeedbackHtml(ticket.message || '')}
+            </div>
+            ${
+              repliesCount > 0
+                ? `<div style="margin-top:4px"><span style="font-size:10.5px;background:rgba(15,118,110,0.1);color:var(--primary-teal);padding:2px 7px;border-radius:999px;font-weight:700"><i class="fa-solid fa-reply"></i> ${repliesCount} ${repliesCount === 1 ? 'Reply' : 'Replies'}</span></div>`
+                : ''
+            }
+          </td>
+          <td>
+            <span class="feedback-status-pill ${stClass}">${st}</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center;justify-content:flex-end" onclick="event.stopPropagation()">
+              <button type="button" class="btn-secondary btn-open-feedback-modal" data-ticket-id="${escapeFeedbackHtml(id)}" style="padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--primary-teal);border-color:var(--primary-teal-border);display:inline-flex;align-items:center;gap:5px">
+                <i class="fa-solid fa-reply"></i> Respond
+              </button>
+              <select class="form-select feedback-status-dropdown" data-ticket-id="${escapeFeedbackHtml(id)}" style="font-size:11.5px;padding:4px 8px;max-width:115px">
+                <option value="Pending" ${st === 'Pending' ? 'selected' : ''}>Pending</option>
+                <option value="In Progress" ${st === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Resolved" ${st === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                <option value="Closed" ${st === 'Closed' ? 'selected' : ''}>Closed</option>
+              </select>
+            </div>
+          </td>
+        </tr>
+      `;
+      })
+      .join('');
+
+    document.getElementById('feedbackTable').innerHTML = table(
+      ['Ticket & Date', 'Source & Submitter', 'Subject & Inquiry Details', 'Status', 'Actions'],
+      rows
+    );
+  };
+
+  // Wire filter events
+  ['feedbackSearch', 'feedbackStatus', 'feedbackCategory'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(id === 'feedbackSearch' ? 'input' : 'change', renderTable);
+  });
+
+  // Refresh button
+  document.getElementById('btnRefreshFeedback')?.addEventListener('click', () => {
+    showToast('Refreshing feedback tickets...');
+    renderFeedbackInbox();
+  });
+
+  // Wire Table click events
+  const tableRoot = content.querySelector('#feedbackTable');
+  tableRoot.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-open-feedback-modal');
+    if (btn) {
+      openFeedbackTicketModal(btn.dataset.ticketId);
+      return;
+    }
+    const row = e.target.closest('tr[data-ticket-id]');
+    if (row && !e.target.closest('select') && !e.target.closest('button')) {
+      openFeedbackTicketModal(row.dataset.ticketId);
+    }
+  });
+
+  // Status Quick-Dropdown change
+  tableRoot.addEventListener('change', async (e) => {
+    if (!e.target.matches('.feedback-status-dropdown')) return;
+    const ticketId = e.target.dataset.ticketId;
+    const newStatus = e.target.value;
+    await updateFeedbackTicket(ticketId, { status: newStatus });
+    const ticket = activeFeedbackTickets.find((t) => (t.id || t._id || t.ticketNo) === ticketId);
+    if (ticket) ticket.status = newStatus;
+    updateKpis();
+    renderTable();
+    showToast(`Ticket status updated to ${newStatus}`);
+  });
+
+  renderTable();
+}
+
+function openFeedbackTicketModal(ticketId) {
+  const ticket = activeFeedbackTickets.find((t) => (t.id || t._id || t.ticketNo) === ticketId);
+  const mount = document.getElementById('feedbackModalMount');
+  if (!ticket || !mount) return;
+
+  const isLanding = ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
+  const sourceLabel = isLanding ? 'Landing Page Inquirer' : 'Doctor Helpdesk';
+  const sourceIcon = isLanding ? 'fa-globe' : 'fa-user-doctor';
+  const st = ticket.status || 'Pending';
+  const stClass = st.toLowerCase().replace(/\s+/g, '-');
+  const replies = ticket.replies || [];
+
+  mount.innerHTML = `
+    <div class="cms-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px);">
+      <div class="feedback-ticket-modal-card">
+        
+        <!-- Header -->
+        <div class="feedback-modal-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="font-mono" style="background:var(--primary-teal);color:#fff;font-weight:900;font-size:13px;padding:3px 9px;border-radius:6px">
+              ${escapeFeedbackHtml(ticket.ticketNo || ticket.id)}
+            </span>
+            <div>
+              <h2 style="margin:0;font-size:15px;font-weight:800;color:var(--text-main)">
+                ${escapeFeedbackHtml(ticket.subject || 'Support Ticket Thread')}
+              </h2>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:1px">
+                <i class="fa-solid ${sourceIcon}"></i> ${sourceLabel} &bull; Created ${new Date(ticket.createdAt || Date.now()).toLocaleString('en-IN')}
+              </div>
+            </div>
+          </div>
+          <button type="button" id="btnCloseFeedbackModal" class="btn-secondary" style="border:none;padding:5px 9px;font-size:16px"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Body -->
+        <div class="feedback-modal-body">
+          
+          <!-- Submitter Card -->
+          <div class="feedback-sender-card">
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Sender Name</span>
+              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.doctorName || ticket.senderName || 'Anonymous Visitor')}</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Clinic / Organization</span>
+              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.clinicName || 'Landing Page Visitor')}</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Email Address</span>
+              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.metaDetails?.email || 'Not provided')}</strong>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Phone Number</span>
+              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.metaDetails?.phone || 'Not provided')}</strong>
+            </div>
+          </div>
+
+          <!-- Original Message Card -->
+          <div class="feedback-original-bubble">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:11.5px;font-weight:800;color:var(--primary-teal);text-transform:uppercase;display:flex;align-items:center;gap:5px">
+                <i class="fa-solid fa-message"></i> Inquirer Message
+              </span>
+              <span class="feedback-status-pill ${stClass}">${st}</span>
+            </div>
+            <div style="font-size:13.5px;color:var(--text-main);line-height:1.6;white-space:pre-wrap">
+              ${escapeFeedbackHtml(ticket.message || '')}
+            </div>
+          </div>
+
+          <!-- Replies Conversation Thread -->
+          ${
+            replies.length > 0
+              ? `
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
+                <i class="fa-solid fa-comments"></i> Admin Responses (${replies.length})
+              </div>
+              ${replies
+                .map(
+                  (r) => `
+                <div class="feedback-reply-bubble">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <strong style="font-size:12px;color:var(--primary-teal);display:flex;align-items:center;gap:6px">
+                      <i class="fa-solid fa-shield-halved"></i> ${escapeFeedbackHtml(r.senderName || 'System Administrator')}
+                    </strong>
+                    <span style="font-size:11px;color:var(--text-muted)">
+                      ${new Date(r.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div style="font-size:13px;color:var(--text-main);white-space:pre-wrap;line-height:1.5">${escapeFeedbackHtml(r.message)}</div>
+                </div>
+              `
+                )
+                .join('')}
+            </div>
+          `
+              : ''
+          }
+
+          <!-- Quick Templates & Reply Composer -->
+          <div style="background:var(--surface-alt);border:1px solid var(--border-color);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:6px">
+              <i class="fa-solid fa-reply"></i> Write Official Reply
+            </div>
+
+            <!-- Predefined Template Pills -->
+            <div class="feedback-template-pills">
+              <button type="button" class="feedback-template-btn" data-tmpl="Thank you for reaching out to Dhyey Clinic. We have reviewed your inquiry and will be glad to assist you.">
+                + Greeting &amp; Acknowledgment
+              </button>
+              <button type="button" class="feedback-template-btn" data-tmpl="Your clinic account credentials have been verified and activated. You can now log in securely.">
+                + Account Activated
+              </button>
+              <button type="button" class="feedback-template-btn" data-tmpl="The reported issue has been resolved by our technical team. Please verify and let us know if you need further help.">
+                + Issue Resolved
+              </button>
+              <button type="button" class="feedback-template-btn" data-tmpl="Our support representative will call you shortly on your provided contact number to assist with onboarding.">
+                + Call Follow-up
+              </button>
+            </div>
+
+            <textarea id="modalFeedbackReplyText" class="form-textarea" rows="3" placeholder="Type your detailed reply to the customer or doctor..." style="width:100%;font-size:13px;padding:10px;border-radius:8px"></textarea>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:4px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Set Ticket Status:</label>
+                <select id="modalFeedbackStatusSelect" class="form-select" style="font-size:12px;padding:5px 10px;max-width:140px">
+                  <option value="Resolved" selected>Resolved</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+
+              <div style="display:flex;gap:8px">
+                <button type="button" id="btnCancelFeedbackModal" class="btn-secondary" style="padding:7px 16px;font-size:12px">Close</button>
+                <button type="button" id="btnSubmitFeedbackReply" class="btn-primary" style="padding:7px 20px;font-size:12px;font-weight:700">
+                  <i class="fa-solid fa-paper-plane"></i> Send Reply
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  const closeModal = () => (mount.innerHTML = '');
+  mount.querySelector('#btnCloseFeedbackModal')?.addEventListener('click', closeModal);
+  mount.querySelector('#btnCancelFeedbackModal')?.addEventListener('click', closeModal);
+
+  // Template button inserts text
+  mount.querySelectorAll('.feedback-template-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const textarea = mount.querySelector('#modalFeedbackReplyText');
+      if (textarea) {
+        textarea.value = btn.dataset.tmpl;
+        textarea.focus();
+      }
+    });
+  });
+
+  // Submit reply
+  mount.querySelector('#btnSubmitFeedbackReply')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const message = mount.querySelector('#modalFeedbackReplyText')?.value?.trim();
+    const newStatus = mount.querySelector('#modalFeedbackStatusSelect')?.value || 'Resolved';
+
+    if (!message) {
+      showToast('Please type a reply before sending.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending...`;
+
+    try {
+      const id = ticket.id || ticket._id || ticket.ticketNo;
+      await updateFeedbackTicket(id, { message, status: newStatus });
+
+      ticket.status = newStatus;
+      ticket.replies = [
+        ...(ticket.replies || []),
+        {
+          senderName: 'System Administrator',
+          message,
+          senderRole: 'admin',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      logActivity('Replied to support ticket', 'Feedback', id, 'Success', ticket.subject);
+      showToast(`Reply dispatched and ticket marked as ${newStatus}!`);
+      closeModal();
+      renderFeedbackInbox();
+    } catch (err) {
+      showToast(err.message || 'Failed to send reply', 'error');
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Reply`;
+    }
+  });
+}
+
+async function updateFeedbackTicket(id, payload) {
+  const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+  try {
+    const endpoint = payload.message
+      ? `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/reply`
+      : `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/status`;
+    const response = await fetch(endpoint, {
+      method: payload.message ? 'POST' : 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.token || 'mock-admin-token'}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && result.success) return result;
+  } catch (error) {
+    console.warn('[Admin Feedback Notice]: Falling back to local clinic db update');
+  }
+
+  // Always mirror updates to local clinic databases so doctor sees admin replies immediately
+  const localKeys = [
+    'dhyey-public-feedback',
+    'dhyey-feedback-tickets',
+    ...Object.keys(localStorage).filter(
+      (k) => k.startsWith('clinic_db_') || k.startsWith('clinic-db-') || k.startsWith('clinic_db')
+    ),
+  ];
+
+  let updated = false;
+  localKeys.forEach((key) => {
+    try {
+      const store = JSON.parse(localStorage.getItem(key) || (key.startsWith('dhyey-') ? '[]' : '{}'));
+      const list = Array.isArray(store) ? store : store.feedbacks;
+      if (!Array.isArray(list)) return;
+
+      const ticket = list.find((item) => (item.id || item._id || item.ticketNo) === id);
+      if (!ticket) return;
+
+      if (payload.status) ticket.status = payload.status;
+      if (payload.message) {
+        if (!ticket.replies) ticket.replies = [];
+        ticket.replies.push({
+          senderRole: 'admin',
+          senderName: 'System Administrator',
+          message: payload.message,
+          createdAt: new Date().toISOString(),
+        });
+        ticket.lastReplyAt = new Date().toISOString();
+        ticket.status = payload.status || 'Resolved';
+      }
+      localStorage.setItem(key, JSON.stringify(store));
+      updated = true;
+    } catch (e) {}
+  });
+
+  try {
+    localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
+  } catch (e) {}
+
+  return updated;
+}
 function renderAnalysis(type) {
   const isClinic = type === 'clinic';
   const isDoctor = type === 'doctor';
@@ -2425,6 +3016,7 @@ function navigate(view = location.hash.slice(1) || 'overview') {
   else if (view === 'services') renderServices();
   else if (view === 'logs') renderLogs();
   else if (view === 'admins') renderAdmins();
+  else if (view === 'feedback') renderFeedbackInbox();
   else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', ''));
   else renderOverview();
 }
@@ -2619,6 +3211,7 @@ document.addEventListener('keydown', event => {
   if (event.key === 'F4') { event.preventDefault(); location.hash = 'services'; navigate('services'); }
   if (event.key === 'F5') { event.preventDefault(); location.hash = 'logs'; navigate('logs'); }
   if (event.key === 'F6') { event.preventDefault(); location.hash = 'admins'; navigate('admins'); }
+  if (event.key === 'F7') { event.preventDefault(); location.hash = 'feedback'; navigate('feedback'); }
   if (event.key === 'Escape') { closeModal(); closeDetails(); closeAccountMenu(); }
 });
 
@@ -2633,4 +3226,71 @@ setInterval(updateDoctorClock, 1000);
 
 window.addEventListener('hashchange', () => navigate());
 document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
+
+// Mobile Drawer Toggle
+const menuToggleBtn = document.getElementById('menuToggle');
+const adminSidebar = document.querySelector('.sidebar');
+if (menuToggleBtn && adminSidebar) {
+  let adminBackdrop = document.querySelector('.admin-sidebar-backdrop');
+  if (!adminBackdrop) {
+    adminBackdrop = document.createElement('div');
+    adminBackdrop.className = 'cms-sidebar-backdrop admin-sidebar-backdrop';
+    document.body.appendChild(adminBackdrop);
+  }
+
+  function toggleAdminSidebar() {
+    if (window.innerWidth <= 768) {
+      const isOpen = adminSidebar.classList.toggle('mobile-open');
+      adminBackdrop.classList.toggle('active', isOpen);
+    } else {
+      adminSidebar.classList.toggle('is-collapsed');
+    }
+  }
+
+  function closeAdminSidebar() {
+    if (window.innerWidth <= 768) {
+      adminSidebar.classList.remove('mobile-open');
+      adminBackdrop.classList.remove('active');
+    }
+  }
+
+  menuToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleAdminSidebar();
+  });
+
+  adminBackdrop.addEventListener('click', closeAdminSidebar);
+
+  document.querySelectorAll('.sidebar a').forEach(link => {
+    link.addEventListener('click', () => {
+      closeAdminSidebar();
+    });
+  });
+}
+
+// Live Cross-Tab Synchronization for Feedback & Support Tickets
+window.addEventListener('storage', (event) => {
+  if (
+    event.key === 'dhyey-feedback-tickets' ||
+    event.key === 'dhyey-feedback-last-updated' ||
+    event.key === 'dhyey-public-feedback' ||
+    (event.key && (event.key.startsWith('clinic-db-') || event.key.startsWith('clinic_db_')))
+  ) {
+    if (location.hash === '#feedback') {
+      renderFeedbackInbox();
+    }
+  }
+});
+
+// Periodic auto-refresh when on feedback screen (every 5 seconds)
+setInterval(() => {
+  if (location.hash === '#feedback' && !document.querySelector('#feedbackModalMount > div')) {
+    const searchInput = document.getElementById('feedbackSearch');
+    // Only background refresh if the search input is not actively focused/being typed into
+    if (searchInput !== document.activeElement && (!searchInput || !searchInput.value.trim())) {
+      renderFeedbackInbox();
+    }
+  }
+}, 5000);
+
 navigate();

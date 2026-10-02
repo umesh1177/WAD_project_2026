@@ -4,6 +4,10 @@
   "description": "Clinic Management System & Admin Portal",
   "scripts": {
     "start": "npm --prefix backend start",
-    "dev": "npm --prefix backend run dev"
+    "dev": "npm --prefix backend run dev",
+    "install-backend": "npm --prefix backend install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

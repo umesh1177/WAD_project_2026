@@ -13,6 +13,9 @@ const {
   approveClinicRequest,
 } = require('../controllers/feedbackController');
 
+// Public landing-page contact form. The admin/doctor routes below remain protected.
+router.post('/public', validateFeedback, createFeedback);
+
 // All feedback routes require authentication
 router.use(authMiddleware);
 

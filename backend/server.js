@@ -295,9 +295,16 @@ connectDB().then(() => {
 });
 
 // Global Middlewares
-app.use(cors({ origin: true, credentials: true }));
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? true  // Same-origin: frontend is served from the same Express server
+    : true, // Dev: allow all
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 
 // Static frontend serving
 app.use(express.static(path.join(__dirname, '../frontend')));
