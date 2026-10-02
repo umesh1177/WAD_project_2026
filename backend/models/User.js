@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String },
   status: { type: String, enum: ['Active', 'Suspended'], default: 'Active' },
-  clinicId: { type: String, ref: 'Clinic' },
+  clinicId: { type: String },
   services: [{ type: String }],
   specialty: { type: String },
   registration: { type: String },

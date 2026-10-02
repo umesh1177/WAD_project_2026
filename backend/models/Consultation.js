@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const consultationSchema = new mongoose.Schema({
   caseId: { type: String, required: true, unique: true },
-  patientId: { type: String, ref: 'Patient', required: true },
-  familyId: { type: String, ref: 'Family' },
+  patientId: { type: String, required: true },
+  familyId: { type: String },
   date: { type: String },
   time: { type: String },
   bp: { type: String },

@@ -7,6 +7,9 @@ const getPatients = async (req, res) => {
     const patients = await Patient.find();
     res.json({ success: true, count: patients.length, data: patients });
   } catch (error) {
+    console.error('--- CAST ERROR TRACE ---');
+    console.error(error.stack);
+    console.error('------------------------');
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -27,7 +30,7 @@ const createPatientMember = async (req, res) => {
   try {
     const { familyId, name, relation, age, gender, bloodGroup, allergy, society, area, phone } = req.body;
     let famIdRef = familyId;
-    let fam = await Family.findById(famIdRef).catch(() => null);
+    let fam = (famIdRef && famIdRef.length === 24) ? await Family.findById(famIdRef).catch(() => null) : null;
     if (!fam) {
       if (req.body.famId) fam = await Family.findOne({ famId: req.body.famId });
       if (fam) famIdRef = fam.famId || fam._id;
