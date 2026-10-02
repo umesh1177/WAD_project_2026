@@ -456,21 +456,24 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                 Recent Patients in Clinic (Click to Open Record):
               </div>
               ${
-                getRecentPatients(db).map(({ fam, pat }) => `
-                  <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
+                getRecentPatients(db).map(({ fam, pat }) => {
+                  const fId = fam.famId || fam.id || fam._id || '';
+                  const pId = pat.patId || pat.id || pat._id || '';
+                  return `
+                  <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fId}" data-patid="${pId}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
                     <div>
                       <b style="font-size: 13.5px; color: var(--text);">${pat.name}</b>
                       <span style="font-size: 12px; color: var(--text-muted);">(${pat.relation || 'Head'})</span>
                       <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
-                        ${fam.headName} &middot; FAM ${fam.id} &middot; ${fam.area || '—'}
+                        ${fam.headName || 'Family Head'} &middot; FAM ${fId} &middot; ${fam.area || '—'}
                       </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                      <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pat.id}</span>
+                      <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pId}</span>
                       <i class="fa-solid fa-arrow-right" style="color: var(--primary);"></i>
                     </div>
                   </div>
-                `).join('')
+                `}).join('')
               }
             </div>
           </div>
@@ -1388,34 +1391,40 @@ export function renderConsultationView(container, selection, onSelectPatient, on
   // ATTACH DOM EVENT HANDLERS
   // ==========================================
   function attachEventHandlers() {
-    setupPatientSearch(container, db, (fId, pId) => {
+    const selectPatientByIds = (fId, pId) => {
       familyId = fId;
       patientId = pId;
-      family = db.families[fId];
-      patient = family?.patients?.[pId];
+      family = db.families[fId] || Object.values(db.families || {}).find(f => (f.famId && f.famId === fId) || (f.id && f.id === fId) || (f._id && String(f._id) === fId));
+      if (family && family.patients) {
+        patient = family.patients[pId] || Object.values(family.patients).find(p => (p.patId && p.patId === pId) || (p.id && p.id === pId) || (p._id && String(p._id) === pId));
+      } else {
+        // Find patient across all families if direct match was not found
+        for (const f of Object.values(db.families || {})) {
+          const foundPat = Object.values(f.patients || {}).find(p => (p.patId && p.patId === pId) || (p.id && p.id === pId) || (p._id && String(p._id) === pId));
+          if (foundPat) {
+            family = f;
+            familyId = f.famId || f.id;
+            patient = foundPat;
+            break;
+          }
+        }
+      }
       isNewVisitOpen = false;
       editingVisitId = null;
       showDueCasesOnTop = false;
       filterDate = '';
       renderView();
-      if (onSelectPatient) onSelectPatient(fId, pId);
-    });
+      if (onSelectPatient) onSelectPatient(familyId, pId);
+    };
+
+    setupPatientSearch(container, db, selectPatientByIds);
 
     // Quick select recent patients in empty state
     container.querySelectorAll('.quick-select-pat-item').forEach((item) => {
       item.addEventListener('click', () => {
         const fId = item.getAttribute('data-famid');
         const pId = item.getAttribute('data-patid');
-        familyId = fId;
-        patientId = pId;
-        family = db.families[fId];
-        patient = family?.patients?.[pId];
-        isNewVisitOpen = false;
-        editingVisitId = null;
-        showDueCasesOnTop = false;
-        filterDate = '';
-        renderView();
-        if (onSelectPatient) onSelectPatient(fId, pId);
+        selectPatientByIds(fId, pId);
       });
     });
 
@@ -2801,15 +2810,17 @@ function setupPatientSearch(container, db, onSelect) {
 
     const matched = [];
     Object.values(db.families || {}).forEach((fam) => {
+      const fId = fam.famId || fam.id || fam._id || '';
       Object.values(fam.patients || {}).forEach((pat) => {
+        const pId = pat.patId || pat.id || pat._id || '';
         if (
-          pat.name.toLowerCase().includes(q) ||
-          (pat.id || '').includes(q) ||
-          fam.headName.toLowerCase().includes(q) ||
-          (fam.id || '').includes(q) ||
+          (pat.name || '').toLowerCase().includes(q) ||
+          pId.toLowerCase().includes(q) ||
+          (fam.headName || '').toLowerCase().includes(q) ||
+          fId.toLowerCase().includes(q) ||
           (fam.area || '').toLowerCase().includes(q)
         ) {
-          matched.push({ fam, pat });
+          matched.push({ fam, pat, fId, pId });
         }
       });
     });
@@ -2820,13 +2831,13 @@ function setupPatientSearch(container, db, onSelect) {
       resultsBox.innerHTML = matched
         .slice(0, 8)
         .map(
-          ({ fam, pat }) => `
-        <div class="cms-search-hit" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;">
+          ({ fam, pat, fId, pId }) => `
+        <div class="cms-search-hit" data-famid="${fId}" data-patid="${pId}" style="padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;">
           <div>
             <b>${pat.name}</b> <span style="font-size: 12px; color: var(--text-muted);">(${pat.relation || 'Head'})</span>
-            <div style="font-size: 11.5px; color: var(--text-muted);">${fam.headName} &middot; FAM ${fam.id} &middot; ${fam.area || '—'}</div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">${fam.headName || 'Family Head'} &middot; FAM ${fId} &middot; ${fam.area || '—'}</div>
           </div>
-          <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pat.id}</span>
+          <span class="cms-kbd font-mono" style="font-size: 11px;">PT ${pId}</span>
         </div>
       `
         )

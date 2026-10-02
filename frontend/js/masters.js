@@ -15,7 +15,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, showToast, getSharedMasterCollection, saveSharedMasterCollection, addSharedMasterItem, updateSharedMasterItem, deleteSharedMasterItem } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, showToast, getSharedMasterCollection, saveSharedMasterCollection, addSharedMasterItem, updateSharedMasterItem, deleteSharedMasterItem, syncClinicDataFromAPI } from './api.js';
 
 export const AVAILABLE_SHORTCUT_TARGETS = [
   // --- Navigation Tabs ---
@@ -1448,15 +1448,24 @@ export function renderMastersView(container) {
 
         if (!db.dietary) db.dietary = {};
         const existing = db.dietary[code];
-        db.dietary[code] = {
+        const dietaryItem = {
           id: existing?.id || `d_${Date.now()}`,
           code,
+          name: code,
+          disease: code,
           eat,
           avoid,
           text: `${code}: Eat: ${eat} | Avoid: ${avoid}`,
           createdAt: existing?.createdAt || todayISO(),
           updatedAt: todayISO(),
         };
+        db.dietary[code] = dietaryItem;
+
+        if (isEdit) {
+          updateSharedMasterItem('dietary', dietaryItem);
+        } else {
+          addSharedMasterItem('dietary', dietaryItem, db);
+        }
 
         saveLocalDB(db, clinicId);
         showToast(`✨ Dietary template "${code}" ${isEdit ? 'updated' : 'added'} successfully!`);
@@ -1620,19 +1629,25 @@ export function renderMastersView(container) {
         if (!key || !title) return;
 
         if (!db.customShortcuts) db.customShortcuts = [];
+        const scItem = {
+          id: itemData?.id || `sc_${Date.now()}`,
+          key,
+          target,
+          title,
+          category,
+          name: title,
+          updatedAt: todayISO(),
+        };
         if (isEdit) {
           const idx = db.customShortcuts.findIndex((sc) => sc.id === itemData?.id || sc.key === itemData?.key);
           if (idx !== -1) {
-            db.customShortcuts[idx] = { ...db.customShortcuts[idx], key, target, title, category };
+            db.customShortcuts[idx] = { ...db.customShortcuts[idx], ...scItem };
           }
+          updateSharedMasterItem('shortcuts', scItem);
         } else {
-          db.customShortcuts.push({
-            id: `sc_${Date.now()}`,
-            key,
-            target,
-            title,
-            category,
-          });
+          scItem.createdAt = todayISO();
+          db.customShortcuts.push(scItem);
+          addSharedMasterItem('shortcuts', scItem, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1799,6 +1814,11 @@ export function renderMastersView(container) {
               if (v.id === id || v.code === code || k === code) delete db.dietary[k];
             });
           }
+          deleteSharedMasterItem('dietary', (d) => {
+            if (id && d.id === id) return false;
+            if (code && (d.code === code || d.id === code || d.name === code)) return false;
+            return true;
+          }, id || code);
           showToast(`🗑️ Dietary template "${recordTitle}" deleted.`);
         } else if (type === 'complaints') {
           if (db.clinicShortcuts?.complaints) {
@@ -1875,6 +1895,11 @@ export function renderMastersView(container) {
             if (code && sc.key && sc.key.toLowerCase() === code.toLowerCase()) return false;
             return true;
           });
+          deleteSharedMasterItem('shortcuts', (sc) => {
+            if (id && sc.id === id) return false;
+            if (code && sc.key && sc.key.toLowerCase() === code.toLowerCase()) return false;
+            return true;
+          }, id || code);
           showToast(`🗑️ Shortcut "${recordTitle}" deleted.`);
         }
 
@@ -1932,4 +1957,11 @@ export function renderMastersView(container) {
 
   // Initial View Render
   renderView();
+
+  // Async sync with MongoDB Atlas to ensure latest master data
+  syncClinicDataFromAPI(clinicId)
+    .then(() => {
+      renderView();
+    })
+    .catch(() => {});
 }

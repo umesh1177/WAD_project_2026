@@ -268,67 +268,68 @@ export const defaultMasterSocieties = [
 
 /**
  * Shared Master Data System:
- * A single shared master collection for clinical entities across all clinics.
- * Note: Shortcuts are strictly clinic-specific and are never stored in the shared master collection!
+ * Live in-memory cache synchronized with MongoDB Atlas via /api/masters
  */
+const sharedMasterMemoryStore = {
+  medicines: [...defaultMasterMedicines],
+  complaints: [...defaultMasterComplaints],
+  investigations: [...defaultMasterInvestigations],
+  allergies: [...defaultMasterAllergies],
+  relations: [...defaultMasterRelations],
+  areas: [...defaultMasterAreas],
+  societies: [...defaultMasterSocieties],
+  dietary: [],
+};
+
 function sanitizeSharedList(rawList) {
   if (!Array.isArray(rawList)) return [];
   return rawList.map(item => {
     if (!item || typeof item !== 'object') return item;
-    const { code, ...rest } = item;
-    return rest;
+    const { _id, __v, ...rest } = item;
+    return { id: item.customId || item.id || _id || `m_${Date.now()}`, ...rest };
   });
 }
 
 function sanitizeSharedItem(item) {
   if (!item || typeof item !== 'object') return item;
-  const { code, ...rest } = item;
-  return rest;
+  const { _id, __v, ...rest } = item;
+  return { id: item.customId || item.id || `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, ...rest };
 }
 
 export function getSharedMasterCollection(type) {
-  try {
-    const raw = localStorage.getItem('dhyey-shared-master-data');
-    const store = raw ? JSON.parse(raw) : {};
-    if (type === 'medicines') return sanitizeSharedList(store.medicines && store.medicines.length > 0 ? store.medicines : defaultMasterMedicines);
-    if (type === 'complaints') return sanitizeSharedList(store.complaints && store.complaints.length > 0 ? store.complaints : defaultMasterComplaints);
-    if (type === 'investigations') return sanitizeSharedList(store.investigations && store.investigations.length > 0 ? store.investigations : defaultMasterInvestigations);
-    if (type === 'allergies') return sanitizeSharedList(store.allergies && store.allergies.length > 0 ? store.allergies : defaultMasterAllergies);
-    if (type === 'relations') return sanitizeSharedList(store.relations && store.relations.length > 0 ? store.relations : defaultMasterRelations);
-    if (type === 'areas') return sanitizeSharedList(store.areas && store.areas.length > 0 ? store.areas : defaultMasterAreas);
-    if (type === 'societies') return sanitizeSharedList(store.societies && store.societies.length > 0 ? store.societies : defaultMasterSocieties);
-    return sanitizeSharedList(store[type] || []);
-  } catch (e) {
-    if (type === 'medicines') return sanitizeSharedList(defaultMasterMedicines);
-    if (type === 'complaints') return sanitizeSharedList(defaultMasterComplaints);
-    if (type === 'investigations') return sanitizeSharedList(defaultMasterInvestigations);
-    if (type === 'allergies') return sanitizeSharedList(defaultMasterAllergies);
-    if (type === 'relations') return sanitizeSharedList(defaultMasterRelations);
-    if (type === 'areas') return sanitizeSharedList(defaultMasterAreas);
-    if (type === 'societies') return sanitizeSharedList(defaultMasterSocieties);
-    return [];
+  if (sharedMasterMemoryStore[type] && sharedMasterMemoryStore[type].length > 0) {
+    return sharedMasterMemoryStore[type];
   }
+  if (type === 'medicines') return [...defaultMasterMedicines];
+  if (type === 'complaints') return [...defaultMasterComplaints];
+  if (type === 'investigations') return [...defaultMasterInvestigations];
+  if (type === 'allergies') return [...defaultMasterAllergies];
+  if (type === 'relations') return [...defaultMasterRelations];
+  if (type === 'areas') return [...defaultMasterAreas];
+  if (type === 'societies') return [...defaultMasterSocieties];
+  return [];
 }
 
 export function saveSharedMasterCollection(type, list) {
-  try {
-    const raw = localStorage.getItem('dhyey-shared-master-data');
-    const store = raw ? JSON.parse(raw) : {};
-    store[type] = sanitizeSharedList(list);
-    localStorage.setItem('dhyey-shared-master-data', JSON.stringify(store));
-  } catch (e) {
-    console.error('Failed to save shared master collection:', e);
-  }
+  sharedMasterMemoryStore[type] = sanitizeSharedList(list);
+  apiFetch(`/masters/${type}/bulk`, {
+    method: 'POST',
+    body: { items: sharedMasterMemoryStore[type] },
+  }).catch((err) => console.warn(`[MongoDB Atlas Master Bulk Sync Error ${type}]:`, err.message));
 }
 
 export function addSharedMasterItem(type, item, currentDb = null) {
   const cleanItem = sanitizeSharedItem(item);
-  const list = getSharedMasterCollection(type);
+  if (!sharedMasterMemoryStore[type]) sharedMasterMemoryStore[type] = [];
+  const list = sharedMasterMemoryStore[type];
   const exists = list.some(existing => (existing.name && cleanItem.name && existing.name.toLowerCase() === cleanItem.name.toLowerCase()) || (existing.id && existing.id === cleanItem.id));
 
   if (!exists) {
     list.unshift(cleanItem);
-    saveSharedMasterCollection(type, list);
+    apiFetch(`/masters/${type}`, {
+      method: 'POST',
+      body: cleanItem,
+    }).catch((err) => console.warn(`[MongoDB Atlas Master Add Error ${type}]:`, err.message));
 
     // Auto-assign '-' shortcut if applicable
     const shortcutKeys = ['complaints', 'investigations', 'medicines', 'allergies', 'relations'];
@@ -348,22 +349,40 @@ export function addSharedMasterItem(type, item, currentDb = null) {
 
 export function updateSharedMasterItem(type, updatedItem) {
   const cleanItem = sanitizeSharedItem(updatedItem);
-  const list = getSharedMasterCollection(type);
+  if (!sharedMasterMemoryStore[type]) sharedMasterMemoryStore[type] = [];
+  const list = sharedMasterMemoryStore[type];
   const idx = list.findIndex(item => (cleanItem.id && item.id === cleanItem.id) || (cleanItem.name && item.name && item.name.toLowerCase() === cleanItem.name.toLowerCase()));
+  
+  const targetId = cleanItem.id || cleanItem.customId || cleanItem.code || cleanItem.name;
   if (idx !== -1) {
     list[idx] = { ...list[idx], ...cleanItem };
-    saveSharedMasterCollection(type, list);
   } else {
     list.unshift(cleanItem);
-    saveSharedMasterCollection(type, list);
   }
+
+  apiFetch(`/masters/${type}/${encodeURIComponent(targetId)}`, {
+    method: 'PUT',
+    body: cleanItem,
+  }).catch((err) => console.warn(`[MongoDB Atlas Master Update Error ${type}]:`, err.message));
+
   return list;
 }
 
-export function deleteSharedMasterItem(type, filterFn) {
-  const list = getSharedMasterCollection(type);
+export function deleteSharedMasterItem(type, filterFn, targetIdentifier = null) {
+  if (!sharedMasterMemoryStore[type]) sharedMasterMemoryStore[type] = [];
+  const list = sharedMasterMemoryStore[type];
+  const itemToDelete = targetIdentifier ? list.find(item => item.id === targetIdentifier || item.name === targetIdentifier || item.code === targetIdentifier) : list.find(item => !filterFn(item));
+  
   const updated = list.filter(item => filterFn(item));
-  saveSharedMasterCollection(type, updated);
+  sharedMasterMemoryStore[type] = updated;
+
+  const deleteId = targetIdentifier || (itemToDelete ? itemToDelete.id || itemToDelete.customId || itemToDelete.name || itemToDelete.code : null);
+  if (deleteId) {
+    apiFetch(`/masters/${type}/${encodeURIComponent(deleteId)}`, {
+      method: 'DELETE',
+    }).catch((err) => console.warn(`[MongoDB Atlas Master Delete Error ${type}]:`, err.message));
+  }
+
   return updated;
 }
 
@@ -501,7 +520,20 @@ export async function syncClinicDataFromAPI(clinicId = 'demo') {
     if (famRes && famRes.success && Array.isArray(famRes.data)) {
       db.families = {};
       famRes.data.forEach((fam) => {
-        const fId = fam.famId || fam.id;
+        const fId = fam.famId || fam.id || String(fam._id);
+        fam.id = fId;
+        fam.famId = fId;
+        if (fam.patients && typeof fam.patients === 'object') {
+          const normalizedPatients = {};
+          Object.values(fam.patients).forEach((p) => {
+            const pId = p.patId || p.id || String(p._id);
+            p.id = pId;
+            p.patId = pId;
+            p.familyId = fId;
+            normalizedPatients[pId] = p;
+          });
+          fam.patients = normalizedPatients;
+        }
         db.families[fId] = fam;
       });
     }
@@ -569,10 +601,49 @@ export async function syncClinicDataFromAPI(clinicId = 'demo') {
       db.feedbacks = fbRes.data;
     }
 
-    // 9. Fetch Master Medicines from MongoDB Atlas
-    const medRes = await apiFetch('/medicines');
-    if (medRes && medRes.success && Array.isArray(medRes.data) && medRes.data.length > 0) {
-      db.masterMedicines = medRes.data;
+    // 9. Fetch Masters from MongoDB Atlas
+    const mastersRes = await apiFetch('/masters');
+    if (mastersRes && mastersRes.success && mastersRes.data) {
+      const mData = mastersRes.data;
+      if (Array.isArray(mData.complaints) && mData.complaints.length > 0) {
+        sharedMasterMemoryStore.complaints = sanitizeSharedList(mData.complaints);
+      }
+      if (Array.isArray(mData.investigations) && mData.investigations.length > 0) {
+        sharedMasterMemoryStore.investigations = sanitizeSharedList(mData.investigations);
+      }
+      if (Array.isArray(mData.areas) && mData.areas.length > 0) {
+        sharedMasterMemoryStore.areas = sanitizeSharedList(mData.areas);
+      }
+      if (Array.isArray(mData.medicines) && mData.medicines.length > 0) {
+        sharedMasterMemoryStore.medicines = sanitizeSharedList(mData.medicines);
+        db.masterMedicines = sharedMasterMemoryStore.medicines;
+      }
+      if (Array.isArray(mData.allergies) && mData.allergies.length > 0) {
+        sharedMasterMemoryStore.allergies = sanitizeSharedList(mData.allergies);
+      }
+      if (Array.isArray(mData.relations) && mData.relations.length > 0) {
+        sharedMasterMemoryStore.relations = sanitizeSharedList(mData.relations);
+      }
+      if (Array.isArray(mData.societies) && mData.societies.length > 0) {
+        sharedMasterMemoryStore.societies = sanitizeSharedList(mData.societies);
+      }
+      if (Array.isArray(mData.dietary) && mData.dietary.length > 0) {
+        if (!db.dietary) db.dietary = {};
+        mData.dietary.forEach((d) => {
+          const code = (d.code || d.disease || d.customId || '').toUpperCase();
+          if (code) {
+            db.dietary[code] = {
+              id: d.customId || d._id || code,
+              code: code,
+              disease: d.disease || d.name || code,
+              eat: d.eat || '',
+              avoid: d.avoid || '',
+              text: d.text || `Eat: ${d.eat || '-'}. Avoid: ${d.avoid || '-'}.`,
+              createdAt: d.createdAt ? String(d.createdAt).slice(0, 10) : todayISO(),
+            };
+          }
+        });
+      }
     }
 
     clinicMemoryStore[cleanId] = db;

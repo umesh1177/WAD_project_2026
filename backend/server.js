@@ -25,6 +25,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const followUpRoutes = require('./routes/followUpRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const queueRoutes = require('./routes/queueRoutes');
+const masterRoutes = require('./routes/masterRoutes');
 
 const app = express();
 
@@ -421,6 +422,8 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/support', feedbackRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/queues', queueRoutes);
+app.use('/api/masters', masterRoutes);
+app.use('/api/master', masterRoutes);
 
 // Direct routes for admin, login, and public landing page
 app.get('/admin', (req, res) => {
