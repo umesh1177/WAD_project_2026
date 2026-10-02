@@ -895,20 +895,20 @@
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">DOCTOR / CLINIC NAME *</label>
-                  <input type="text" placeholder="Dr. Sharma / City Health Clinic" required class="form-control" />
+                  <input type="text" name="senderName" placeholder="Dr. Sharma / City Health Clinic" required class="form-control" />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">MOBILE NUMBER *</label>
-                  <input type="tel" placeholder="+91 98765 43210" required class="form-control" />
+                  <input type="tel" name="phone" placeholder="+91 98765 43210" required class="form-control" />
                 </div>
                 <div class="col-12">
                   <label class="form-label">EMAIL ADDRESS *</label>
-                  <input type="email" placeholder="doctor@clinic.com" required class="form-control" />
+                  <input type="email" name="email" placeholder="doctor@clinic.com" required class="form-control" />
                 </div>
                 <div class="col-12">
                   <label class="form-label">MESSAGE</label>
                   <textarea placeholder="Tell us about your clinic size, location, and what you need..." rows="4"
-                    class="form-control"></textarea>
+                    name="message" required class="form-control"></textarea>
                 </div>
               </div>
               <button type="submit" class="btn btn-primary-custom w-100 mt-4" style="padding: 14px;">
@@ -1030,16 +1030,56 @@
     if (statsBanner) observer.observe(statsBanner);
 
     // Contact form submission
-    function handleContactSubmit(event) {
+    async function handleContactSubmit(event) {
       event.preventDefault();
+      const form = event.target;
       const btn = event.target.querySelector('button[type="submit"]');
-      btn.innerHTML = '<i class="ri-check-line"></i> Message Sent! We\'ll be in touch.';
-      btn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
-      setTimeout(() => {
-        btn.innerHTML = '<i class="ri-send-plane-line"></i> Send Message';
-        btn.style.background = '';
-        event.target.reset();
-      }, 4000);
+      const data = new FormData(form);
+      const ticket = {
+        category: 'general_feedback',
+        categoryLabel: 'Landing Page Contact',
+        priority: 'Normal',
+        subject: `Landing page contact from ${data.get('senderName')}`,
+        message: String(data.get('message') || '').trim(),
+        doctorName: String(data.get('senderName') || '').trim(),
+        clinicName: 'Landing Page Visitor',
+        metaDetails: {
+          source: 'Landing Page Contact',
+          email: String(data.get('email') || '').trim(),
+          phone: String(data.get('phone') || '').trim(),
+        },
+      };
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sending...';
+      try {
+        const response = await fetch('/api/feedback/public', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ticket),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.message || 'Unable to send your message.');
+        btn.innerHTML = '<i class="ri-check-line"></i> Message Sent! We\'ll be in touch.';
+        form.reset();
+      } catch (error) {
+        if (error instanceof TypeError) {
+          const offlineTicket = { ...ticket, id: `public-${Date.now()}`, ticketNo: `WEB-${Date.now()}`, status: 'Pending', createdAt: new Date().toISOString(), replies: [] };
+          const saved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
+          saved.unshift(offlineTicket);
+          localStorage.setItem('dhyey-public-feedback', JSON.stringify(saved));
+          btn.innerHTML = '<i class="ri-check-line"></i> Saved for Support Review';
+          form.reset();
+        } else {
+          btn.innerHTML = '<i class="ri-error-warning-line"></i> Unable to send';
+          alert(error.message);
+        }
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => {
+          btn.innerHTML = '<i class="ri-send-plane-line"></i> Send Message';
+          btn.style.background = '';
+        }, 4000);
+      }
     }
 
     // Navbar scroll effect

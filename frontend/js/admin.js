@@ -1065,9 +1065,113 @@ function renderAdmins() {
     } finally {
       submit.disabled = false;
     }
+
   });
 }
 
+function escapeFeedbackHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    }
+
+    async function renderFeedbackInbox() {
+      page('Complaints & feedback', 'Review landing-page messages and doctor support tickets, then reply and update their status.', '', '');
+      content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+        <section class="admin-card">
+          <div class="admin-filter-row">
+            <input class="form-input" id="feedbackSearch" placeholder="Search ticket, sender, clinic, subject, or message" style="flex:1;min-width:260px">
+            <select class="form-select" id="feedbackStatus"><option value="">All statuses</option><option>Pending</option><option>In Progress</option><option>Resolved</option><option>Closed</option></select>
+            <select class="form-select" id="feedbackCategory"><option value="">All sources</option><option value="landing">Landing page</option><option value="doctor">Doctor panel</option></select>
+          </div>
+          <div id="feedbackTable" style="margin-top:16px"><div class="empty-results">Loading support requests...</div></div>
+        </section>
+      `);
+      const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+      let tickets = [];
+      try {
+        const response = await fetch('/api/feedback/admin/all', { headers: { Authorization: `Bearer ${session?.token || 'mock-admin-token'}` } });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load feedback.');
+        tickets = result.data || [];
+      } catch (error) {
+        tickets = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
+        Object.keys(localStorage).filter((key) => key.startsWith('clinic-db-')).forEach((key) => {
+          const clinicDb = JSON.parse(localStorage.getItem(key) || '{}');
+          if (Array.isArray(clinicDb.feedbacks)) tickets.push(...clinicDb.feedbacks);
+        });
+        showToast('Showing locally saved support requests while the server is unavailable.', 'error');
+      }
+      const render = () => {
+        const term = document.getElementById('feedbackSearch').value.toLowerCase().trim();
+        const status = document.getElementById('feedbackStatus').value;
+        const category = document.getElementById('feedbackCategory').value;
+        const filtered = tickets.filter((ticket) => {
+          const source = ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor' ? 'landing' : 'doctor';
+          return (!status || ticket.status === status) && (!category || source === category) &&
+            `${ticket.ticketNo} ${ticket.doctorName} ${ticket.clinicName} ${ticket.subject} ${ticket.message}`.toLowerCase().includes(term);
+        });
+        const rows = filtered.map((ticket) => {
+          const source = ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor' ? 'Landing page' : 'Doctor panel';
+          const replies = (ticket.replies || []).map((reply) => `<div class="feedback-reply"><strong>${escapeFeedbackHtml(reply.senderName)}</strong><small>${escapeFeedbackHtml(reply.message)}</small></div>`).join('');
+          return `<tr><td><strong>${escapeFeedbackHtml(ticket.ticketNo || ticket.id)}</strong><br><small>${new Date(ticket.createdAt || Date.now()).toLocaleString('en-IN')}</small></td><td>${escapeFeedbackHtml(source)}<br><small>${escapeFeedbackHtml(ticket.doctorName || ticket.metaDetails?.email || '')}</small></td><td><strong>${escapeFeedbackHtml(ticket.subject)}</strong><br><span>${escapeFeedbackHtml(ticket.message)}</span></td><td><span class="status-pill">${escapeFeedbackHtml(ticket.status || 'Pending')}</span></td><td><select class="form-select feedback-status-select" data-feedback-id="${escapeFeedbackHtml(ticket.id || ticket._id || ticket.ticketNo)}"><option ${ticket.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${ticket.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${ticket.status === 'Resolved' ? 'selected' : ''}>Resolved</option><option ${ticket.status === 'Closed' ? 'selected' : ''}>Closed</option></select><textarea class="form-textarea feedback-reply-input" data-feedback-id="${escapeFeedbackHtml(ticket.id || ticket._id || ticket.ticketNo)}" placeholder="Write a clear, helpful reply..."></textarea><button class="btn-primary feedback-reply-button" data-feedback-id="${escapeFeedbackHtml(ticket.id || ticket._id || ticket.ticketNo)}"><i class="fa-solid fa-reply"></i> Reply</button>${replies}</td></tr>`;
+        }).join('');
+        document.getElementById('feedbackTable').innerHTML = table(['Ticket', 'Source', 'Message', 'Status', 'Reply / update'], rows, 'No complaints or feedback match these filters.');
+      };
+      ['feedbackSearch', 'feedbackStatus', 'feedbackCategory'].forEach((id) => document.getElementById(id).addEventListener(id === 'feedbackSearch' ? 'input' : 'change', render));
+      content.querySelector('#feedbackTable').addEventListener('change', async (event) => {
+        if (!event.target.matches('.feedback-status-select')) return;
+        await updateFeedbackTicket(event.target.dataset.feedbackId, { status: event.target.value });
+        const ticket = tickets.find((item) => (item.id || item._id || item.ticketNo) === event.target.dataset.feedbackId);
+        if (ticket) ticket.status = event.target.value;
+        render();
+      });
+      content.querySelector('#feedbackTable').addEventListener('click', async (event) => {
+        const button = event.target.closest('.feedback-reply-button');
+        if (!button) return;
+        const input = [...content.querySelectorAll('.feedback-reply-input')].find((item) => item.dataset.feedbackId === button.dataset.feedbackId);
+        const message = input?.value.trim();
+        if (!message) return showToast('Write a reply before sending.', 'error');
+        const result = await updateFeedbackTicket(button.dataset.feedbackId, { message, status: 'Resolved' });
+        if (!result) return;
+        const ticket = tickets.find((item) => (item.id || item._id || item.ticketNo) === button.dataset.feedbackId);
+        if (ticket) {
+          ticket.status = 'Resolved';
+          ticket.replies = [...(ticket.replies || []), { senderName: 'System Administrator', message, senderRole: 'admin', createdAt: new Date().toISOString() }];
+        }
+        logActivity('Replied to support request', 'Feedback', button.dataset.feedbackId, 'Success');
+        render();
+      });
+      render();
+    }
+
+    async function updateFeedbackTicket(id, payload) {
+      const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+      try {
+        const endpoint = payload.message ? `/api/feedback/${encodeURIComponent(id)}/reply` : `/api/feedback/${encodeURIComponent(id)}/status`;
+        const response = await fetch(endpoint, { method: payload.message ? 'POST' : 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || 'mock-admin-token'}` }, body: JSON.stringify(payload) });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) throw new Error(result.message || 'Unable to update support request.');
+        return result;
+      } catch (error) {
+        const localSources = ['dhyey-public-feedback', ...Object.keys(localStorage).filter((key) => key.startsWith('clinic-db-'))];
+        let updated = false;
+        localSources.forEach((key) => {
+          const store = JSON.parse(localStorage.getItem(key) || (key === 'dhyey-public-feedback' ? '[]' : '{}'));
+          const list = key === 'dhyey-public-feedback' ? store : store.feedbacks;
+          if (!Array.isArray(list)) return;
+          const ticket = list.find((item) => (item.id || item.ticketNo) === id);
+          if (!ticket) return;
+          if (payload.status) ticket.status = payload.status;
+          if (payload.message) {
+            ticket.replies = [...(ticket.replies || []), { senderRole: 'admin', senderName: 'System Administrator', message: payload.message, createdAt: new Date().toISOString() }];
+            ticket.status = payload.status || 'Resolved';
+          }
+          localStorage.setItem(key, JSON.stringify(store));
+          updated = true;
+        });
+        if (!updated) showToast(error.message, 'error');
+        return updated;
+      }
+    }
 function renderAnalysis(type) {
   const isClinic = type === 'clinic';
   const isDoctor = type === 'doctor';
@@ -2407,6 +2511,7 @@ function navigate(view = location.hash.slice(1) || 'overview') {
   else if (view === 'services') renderServices();
   else if (view === 'logs') renderLogs();
   else if (view === 'admins') renderAdmins();
+  else if (view === 'feedback') renderFeedbackInbox();
   else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', ''));
   else renderOverview();
 }
@@ -2601,6 +2706,7 @@ document.addEventListener('keydown', event => {
   if (event.key === 'F4') { event.preventDefault(); location.hash = 'services'; navigate('services'); }
   if (event.key === 'F5') { event.preventDefault(); location.hash = 'logs'; navigate('logs'); }
   if (event.key === 'F6') { event.preventDefault(); location.hash = 'admins'; navigate('admins'); }
+  if (event.key === 'F7') { event.preventDefault(); location.hash = 'feedback'; navigate('feedback'); }
   if (event.key === 'Escape') { closeModal(); closeDetails(); closeAccountMenu(); }
 });
 

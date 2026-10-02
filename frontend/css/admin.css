@@ -445,6 +445,39 @@
 .log-table td {
   vertical-align: top;
 }
+
+.feedback-reply-input {
+  min-width: 240px;
+  min-height: 64px;
+  margin-top: 7px;
+}
+
+.feedback-reply-button {
+  margin-top: 7px;
+  padding: 7px 10px;
+}
+
+.feedback-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-left: 3px solid var(--primary-teal);
+  background: var(--primary-teal-light);
+  border-radius: 5px;
+}
+
+.feedback-reply strong {
+  color: var(--text-main);
+  font-size: 11px;
+}
+
+.feedback-reply small {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
 .btn-action-details:hover {
   background: var(--primary-teal-light);
   color: var(--primary-teal);
@@ -476,4 +509,3 @@
   color: var(--text-main);
   font-size: 12.5px;
 }
-
