@@ -8,6 +8,16 @@
   <meta name="description"
     content="Dhyey Clinic - Smart, offline-capable family clinic management system for doctors. Manage patient records, prescriptions, billing, and family health ledgers." />
 
+  <!-- PWA Meta Tags & Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0d6efd" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Dhyey CMS" />
+  <link rel="icon" type="image/svg+xml" href="/assets/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/assets/icons/icon.svg" />
+
   <!-- Bootstrap 5 CSS CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
 
@@ -1546,6 +1556,7 @@
       }
     });
   </script>
+  <script type="module" src="js/pwa.js"></script>
 </body>
 
 </html>
