@@ -92,90 +92,27 @@ const PLATFORM_SERVICES = [
   }
 ];
 
-const defaultClinics = [
-  {
-    id: 'CLN-001',
-    name: 'Dhyey Main Clinic',
-    city: 'Ahmedabad',
-    doctors: 12,
-    patients: 1840,
-    visits: 428,
-    status: 'Active',
-    updated: 'Today',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
-    receptionist: {
-      name: 'Pooja Sharma',
-      email: 'pooja.reception@dhyeyclinic.com',
-      phone: '9876543210',
-      shift: 'Morning Shift (08:00 AM - 03:00 PM)',
-      status: 'Active'
-    },
-    specialties: 'General Medicine, Cardiology, Pediatrics',
-    facilities: 'Pharmacy, Pathology Lab, ECG, Emergency Care',
-    phone: '9876543210',
-    email: 'contact@dhyeyclinic.com',
-    registration: 'GUJ-MED-2026-001',
-    address: '101, Medical Enclave, CG Road, Navrangpura, Ahmedabad, Gujarat - 380009',
-    days: 'Monday - Saturday',
-    hours: '08:30 AM - 08:30 PM',
-    verifiedDocuments: 13
-  },
-  {
-    id: 'CLN-002',
-    name: 'Satellite Wellness Centre',
-    city: 'Ahmedabad',
-    doctors: 7,
-    patients: 920,
-    visits: 216,
-    status: 'Active',
-    updated: 'Yesterday',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'billing'],
-    receptionist: {
-      name: 'Kavita Dave',
-      email: 'kavita.reception@satelliteclinic.com',
-      phone: '9876543222',
-      shift: 'Full Day (09:00 AM - 07:00 PM)',
-      status: 'Active'
-    },
-    specialties: 'Dermatology, Cosmetology, Trichology',
-    facilities: 'Laser Suite, Minor Procedure Room',
-    phone: '9876543222',
-    email: 'help@satelliteclinic.com',
-    registration: 'GUJ-MED-2026-002',
-    address: '304, Titanium City Centre, Anandnagar Road, Satellite, Ahmedabad, Gujarat - 380015',
-    days: 'Monday - Saturday',
-    hours: '09:00 AM - 08:00 PM',
-    verifiedDocuments: 8
-  },
-  {
-    id: 'CLN-003',
-    name: 'Riverside Family Care',
-    city: 'Gandhinagar',
-    doctors: 4,
-    patients: 380,
-    visits: 92,
-    status: 'Paused',
-    updated: '28 Sep 2026',
-    services: ['digitalPrescription', 'billing'], // Doctor-only direct access mode
-    receptionist: null,
-    specialties: 'Family Medicine, Gynecology, Geriatrics',
-    facilities: 'Vaccination Centre, Ultrasound',
-    phone: '9876543233',
-    email: 'info@riversidecare.com',
-    registration: 'GUJ-MED-2026-003',
-    address: '12, Riverside Arcades, Sector 11, Gandhinagar, Gujarat - 382010',
-    days: 'Monday - Friday',
-    hours: '10:00 AM - 06:00 PM',
-    verifiedDocuments: 5
-  }
-];
+// Legacy mock clinic & doctor purger to guarantee pure dynamic data from MongoDB Atlas
+(function purgeLegacyMockData() {
+  try {
+    const rawClinics = localStorage.getItem(STORAGE_KEY);
+    if (rawClinics) {
+      const parsed = JSON.parse(rawClinics);
+      if (Array.isArray(parsed) && parsed.some(c => c.name === 'Dhyey Main Clinic' || c.name === 'Satellite Wellness Centre' || c.name === 'Riverside Family Care' || c.id === 'CLN-001' && c.doctors === 12)) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem('dhyey-admin-doctors');
+        localStorage.removeItem('dhyey-admin-patients');
+      }
+    }
+  } catch (e) {}
+})();
 
 let doctors = [];
 let patients = [];
-let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultClinics;
-let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || [];
+let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
 const STORAGE_KEY_REQUESTS = 'dhyey-clinic-requests';
-let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || [];
+let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || '[]');
 let currentClinicTab = 'active';
 const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
 let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
@@ -212,7 +149,7 @@ async function syncAllAdminDataFromAPI() {
 
     if (clinicsRes && clinicsRes.ok) {
       const json = await clinicsRes.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         clinics = json.data;
         clinics.forEach(c => {
           c.id = c.clinicId || c.id;
@@ -2178,7 +2115,7 @@ function openClinicModal() {
     }
   });
 
-  document.getElementById('clinicForm').addEventListener('submit', event => {
+  document.getElementById('clinicForm').addEventListener('submit', async event => {
     event.preventDefault();
     const data = new FormData(event.target);
     const phone = String(data.get('phone')).replace(/\D/g, '');
@@ -2223,27 +2160,52 @@ function openClinicModal() {
       };
     }
 
-    const newDoctors = [...entries.querySelectorAll('.doctor-entry')].map(entry => ({
-      name: entry.querySelector('.doctor-name').value.trim(),
-      specialty: entry.querySelector('.doctor-specialty').value.trim(),
-      registration: entry.querySelector('.doctor-reg').value.trim(),
-      email: entry.querySelector('.doctor-email').value.trim(),
-      password: entry.querySelector('.doctor-password').value,
-      certificate: entry.querySelector('.doctor-certificate').files[0]?.name || '',
-      status: 'Active',
-      patients: 0,
-      visits: 0
-    }));
+    const doctorElements = [...entries.querySelectorAll('.doctor-entry')];
+    const newDoctors = doctorElements.map(entry => {
+      const name = (entry.querySelector('.doctor-name')?.value || '').trim();
+      const specialty = (entry.querySelector('.doctor-specialty')?.value || '').trim();
+      const registration = (entry.querySelector('.doctor-reg')?.value || '').trim();
+      const email = (entry.querySelector('.doctor-email')?.value || '').trim().toLowerCase();
+      const password = (entry.querySelector('.doctor-password')?.value || '').trim();
+      const certificate = entry.querySelector('.doctor-certificate')?.files[0]?.name || '';
+      return {
+        name,
+        specialty: specialty || 'General Medicine',
+        registration: registration || `REG-${Date.now().toString().slice(-4)}`,
+        email,
+        password: password || 'Password@123',
+        certificate,
+        status: 'Active',
+        patients: 0,
+        visits: 0
+      };
+    }).filter(doc => doc.name || doc.email);
 
-    if (newDoctors.some(doctor => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(doctor.email) || doctor.password.length < 4)) {
-      showToast('Check every doctor email and password.', 'error');
+    if (newDoctors.length === 0) {
+      showToast('Please add at least one doctor for the clinic.', 'error');
       return;
+    }
+
+    for (let i = 0; i < newDoctors.length; i++) {
+      const doc = newDoctors[i];
+      if (!doc.name || doc.name.length < 2) {
+        showToast(`Please enter a valid full name for Doctor ${i + 1}.`, 'error');
+        return;
+      }
+      if (!doc.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(doc.email)) {
+        showToast(`Please enter a valid email address for Doctor ${i + 1} (${doc.name}).`, 'error');
+        return;
+      }
+      if (!doc.password || doc.password.length < 4) {
+        showToast(`Password for Doctor ${i + 1} (${doc.name}) must be at least 4 characters.`, 'error');
+        return;
+      }
     }
 
     // Check uniqueness ONLY within the new doctors submitted in this form
     const enteredEmails = newDoctors.map(d => d.email);
     if (new Set(enteredEmails).size !== enteredEmails.length) {
-      showToast('Each doctor in this form must have a unique email address.', 'error');
+      showToast('Each doctor in this form must have a distinct email address.', 'error');
       return;
     }
 
@@ -2253,7 +2215,7 @@ function openClinicModal() {
       submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving to MongoDB Atlas...`;
     }
 
-    const newClinicId = `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
+    const newClinicId = `CLN-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
     const payload = {
       id: newClinicId,
       clinicId: newClinicId,
@@ -2285,8 +2247,11 @@ function openClinicModal() {
         throw new Error(result.message || 'Failed to save clinic to MongoDB Atlas');
       }
 
+      const savedClinic = result.data || payload;
+      const actualClinicId = savedClinic.clinicId || savedClinic.id || newClinicId;
+
       // Initialize clean database key for new clinic
-      const cleanClinicKey = `clinic-db-${newClinicId}`;
+      const cleanClinicKey = `clinic-db-${actualClinicId}`;
       const cleanDB = {
         counters: { family: 0, patient: 0, visit: 0 },
         families: {},
@@ -2309,7 +2274,7 @@ function openClinicModal() {
       localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
 
       await syncAllAdminDataFromAPI();
-      logActivity('Registered new clinic', 'Clinic', newClinicId, 'Success', clinicName);
+      logActivity('Registered new clinic', 'Clinic', actualClinicId, 'Success', clinicName);
       closeModal();
       showToast(isRecSelected 
         ? `Clinic "${clinicName}" saved in MongoDB Atlas with Receptionist + Doctor logins!` 

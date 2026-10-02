@@ -6,222 +6,9 @@ const Patient = require('../models/Patient');
 const Consultation = require('../models/Consultation');
 const bcrypt = require('bcryptjs');
 
-const defaultClinics = [
-  {
-    clinicId: 'CLN-001',
-    name: 'Dhyey Main Clinic',
-    city: 'Ahmedabad',
-    phone: '9876543210',
-    email: 'contact@dhyeyclinic.com',
-    registration: 'GUJ-MED-2026-001',
-    address: '101, Medical Enclave, CG Road, Navrangpura, Ahmedabad, Gujarat - 380009',
-    days: 'Monday - Saturday',
-    hours: '08:30 AM - 08:30 PM',
-    specialties: 'General Medicine, Cardiology, Pediatrics',
-    facilities: 'Pharmacy, Pathology Lab, ECG, Emergency Care',
-    status: 'Active',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
-    doctorsCount: 2,
-    doctors: [
-      {
-        name: 'Dr. Chirag Paghdal',
-        specialty: 'General Medicine',
-        registration: 'G-9035',
-        email: 'dhyey@clinic.com',
-        phone: '9876543210',
-        password: '123',
-        status: 'Active',
-      },
-      {
-        name: 'Dr. Mehul Shah',
-        specialty: 'Cardiology',
-        registration: 'G-8821',
-        email: 'dr.mehul.shah@dhyeyclinic.com',
-        phone: '9876543211',
-        password: 'Password@123',
-        status: 'Active',
-      },
-    ],
-    receptionist: {
-      name: 'Pooja Sharma',
-      email: 'pooja.reception@dhyeyclinic.com',
-      phone: '9876543210',
-      shift: 'Morning Shift (08:00 AM - 03:00 PM)',
-      password: '123',
-      status: 'Active',
-    },
-    verifiedDocuments: 3,
-  },
-  {
-    clinicId: 'CLN-002',
-    name: 'Satellite Wellness Centre',
-    city: 'Ahmedabad',
-    phone: '9876543222',
-    email: 'help@satelliteclinic.com',
-    registration: 'GUJ-MED-2026-002',
-    address: '304, Titanium City Centre, Anandnagar Road, Satellite, Ahmedabad, Gujarat - 380015',
-    days: 'Monday - Saturday',
-    hours: '09:00 AM - 08:00 PM',
-    specialties: 'Dermatology, Cosmetology, Trichology',
-    facilities: 'Laser Suite, Minor Procedure Room',
-    status: 'Active',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'billing'],
-    doctorsCount: 1,
-    doctors: [
-      {
-        name: 'Dr. Riya Patel',
-        specialty: 'Dermatology',
-        registration: 'G-7742',
-        email: 'dr.riya.patel@satelliteclinic.com',
-        phone: '9876543222',
-        password: 'Password@123',
-        status: 'Active',
-      },
-    ],
-    receptionist: {
-      name: 'Kavita Dave',
-      email: 'kavita.reception@satelliteclinic.com',
-      phone: '9876543222',
-      shift: 'Full Day (09:00 AM - 07:00 PM)',
-      password: '123',
-      status: 'Active',
-    },
-    verifiedDocuments: 2,
-  },
-  {
-    clinicId: 'CLN-003',
-    name: 'Riverside Family Care',
-    city: 'Gandhinagar',
-    phone: '9876543233',
-    email: 'info@riversidecare.com',
-    registration: 'GUJ-MED-2026-003',
-    address: '12, Riverside Arcades, Sector 11, Gandhinagar, Gujarat - 382010',
-    days: 'Monday - Friday',
-    hours: '10:00 AM - 06:00 PM',
-    specialties: 'Family Medicine, Gynecology, Geriatrics',
-    facilities: 'Vaccination Centre, Ultrasound',
-    status: 'Active',
-    services: ['digitalPrescription', 'billing'],
-    doctorsCount: 1,
-    doctors: [
-      {
-        name: 'Dr. Neha Desai',
-        specialty: 'Gynecology',
-        registration: 'G-6621',
-        email: 'dr.neha.desai@riversidecare.com',
-        phone: '9876543233',
-        password: 'Password@123',
-        status: 'Active',
-      },
-    ],
-    verifiedDocuments: 1,
-  },
-];
-
-const defaultRequests = [
-  {
-    requestId: 'REQ-101',
-    clinicId: 'CLN-004',
-    name: 'Sterling Multispeciality Clinic',
-    city: 'Gandhinagar',
-    registrationNumber: 'REG-GJ-2026-9912',
-    phone: '+91 98250 12345',
-    email: 'info@sterlingclinic.com',
-    address: '402, Titanium City Centre, Sector 11, Gandhinagar',
-    operatingDays: 'Monday - Saturday',
-    workingHours: '09:00 - 21:00',
-    specialties: 'General Medicine, Cardiology, Orthopedics',
-    facilities: 'Pharmacy, Path Lab, Minor OT, ECG',
-    applicantName: 'Dr. Ramesh S. Parikh',
-    applicantRole: 'Medical Director',
-    doctorsCount: 2,
-    doctors: [
-      { name: 'Dr. Ramesh S. Parikh', specialty: 'Cardiology', registration: 'MCI-88291', email: 'ramesh.parikh@sterlingclinic.com', phone: '+91 98250 12345' },
-      { name: 'Dr. Sunita K. Sharma', specialty: 'General Medicine', registration: 'MCI-91024', email: 'sunita.sharma@sterlingclinic.com', phone: '+91 98250 54321' },
-    ],
-    status: 'Pending',
-    submittedFrom: 'Landing Page',
-  },
-  {
-    requestId: 'REQ-102',
-    clinicId: 'CLN-005',
-    name: 'Aura Health & Skin Clinic',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-7841',
-    phone: '+91 98790 54321',
-    email: 'contact@auraskinclinic.com',
-    address: '2nd Floor, Safal Pegasuss, Prahlad Nagar, Ahmedabad',
-    operatingDays: 'Monday - Saturday',
-    workingHours: '10:00 - 19:00',
-    specialties: 'Dermatology, Cosmetology',
-    facilities: 'Laser Treatment, Minor OT',
-    applicantName: 'Dr. Ananya Roy',
-    applicantRole: 'Clinic Owner',
-    doctorsCount: 1,
-    doctors: [
-      { name: 'Dr. Ananya Roy', specialty: 'Dermatology', registration: 'MCI-76543', email: 'ananya.roy@auraskinclinic.com', phone: '+91 98790 54321' },
-    ],
-    status: 'Approved',
-    submittedFrom: 'Landing Page',
-  },
-];
-
-// Helper: Seed clinics if empty
-async function seedClinicsIfEmpty() {
-  const count = await Clinic.countDocuments();
-  if (count === 0) {
-    for (const c of defaultClinics) {
-      await Clinic.create(c);
-      // Provision user accounts for seed doctors
-      for (const d of c.doctors) {
-        const username = d.email.toLowerCase().trim();
-        const existing = await User.findOne({ $or: [{ username }, { email: username }] });
-        if (!existing) {
-          await User.create({
-            username,
-            email: username,
-            password: d.password || 'Password@123',
-            role: 'doctor',
-            name: d.name,
-            degree: d.specialty,
-            regNo: d.registration,
-            clinics: [{ id: c.clinicId, name: c.name, address: c.address, phone: c.phone }],
-            activeClinicId: c.clinicId,
-          });
-        }
-      }
-      // Provision receptionist
-      if (c.receptionist && c.receptionist.email) {
-        const rUsername = c.receptionist.email.toLowerCase().trim();
-        const existingR = await User.findOne({ $or: [{ username: rUsername }, { email: rUsername }] });
-        if (!existingR) {
-          await User.create({
-            username: rUsername,
-            email: rUsername,
-            password: c.receptionist.password || '123',
-            role: 'receptionist',
-            name: c.receptionist.name,
-            clinics: [{ id: c.clinicId, name: c.name, address: c.address, phone: c.phone }],
-            activeClinicId: c.clinicId,
-          });
-        }
-      }
-    }
-  }
-}
-
-// Helper: Seed requests if empty
-async function seedRequestsIfEmpty() {
-  const count = await ClinicRequest.countDocuments();
-  if (count === 0) {
-    await ClinicRequest.insertMany(defaultRequests);
-  }
-}
-
 // 1. GET ALL CLINICS
 const getAllClinics = async (req, res) => {
   try {
-    await seedClinicsIfEmpty();
     const clinics = await Clinic.find().sort({ createdAt: -1 }).lean();
 
     // Dynamically calculate actual patient counts and consultation counts
@@ -269,16 +56,13 @@ const createClinic = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Clinic name must contain at least 3 characters' });
     }
 
-    const count = await Clinic.countDocuments();
-    const clinicId = body.id || body.clinicId || `CLN-${String(count + 1).padStart(3, '0')}`;
-
-    const doctorsInput = Array.isArray(body.doctors) ? body.doctors : [];
-    // Validate uniqueness among doctor emails in this submission
-    const docEmails = doctorsInput.map(d => String(d.email || '').trim().toLowerCase()).filter(Boolean);
-    if (new Set(docEmails).size !== docEmails.length) {
-      return res.status(400).json({ success: false, message: 'Duplicate doctor emails found within the submitted clinic form.' });
+    // Generate unique clinicId if not provided or collision
+    let clinicId = body.id || body.clinicId;
+    if (!clinicId || (await Clinic.findOne({ clinicId }))) {
+      clinicId = `CLN-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
     }
 
+    const doctorsInput = Array.isArray(body.doctors) ? body.doctors : [];
     const services = Array.isArray(body.services) ? body.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
 
     const newClinic = new Clinic({
@@ -337,13 +121,14 @@ const createClinic = async (req, res) => {
           });
           await docUser.save();
         } else {
-          // Add this clinic if not attached
-          const hasClinic = (docUser.clinics || []).some(cl => cl.id === clinicId);
+          docUser.clinics = docUser.clinics || [];
+          const hasClinic = docUser.clinics.some(cl => cl.id === clinicId);
           if (!hasClinic) {
-            docUser.clinics = docUser.clinics || [];
             docUser.clinics.push({ id: clinicId, name, address: newClinic.address, phone: newClinic.phone });
-            await docUser.save();
           }
+          docUser.activeClinicId = clinicId;
+          if (d.password) docUser.password = d.password;
+          await docUser.save();
         }
       }
     }
@@ -362,6 +147,15 @@ const createClinic = async (req, res) => {
           clinics: [{ id: clinicId, name, address: newClinic.address, phone: newClinic.phone }],
           activeClinicId: clinicId,
         });
+        await recUser.save();
+      } else {
+        recUser.clinics = recUser.clinics || [];
+        const hasClinic = recUser.clinics.some(cl => cl.id === clinicId);
+        if (!hasClinic) {
+          recUser.clinics.push({ id: clinicId, name, address: newClinic.address, phone: newClinic.phone });
+        }
+        recUser.activeClinicId = clinicId;
+        if (body.receptionist.password) recUser.password = body.receptionist.password;
         await recUser.save();
       }
     }
@@ -481,7 +275,6 @@ const deleteClinic = async (req, res) => {
 // 6. GET ALL DOCTORS ACROSS CLINICS
 const getAllDoctors = async (req, res) => {
   try {
-    await seedClinicsIfEmpty();
     const users = await User.find({ role: 'doctor' }).select('-password').lean();
     const clinics = await Clinic.find().lean();
 
