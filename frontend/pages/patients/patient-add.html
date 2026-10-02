@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Member - Dhyey Clinic Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="../../css/style.css">
+  <link rel="stylesheet" href="../../css/patient.css">
+</head>
+<body class="cms-root">
+  <div class="cms-layout">
+    <main class="cms-main-container">
+      <header class="cms-topbar">
+        <div class="cms-topbar-left">
+          <a href="patient-list.html" class="cms-btn-ghost cms-btn-icon" style="text-decoration: none;"><i class="fa-solid fa-arrow-left"></i></a>
+          <h1 class="cms-topbar-title">Add Patient Member</h1>
+        </div>
+      </header>
+      <section class="cms-content-area" id="page-patient-add-container"></section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderPatientRegistration } from '../../js/patient.js';
+    const params = new URLSearchParams(window.location.search);
+    const famId = params.get('fam');
+    renderPatientRegistration(document.getElementById('page-patient-add-container'), famId, (fId, pId) => {
+      window.location.href = `../../index.html?fam=${fId}&pat=${pId}`;
+    });
+  </script>
+</body>
+</html>
