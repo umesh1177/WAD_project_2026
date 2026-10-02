@@ -1251,7 +1251,7 @@ a {
   .ui-content-split { grid-template-columns: 1fr; }
   .hero-cta-group { flex-direction: column; }
   .contact-card-box { padding: 24px 18px; }
-"  .hero-img-carousel-wrap .carousel-item img { height: 220px; }
+  .hero-img-carousel-wrap .carousel-item img { height: 220px; }
 }
 
 /* ==========================================
