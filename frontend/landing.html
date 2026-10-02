@@ -1082,7 +1082,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Council Certificate Proof <span class="text-danger">*</span></label>
-              <input type="file" class="form-control form-control-sm doc-cert" accept=".pdf,.jpg,.jpeg,.png">
+              <input type="file" class="form-control form-control-sm doc-cert" accept=".pdf,.jpg,.jpeg,.png" required>
             </div>
           </div>
         </div>
@@ -1121,8 +1121,9 @@
           const name = row.querySelector('.doc-name')?.value.trim();
           const specialty = row.querySelector('.doc-specialty')?.value.trim();
           const registration = row.querySelector('.doc-reg')?.value.trim();
+          const certificate = row.querySelector('.doc-cert')?.files?.[0]?.name || '';
           if (name) {
-            doctors.push({ name, specialty, registration });
+            doctors.push({ name, specialty, registration, certificate });
           }
         });
 
@@ -1142,6 +1143,7 @@
           facilities: form.facilities.value.trim(),
           applicantName: form.applicantName.value.trim(),
           applicantRole: form.applicantRole.value.trim(),
+          clinicCertificate: form.clinicCertificate?.files?.[0]?.name || '',
           doctors: doctors,
           doctorsCount: doctors.length,
           status: 'Pending',
@@ -1150,24 +1152,35 @@
           submittedFrom: 'Landing Page'
         };
 
-        // 1. Save locally to localStorage (shared with Admin Portal)
+        let persistedOnServer = false;
         try {
-          const stored = JSON.parse(localStorage.getItem('dhyey-clinic-requests') || '[]');
-          stored.unshift(clinicData);
-          localStorage.setItem('dhyey-clinic-requests', JSON.stringify(stored));
-        } catch (storageErr) {
-          console.error('LocalStorage write error:', storageErr);
-        }
-
-        // 2. Post to Backend API if server is online
-        try {
-          await fetch('/api/clinics/register-request', {
+          const response = await fetch('/api/clinics/register-request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(clinicData)
           });
+          persistedOnServer = response.ok;
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'The server rejected this clinic application.');
+          }
         } catch (apiErr) {
-          console.warn('Backend API request skipped (using offline/local storage):', apiErr);
+          console.warn('Clinic application API unavailable; saving an offline request copy.', apiErr);
+        }
+
+        // Keep an offline copy so the admin portal remains usable when the API is unavailable.
+        try {
+          const stored = JSON.parse(localStorage.getItem('dhyey-clinic-requests') || '[]');
+          if (!stored.some((request) => request.id === clinicData.id)) {
+            stored.unshift({ ...clinicData, persistence: persistedOnServer ? 'server' : 'offline' });
+            localStorage.setItem('dhyey-clinic-requests', JSON.stringify(stored));
+          }
+        } catch (storageErr) {
+          console.error('Unable to save the clinic application locally:', storageErr);
+          alert('The clinic application could not be saved. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origText;
+          return;
         }
 
         // 3. Reset form and switch modals
@@ -1282,7 +1295,7 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Clinic Certificate / License <span class="text-danger">*</span></label>
-                  <input type="file" class="form-control" name="clinicCertificate" accept=".pdf,.jpg,.jpeg,.png">
+                  <input type="file" class="form-control" name="clinicCertificate" accept=".pdf,.jpg,.jpeg,.png" required>
                   <div class="form-text small">Upload registration document (PDF/JPG/PNG).</div>
                 </div>
               </div>
@@ -1491,5 +1504,3 @@
 </body>
 
 </html>
-
-

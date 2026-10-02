@@ -135,6 +135,54 @@ const registerDoctor = async (req, res) => {
   }
 };
 
+const registerAdmin = async (req, res) => {
+  try {
+    const { username, password, name, email, employeeId } = req.body;
+    const normalizedUsername = String(username || '').trim().toLowerCase();
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmployeeId = String(employeeId || '').trim().toUpperCase();
+
+    if (!/^[a-z][a-z0-9._-]{4,29}$/.test(normalizedUsername)) {
+      return res.status(400).json({ success: false, message: 'Username must be 5-30 characters and use letters, numbers, dots, underscores, or hyphens.' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid administrator email address.' });
+    }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,}$/.test(String(password || ''))) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 12 characters and include uppercase, lowercase, number, and symbol.' });
+    }
+    if (!/^[A-Z]{2,6}-\d{4,12}$/.test(normalizedEmployeeId)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid employee ID such as ADM-20260001.' });
+    }
+    if (String(name || '').trim().length < 3) {
+      return res.status(400).json({ success: false, message: 'Administrator name must contain at least 3 characters.' });
+    }
+
+    const existing = await User.findOne({ $or: [{ username: normalizedUsername }, { email: normalizedEmail }, { employeeId: normalizedEmployeeId }] });
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Username, email, or employee ID is already registered.' });
+    }
+
+    const newAdmin = await User.create({
+      username: normalizedUsername,
+      password: await bcrypt.hash(password, 12),
+      role: 'admin',
+      name: String(name).trim(),
+      email: normalizedEmail,
+      employeeId: normalizedEmployeeId,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Administrator account created successfully.',
+      admin: { id: newAdmin._id, username: newAdmin.username, name: newAdmin.name, email: newAdmin.email, employeeId: newAdmin.employeeId, role: newAdmin.role },
+    });
+  } catch (error) {
+    console.error('Register admin error:', error);
+    res.status(500).json({ success: false, message: 'Unable to create administrator account.' });
+  }
+};
+
 // List all Doctors (for Admin dashboard)
 const getAllDoctors = async (req, res) => {
   try {
@@ -202,6 +250,7 @@ const deleteDoctor = async (req, res) => {
 module.exports = {
   login,
   registerDoctor,
+  registerAdmin,
   getAllDoctors,
   switchClinic,
   addClinic,

@@ -500,8 +500,15 @@ app.post('/api/clinics/register-request', (req, res) => {
       facilities: (data.facilities || '').trim(),
       applicantName: (data.applicantName || 'Applicant').trim(),
       applicantRole: (data.applicantRole || 'Owner').trim(),
+      clinicCertificate: (data.clinicCertificate || '').trim(),
       doctorsCount: data.doctors ? data.doctors.length : Number(data.doctorsCount || 1),
-      doctors: Array.isArray(data.doctors) ? data.doctors : [],
+      doctors: Array.isArray(data.doctors) ? data.doctors.map((doctor) => ({
+        name: String(doctor.name || '').trim(),
+        specialty: String(doctor.specialty || '').trim(),
+        registration: String(doctor.registration || '').trim(),
+        email: String(doctor.email || '').trim(),
+        certificate: String(doctor.certificate || '').trim()
+      })) : [],
       status: 'Pending',
       submittedAt: new Date().toISOString(),
       formattedDate: new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
