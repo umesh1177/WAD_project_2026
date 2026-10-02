@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 
 export function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
   const session = getAuthSession();
@@ -393,32 +393,11 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     const trimmed = val.trim();
 
     if (type === 'society') {
-      const knownSocieties = getKnownSocieties(db);
-      if (!knownSocieties.has(trimmed.toLowerCase())) {
-        if (!db.customSocieties) db.customSocieties = [];
-        db.customSocieties.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new society "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: trimmed, area: '', createdAt: todayISO() }, db);
     } else if (type === 'area') {
-      const knownAreas = getKnownAreas(db);
-      if (!knownAreas.has(trimmed.toLowerCase())) {
-        if (!db.customAreas) db.customAreas = [];
-        db.customAreas.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new area "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: trimmed, city: '', pincode: '', createdAt: todayISO() }, db);
     } else if (type === 'allergy') {
-      const knownAllergies = getKnownAllergies(db);
-      if (!knownAllergies.has(trimmed.toLowerCase())) {
-        if (!db.customAllergies) db.customAllergies = [];
-        db.customAllergies.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new allergy "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: trimmed, category: 'General', severity: 'None', createdAt: todayISO() }, db);
     }
   }
 
@@ -759,9 +738,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
             </div>
           </div>
 
-          ${
-            isExpanded
-              ? `
+          ${isExpanded
+            ? `
             <div style="padding: 8px 12px 10px; background: rgba(0,0,0,0.025); border-top: 1px solid var(--border-subtle);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 5px;">
@@ -774,7 +752,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
               </div>
             </div>
           `
-              : ''
+            : ''
           }
         </div>
       `;
@@ -841,7 +819,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
         if (confirm(`Are you sure you want to permanently delete Family ID ${famId}? This will erase all members and visits.`)) {
           try {
             await apiFetch(`/families/${famId}`, { method: 'DELETE' });
-          } catch (err) {}
+          } catch (err) { }
           delete db.families[famId];
           saveLocalDB(db, clinicId);
           if (editingFamId === famId) {

@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 
 export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   const session = getAuthSession();
@@ -37,13 +37,12 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
             <div class="font-display" style="font-weight: 800; font-size: 16px;">
-              ${
-                editingPatient
-                  ? `✏️ Edit Patient Details &middot; ${editingPatient.name}`
-                  : targetFamily
-                  ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`)
-                  : 'Add Family Member'
-              }
+              ${editingPatient
+        ? `✏️ Edit Patient Details &middot; ${editingPatient.name}`
+        : targetFamily
+          ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`)
+          : 'Add Family Member'
+      }
             </div>
             <span class="cms-pill font-mono" style="font-size: 11px; background: ${editingPatient ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.1)'}; color: ${editingPatient ? 'var(--warning-dark, #b45309)' : 'var(--primary)'}; font-weight: 700;">
               <i class="fa-solid ${editingPatient ? 'fa-pen-to-square' : 'fa-user-plus'}"></i> ${editingPatient ? 'Editing Mode' : 'Member Registration'}
@@ -51,9 +50,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           </div>
 
           <!-- Family Head Selection / Search Area -->
-          ${
-            targetFamily
-              ? `
+          ${targetFamily
+        ? `
             <!-- Selected / Pinned Family Head Card -->
             <div style="background: linear-gradient(135deg, rgba(37,99,235,0.07), rgba(59,130,246,0.14)); border: 1.5px solid var(--primary); border-radius: var(--radius-md); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 10px;">
               <div style="display: flex; align-items: center; gap: 12px;">
@@ -74,19 +72,18 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="cms-pill cms-badge-paid font-mono" style="font-size: 12px; font-weight: 800;">FAM ${selectedFamId}</span>
-                ${
-                  !isRedirectFromHeadReg && !editingPatient
-                    ? `
+                ${!isRedirectFromHeadReg && !editingPatient
+          ? `
                   <button type="button" id="btn-change-family" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 4px 10px; font-size: 11.5px; border: 1px solid var(--border);" title="Select a different family">
                     <i class="fa-solid fa-arrows-rotate"></i> Change Family
                   </button>
                 `
-                    : ''
-                }
+          : ''
+        }
               </div>
             </div>
           `
-              : `
+        : `
             <!-- Family Head Search Input & Results -->
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <label class="cms-label" style="font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
@@ -101,12 +98,11 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div id="family-search-suggestions-container" style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;"></div>
             </div>
           `
-          }
+      }
 
           <!-- Member Form Fields (Shown only when a Family Head is selected) -->
-          ${
-            targetFamily
-              ? `
+          ${targetFamily
+        ? `
             <form id="form-add-member" style="display: flex; flex-direction: column; gap: 14px;">
               <!-- Member Name & Relation -->
               <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
@@ -175,15 +171,14 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
 
               <!-- Action Buttons -->
               <div style="display: flex; gap: 8px; margin-top: 4px; padding-top: 4px;">
-                ${
-                  editingPatient
-                    ? `
+                ${editingPatient
+          ? `
                   <button type="button" id="btn-cancel-edit-member" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border); padding: 10px 16px; font-weight: 700;">
                     <i class="fa-solid fa-xmark"></i> Cancel
                   </button>
                 `
-                    : ''
-                }
+          : ''
+        }
                 <button type="submit" id="btn-submit-member" class="cms-btn ${editingPatient ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2; padding: 10px 16px;">
                   <span><i class="fa-solid ${editingPatient ? 'fa-floppy-disk' : 'fa-user-plus'}"></i></span>
                   <span>${editingPatient ? 'Update Member & Return to Patient Record' : 'Save Member & Open Patient Record'}</span>
@@ -192,7 +187,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               </div>
             </form>
           `
-              : `
+        : `
             <!-- Prompt when no family is selected -->
             <div style="padding: 30px 20px; text-align: center; color: var(--text-muted); background: var(--surface-alt); border-radius: var(--radius-md); border: 1px dashed var(--border);">
               <div style="font-size: 32px; color: var(--primary); margin-bottom: 8px; opacity: 0.8;"><i class="fa-solid fa-magnifying-glass"></i></div>
@@ -200,7 +195,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div style="font-size: 12px; margin-top: 3px;">Once a family head is selected, the member details form will appear.</div>
             </div>
           `
-          }
+      }
         </div>
       </div>
     `;
@@ -404,37 +399,19 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
         }
 
         // Auto-Learn new datalist values with Doctor-Friendly popups
+        // Calling addSharedMasterItem natively handles duplicates within the shared catalogue. 
+        // We run it universally to forcefully migrate legacy local `customX` into the global shared collections!
         if (relation) {
-          const knownRelations = getKnownRelations(db);
-          if (!knownRelations.has(relation.toLowerCase())) {
-            if (!db.customRelations) db.customRelations = [];
-            db.customRelations.push(relation);
-            showToast(`✨ Added "${relation}" to Relation suggestions!`);
-          }
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name: relation, category: 'General', createdAt: todayISO() }, db);
         }
         if (society) {
-          const knownSocieties = getKnownSocieties(db);
-          if (!knownSocieties.has(society.toLowerCase())) {
-            if (!db.customSocieties) db.customSocieties = [];
-            db.customSocieties.push(society);
-            showToast(`✨ Added "${society}" to Society suggestions!`);
-          }
+          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: society, area: '', createdAt: todayISO() }, db);
         }
         if (area) {
-          const knownAreas = getKnownAreas(db);
-          if (!knownAreas.has(area.toLowerCase())) {
-            if (!db.customAreas) db.customAreas = [];
-            db.customAreas.push(area);
-            showToast(`✨ Added "${area}" to Area suggestions!`);
-          }
+          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: area, city: '', pincode: '', createdAt: todayISO() }, db);
         }
         if (allergy) {
-          const knownAllergies = getKnownAllergies(db);
-          if (!knownAllergies.has(allergy.toLowerCase())) {
-            if (!db.customAllergies) db.customAllergies = [];
-            db.customAllergies.push(allergy);
-            showToast(`✨ Added "${allergy}" to Known Allergies!`);
-          }
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: allergy, category: 'General', severity: 'None', createdAt: todayISO() }, db);
         }
 
         if (editingPatient) {

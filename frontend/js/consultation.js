@@ -90,7 +90,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         }, 150);
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   // Calculate Personal & Family Dues
   function computeDues() {
@@ -145,9 +145,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           </div>
         </div>
 
-        ${
-          patient
-            ? `
+        ${patient
+        ? `
           <!-- Patient Header Banner (Matching Screenshot 1) -->
           <div class="cms-patient-header-banner" id="patient-banner-box">
             
@@ -211,15 +210,14 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                     <span>${attachedLabReport ? 'Edit Attached Report' : 'Attach Report'}</span>
                   </button>
 
-                  ${
-                    attachedLabReport
-                      ? `
+                  ${attachedLabReport
+          ? `
                     <span class="cms-pill" id="badge-report-attached" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
                       <i class="fa-solid fa-check"></i> Report Attached (${(attachedLabReport.summaryTags || []).length || '1'} tests)
                     </span>
                   `
-                      : ''
-                  }
+          : ''
+        }
                 </div>
                 <button type="button" id="btn-close-visit" class="cms-btn-ghost" style="padding: 4px 8px; font-size: 16px; color: var(--text-muted);" title="Close form">
                   <i class="fa-solid fa-xmark"></i>
@@ -307,9 +305,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   <div id="treatment-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
 
-                ${
-                  hasDigitalRx
-                    ? `
+                ${hasDigitalRx
+          ? `
                 <!-- Right: Prescription (Medical Store) -->
                 <div class="cms-prescription-panel">
                   <div class="cms-prescription-panel-title">
@@ -321,8 +318,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   <div id="prescription-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
                 `
-                    : ''
-                }
+          : ''
+        }
               </div>
 
               <!-- Row 3: Financials (Charge, Paid, Due) & Action Buttons (Defaults to 0) -->
@@ -345,16 +342,15 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 10px;">
-                  ${
-                    editingVisitId
-                      ? `
+                  ${editingVisitId
+          ? `
                     <button type="button" id="btn-delete-editing-visit" class="cms-btn-danger" data-visitid="${editingVisitId}" style="padding: 7px 16px; border-radius: 6px; font-weight: 700; border: none; display: inline-flex; align-items: center; gap: 6px; background: #dc2626; color: #fff; cursor: pointer;" title="Delete this Case #${editingVisitId}">
                       <i class="fa-solid fa-trash-can"></i>
                       <span>Delete Case</span>
                     </button>
                   `
-                      : ''
-                  }
+          : ''
+        }
                   <button type="button" id="btn-cancel-visit" class="cms-btn cms-btn-ghost" style="padding: 7px 18px; border: 1px solid var(--border); font-weight: 700;">
                     Cancel
                   </button>
@@ -381,21 +377,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                     <i class="fa-solid fa-calendar-day" style="color: var(--primary);"></i> Date:
                   </label>
                   <input type="date" id="history-date-filter" class="cms-input" style="padding: 2px 6px; font-size: 12px; border-radius: 4px; width: 130px; height: 26px;" value="${filterDate || ''}" />
-                  ${
-                    filterDate
-                      ? `
+                  ${filterDate
+          ? `
                     <button type="button" id="btn-clear-date-filter" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 2px 6px; font-size: 11px; border: 1px solid var(--border); background: #fff;" title="Show all dates">
                       <i class="fa-solid fa-xmark"></i> Clear
                     </button>
                   `
-                      : ''
-                  }
+          : ''
+        }
                 </div>
               </div>
 
-              ${
-                showDueCasesOnTop
-                  ? `
+              ${showDueCasesOnTop
+          ? `
                 <div class="cms-due-alert-banner" style="margin-top: 4px;">
                   <div style="display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626; font-size: 13px;"></i>
@@ -408,38 +402,37 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   </button>
                 </div>
               `
-                  : ''
-              }
+          : ''
+        }
             </div>
 
             <div id="visit-history-list" style="display: flex; flex-direction: column;">
-              ${
-                visits.length === 0
-                  ? `<div style="padding: 35px 20px; text-align: center; color: var(--text-muted);">
+              ${visits.length === 0
+          ? `<div style="padding: 35px 20px; text-align: center; color: var(--text-muted);">
                       <i class="fa-solid fa-calendar-xmark" style="font-size: 24px; margin-bottom: 8px; opacity: 0.7;"></i>
                       <div>${filterDate ? `No visits recorded on <b>${fmtDate(filterDate)}</b>.` : 'No visits recorded yet.'}</div>
                       ${filterDate ? `<button type="button" id="btn-show-all-dates-empty" class="cms-btn cms-btn-ghost cms-btn-sm" style="margin-top: 8px; border: 1px solid var(--border);"><i class="fa-solid fa-arrow-rotate-left"></i> Show All Visits</button>` : ''}
                     </div>`
-                  : visits
-                      .map((v, idx) => {
-                        const visitKey = v.id || v.caseId;
-                        // If this card is currently opened in inline editable mode (Matching user photo)
-                        if (inlineEditingVisitId && (inlineEditingVisitId === visitKey || inlineEditingVisitId === v.caseId || inlineEditingVisitId === v.id)) {
-                          return renderHistoryCardEditableHTML(v);
-                        }
-                        // Latest 2 entries: Full Card View (unless due filter is active, where all due are full cards)
-                        if (idx < 2 || (showDueCasesOnTop && Number(v.due) > 0)) {
-                          return renderHistoryCardFullHTML(v);
-                        }
-                        // Older entries: Compact Row View with Hover Expand
-                        return renderHistoryRowCompactHTML(v);
-                      })
-                      .join('')
+          : visits
+            .map((v, idx) => {
+              const visitKey = v.id || v.caseId;
+              // If this card is currently opened in inline editable mode (Matching user photo)
+              if (inlineEditingVisitId && (inlineEditingVisitId === visitKey || inlineEditingVisitId === v.caseId || inlineEditingVisitId === v.id)) {
+                return renderHistoryCardEditableHTML(v);
               }
+              // Latest 2 entries: Full Card View (unless due filter is active, where all due are full cards)
+              if (idx < 2 || (showDueCasesOnTop && Number(v.due) > 0)) {
+                return renderHistoryCardFullHTML(v);
+              }
+              // Older entries: Compact Row View with Hover Expand
+              return renderHistoryRowCompactHTML(v);
+            })
+            .join('')
+        }
             </div>
           </div>
         `
-            : `
+        : `
           <!-- Initial Search Prompt View when directly clicking Patient Record -->
           <div class="cms-card" style="padding: 40px 24px; text-align: center; color: var(--text-muted); border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
             <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--primary-soft, rgba(37,99,235,0.1)); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 26px;">
@@ -455,8 +448,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: left; letter-spacing: 0.5px;">
                 Recent Patients in Clinic (Click to Open Record):
               </div>
-              ${
-                getRecentPatients(db).map(({ fam, pat }) => `
+              ${getRecentPatients(db).map(({ fam, pat }) => `
                   <div class="cms-card cms-clickable quick-select-pat-item" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 8px; text-align: left; transition: all 0.15s ease;">
                     <div>
                       <b style="font-size: 13.5px; color: var(--text);">${pat.name}</b>
@@ -471,11 +463,11 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                     </div>
                   </div>
                 `).join('')
-              }
+        }
             </div>
           </div>
         `
-        }
+      }
 
         <!-- Global In-Page Case Details Modal Mount Point -->
         <div id="case-modal-overlay"></div>
@@ -537,47 +529,44 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-bottom: 4px;">Treatment / Clinic:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              ${
-                treatments.length === 0
-                  ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
-                  : treatments
-                      .map(
-                        (t) => `
+              ${treatments.length === 0
+        ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
+        : treatments
+          .map(
+            (t) => `
                       <span style="background: #ffffff; border: 1px solid #fecaca; border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; color: var(--text);">
                         ${t.name} ${t.qty > 1 ? `(x${t.qty})` : ''}
                       </span>
                     `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </div>
           </div>
 
-          ${
-            hasDigitalRx
-              ? `
+          ${hasDigitalRx
+        ? `
           <!-- Prescription / Medical Store -->
           <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-              ${
-                prescriptions.length === 0
-                  ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
-                  : prescriptions
-                      .map(
-                        (p) => `
+              ${prescriptions.length === 0
+          ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>`
+          : prescriptions
+            .map(
+              (p) => `
                       <span style="background: #ffffff; border: 1px solid #99f6e4; border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-weight: 700; color: var(--text);">
                         ${p.name} (${p.mor || '1'}-${p.noon || '0'}-${p.eve || '1'}${p.ngt ? `-${p.ngt}` : ''}) ${p.timing || 'AF'}
                       </span>
                     `
-                      )
-                      .join('')
-              }
+            )
+            .join('')
+        }
             </div>
           </div>
           `
-              : ''
-          }
+        : ''
+      }
         </div>
       </div>
     `;
@@ -638,9 +627,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-wrap: wrap; gap: 6px;">
@@ -648,8 +636,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
         </div>
       </div>
@@ -685,19 +673,18 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             </div>
             
             <div style="display: flex; align-items: center; gap: 8px;">
-              ${
-                v.labReport
-                  ? `
+              ${v.labReport
+        ? `
                 <button type="button" class="cms-btn cms-btn-sm btn-inline-edit-lab" data-visitid="${visitKey}" style="background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="View / Edit Attached Lab Report">
                   <i class="fa-solid fa-flask-vial"></i> Lab Report Attached
                 </button>
               `
-                  : `
+        : `
                 <button type="button" class="cms-btn cms-btn-sm btn-inline-edit-lab" data-visitid="${visitKey}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
                   <i class="fa-solid fa-file-medical"></i> Attach Report
                 </button>
               `
-              }
+      }
               <button type="button" class="cms-btn-ghost btn-inline-cancel-edit" data-visitid="${visitKey}" style="color: var(--text-muted); font-size: 15px; padding: 2px 6px;" title="Close Editor">
                 <i class="fa-solid fa-xmark"></i>
               </button>
@@ -780,9 +767,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <div class="inline-treatment-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <!-- Right: Prescription (Store) Cyan Box -->
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
@@ -794,8 +780,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <div class="inline-prescription-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
 
           <!-- Row 3: Financials & Actions (Matching User Photo: CHARGE, PAID, DUE, Cancel, Save Changes, Print) -->
@@ -825,16 +811,15 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <button type="button" class="cms-btn cms-btn-ghost btn-inline-cancel-edit" data-visitid="${visitKey}" style="padding: 6px 14px; border: 1px solid var(--border); font-weight: 700; border-radius: 6px;">
                 Cancel
               </button>
-              ${
-                hasDigitalRx
-                  ? `
+              ${hasDigitalRx
+        ? `
               <button type="button" class="cms-btn btn-inline-save-print" data-visitid="${visitKey}" style="background: #0284c7; color: #fff; padding: 6px 16px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Save and immediately print prescription">
                 <i class="fa-solid fa-print"></i>
                 <span>Save &amp; Print</span>
               </button>
               `
-                  : ''
-              }
+        : ''
+      }
               <button type="submit" class="cms-btn" style="background: #0f5132; color: #fff; padding: 6px 18px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                 <i class="fa-solid fa-check"></i>
                 <span>Save Changes</span>
@@ -1085,12 +1070,11 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                 </tr>
               </thead>
               <tbody>
-                ${
-                  allFamilyDueVisits.length === 0
-                    ? `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">No pending dues found for this family! All visits are paid in full.</td></tr>`
-                    : allFamilyDueVisits
-                        .map(
-                          (d) => `
+                ${allFamilyDueVisits.length === 0
+        ? `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">No pending dues found for this family! All visits are paid in full.</td></tr>`
+        : allFamilyDueVisits
+          .map(
+            (d) => `
                         <tr>
                           <td class="font-mono" style="font-size: 12px;">${fmtDate(d.date)} ${d.time || ''}</td>
                           <td><b>${d.patientName}</b></td>
@@ -1106,9 +1090,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                           </td>
                         </tr>
                       `
-                        )
-                        .join('')
-                }
+          )
+          .join('')
+      }
               </tbody>
             </table>
           </div>
@@ -1196,9 +1180,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
 
-            ${
-              hasDigitalRx
-                ? `
+            ${hasDigitalRx
+        ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 10px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 6px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1206,8 +1189,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
             `
-                : ''
-            }
+        : ''
+      }
           </div>
 
           <!-- Financial Summary -->
@@ -1233,24 +1216,22 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             </div>
 
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              ${
-                v.labReport
-                  ? `
+              ${v.labReport
+        ? `
                 <button type="button" id="btn-modal-view-lab" class="cms-btn cms-btn-ghost" style="border: 1.5px solid #0284c7; color: #0284c7; font-weight: 700;">
                   <i class="fa-solid fa-flask-vial"></i> View Lab Report
                 </button>
               `
-                  : ''
-              }
-              ${
-                hasDigitalRx
-                  ? `
+        : ''
+      }
+              ${hasDigitalRx
+        ? `
               <button type="button" id="btn-print-case-modal" class="cms-btn cms-btn-ghost" style="border: 1px solid var(--border);">
                 <i class="fa-solid fa-print"></i> Print Prescription
               </button>
               `
-                  : ''
-              }
+        : ''
+      }
               <button type="button" id="btn-dismiss-case-modal" class="cms-btn cms-btn-primary" style="background: #0f5132; padding: 8px 20px;">
                 Close
               </button>
@@ -1749,18 +1730,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         const received = Number(paidInput?.value || 0);
         const due = Math.max(0, charge - received);
 
-        // Auto-learn newly typed complaints and investigations into shared master catalogue
+        // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
         if (complaint) {
           const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
           complaintTokens.forEach(cName => {
-            const sharedComplaints = getSharedMasterCollection('complaints');
-            const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
-                           (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
-            if (!exists && cName.length > 1) {
-              addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
-              if (!db.customComplaints) db.customComplaints = [];
-              db.customComplaints.push(cName);
-              showToast(`✨ Added "${cName}" to Complaints Master`);
+            if (cName.length > 1) {
+              addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
             }
           });
         }
@@ -1768,17 +1743,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         if (investigation) {
           const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
           investigationTokens.forEach(invName => {
-            const sharedInvs = getSharedMasterCollection('investigations');
-            const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
-                           (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
-            if (!exists && invName.length > 1) {
-              addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
-              if (!db.customInvestigations) db.customInvestigations = [];
-              db.customInvestigations.push(invName);
-              showToast(`✨ Added "${invName}" to Investigations Master`);
+            if (invName.length > 1) {
+              addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
             }
           });
         }
+
+        const cleanPrescription = prescriptionRows.filter((p) => p.name && p.name.trim());
+        cleanPrescription.forEach(p => {
+          const mName = p.name.trim();
+          if (mName.length > 1) {
+            addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() });
+          }
+        });
 
         if (!patient.visits) patient.visits = [];
 
@@ -2078,17 +2055,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           v.received = received;
           v.due = due;
 
-          // Auto-learn newly typed complaints and investigations into shared master catalogue
+          // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
           if (complaint) {
             const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
             complaintTokens.forEach(cName => {
-              const sharedComplaints = getSharedMasterCollection('complaints');
-              const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
-                             (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
-              if (!exists && cName.length > 1) {
-                addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
-                if (!db.customComplaints) db.customComplaints = [];
-                db.customComplaints.push(cName);
+              if (cName.length > 1) {
+                addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() }, db);
               }
             });
           }
@@ -2096,16 +2068,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           if (investigation) {
             const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
             investigationTokens.forEach(invName => {
-              const sharedInvs = getSharedMasterCollection('investigations');
-              const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
-                             (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
-              if (!exists && invName.length > 1) {
-                addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
-                if (!db.customInvestigations) db.customInvestigations = [];
-                db.customInvestigations.push(invName);
+              if (invName.length > 1) {
+                addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() }, db);
               }
             });
           }
+
+          const cleanInlinePrescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
+          cleanInlinePrescription.forEach(p => {
+            const mName = p.name.trim();
+            if (mName.length > 1) {
+              addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() }, db);
+            }
+          });
 
           saveLocalDB(db, clinicId);
           showToast(`✨ Case #${v.caseId} updated successfully!`);
