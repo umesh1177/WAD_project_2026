@@ -487,95 +487,121 @@ export const defaultFeedbacks = [
   },
 ];
 
-/* ---- Offline/Local DB Fallback Engine ---- */
+/* ---- MongoDB Atlas Global In-Memory Store & Sync Layer ---- */
+const clinicMemoryStore = {};
+let syncPromise = null;
+
+export async function syncClinicDataFromAPI(clinicId = 'demo') {
+  const cleanId = String(clinicId || 'demo').trim();
+  const db = getLocalDB(cleanId);
+
+  try {
+    // 1. Fetch Families & Patients with Consultation Visits from MongoDB Atlas
+    const famRes = await apiFetch('/families');
+    if (famRes && famRes.success && Array.isArray(famRes.data)) {
+      db.families = {};
+      famRes.data.forEach((fam) => {
+        const fId = fam.famId || fam.id;
+        db.families[fId] = fam;
+      });
+    }
+
+    // 2. Fetch Appointments from MongoDB Atlas
+    const aptRes = await apiFetch('/appointments');
+    if (aptRes && aptRes.success && Array.isArray(aptRes.data)) {
+      db.appointments = aptRes.data.map(a => ({
+        id: a._id || a.id,
+        _id: a._id,
+        patientId: a.patientId,
+        patientName: a.patientName,
+        familyId: a.familyId || '',
+        phone: a.phone || '',
+        date: a.appointmentDate,
+        time: a.appointmentTime,
+        reason: a.reason,
+        status: a.status || 'Scheduled',
+        notes: a.notes || '',
+      }));
+    }
+
+    // 3. Fetch Patient OPD Queue from MongoDB Atlas
+    const queueRes = await apiFetch('/queue');
+    if (queueRes && queueRes.success && Array.isArray(queueRes.data)) {
+      db.patientQueue = queueRes.data;
+    }
+
+    // 4. Fetch Bills from MongoDB Atlas
+    const billsRes = await apiFetch('/billing');
+    if (billsRes && billsRes.success && Array.isArray(billsRes.data)) {
+      db.bills = billsRes.data;
+    }
+
+    // 5. Fetch Follow-ups from MongoDB Atlas
+    const fuRes = await apiFetch('/followups');
+    if (fuRes && fuRes.success && Array.isArray(fuRes.data)) {
+      db.followups = fuRes.data.map(f => ({
+        id: f._id || f.id,
+        _id: f._id,
+        patientId: f.patientId,
+        patientName: f.patientName,
+        date: f.followUpDate,
+        reason: f.reason,
+        status: f.status || 'Pending',
+        notes: f.notes || '',
+      }));
+    }
+
+    // 6. Fetch Certificates from MongoDB Atlas
+    const certRes = await apiFetch('/certificates');
+    if (certRes && certRes.success && Array.isArray(certRes.data)) {
+      db.certificates = certRes.data;
+    }
+
+    // 7. Fetch Certificate Templates from MongoDB Atlas
+    const tplRes = await apiFetch('/certificates/templates');
+    if (tplRes && tplRes.success && Array.isArray(tplRes.data) && tplRes.data.length > 0) {
+      db.certificateTemplates = tplRes.data;
+    }
+
+    // 8. Fetch Feedback / Support tickets from MongoDB Atlas
+    const fbRes = await apiFetch('/feedback');
+    if (fbRes && fbRes.success && Array.isArray(fbRes.data)) {
+      db.feedbacks = fbRes.data;
+    }
+
+    // 9. Fetch Master Medicines from MongoDB Atlas
+    const medRes = await apiFetch('/medicines');
+    if (medRes && medRes.success && Array.isArray(medRes.data) && medRes.data.length > 0) {
+      db.masterMedicines = medRes.data;
+    }
+
+    clinicMemoryStore[cleanId] = db;
+    return db;
+  } catch (err) {
+    console.warn('[MongoDB Atlas Sync Notice]:', err.message);
+    return db;
+  }
+}
+
 export function getLocalDB(clinicId = 'demo') {
   const cleanId = String(clinicId || 'demo').trim();
-  const key = `clinic-db-${cleanId}`;
-  let db = null;
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) db = JSON.parse(stored);
-  } catch (e) {}
-
-  if (cleanId === 'demo') {
-    // Only the default demo clinic gets seeded with demo patients and demo shortcuts
-    const hasLegacyPatIds = db && db.families && Object.values(db.families).some(f => Object.keys(f.patients || {}).some(pk => pk.length > 8));
-    if (!db || !db.families || Object.keys(db.families).length < 4 || Object.keys(db.families).some(k => k.includes('-') || k.length < 12) || hasLegacyPatIds || !db.appointments || db.appointments.length === 0) {
-      db = seedLocalDatabase();
-      localStorage.setItem(key, JSON.stringify(db));
-    }
-  } else {
-    // Custom clinics are strictly isolated and start clean with zero other clinic data or shortcuts!
-    if (!db) {
-      db = {
-        counters: { family: 0, patient: 0, visit: 0 },
-        families: {},
-        appointments: [],
-        certificates: [],
-        certificateTemplates: [...defaultCertificateTemplates],
-        bills: [],
-        feedbacks: [],
-        dietary: {}, // Completely clean and empty for new clinics
-        clinicShortcuts: {
-          medicines: {},
-          complaints: {},
-          investigations: {},
-          allergies: {},
-          relations: {},
-          areas: {},
-          societies: {},
-        },
-        _shortcutsCleanedV2: true,
-        masterMedicines: [],
-        masterComplaints: [],
-        masterInvestigations: [],
-        masterAreas: [],
-        masterSocieties: [],
-        masterAllergies: [],
-        masterRelations: [],
-        customShortcuts: [
-          { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
-          { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', category: 'Navigation' },
-          { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', category: 'Navigation' },
-          { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', category: 'Navigation' },
-          { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', category: 'Navigation' },
-          { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', category: 'Navigation' },
-          { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', category: 'Navigation' },
-          { id: 'sc8', key: 'F8', target: 'feedback', title: 'Send Complaint / Feedback', category: 'Support' },
-          { id: 'sc9', key: '/', target: 'quick_search', title: 'Quick Global Search', category: 'Action' },
-          { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' }
-        ]
-      };
-      localStorage.setItem(key, JSON.stringify(db));
-    } else if (db._shortcutsCleanedV2 !== true) {
-      // Clean legacy demo shortcuts from any previously seeded non-demo clinic
-      db.clinicShortcuts = {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      };
-      if (db.counters && db.counters.family === 6 && db.counters.patient === 16) {
-        db.dietary = {};
-      }
-      db._shortcutsCleanedV2 = true;
-      localStorage.setItem(key, JSON.stringify(db));
-    }
+  if (clinicMemoryStore[cleanId]) {
+    return clinicMemoryStore[cleanId];
   }
 
-  // Ensure all collections exist
-  if (!db.families) db.families = {};
-  if (!db.appointments) db.appointments = [];
-  if (!db.certificates) db.certificates = [];
-  if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
-  if (!db.bills) db.bills = [];
-  if (!db.feedbacks) db.feedbacks = [];
-  if (!db.dietary) db.dietary = {};
-  if (!db.clinicShortcuts) {
-    db.clinicShortcuts = {
+  // Initialize clean structure in memory
+  const db = {
+    counters: { family: 0, patient: 0, visit: 0 },
+    families: {},
+    appointments: [],
+    patientQueue: [],
+    certificates: [],
+    certificateTemplates: [...defaultCertificateTemplates],
+    bills: [],
+    feedbacks: [],
+    followups: [],
+    dietary: {},
+    clinicShortcuts: {
       medicines: {},
       complaints: {},
       investigations: {},
@@ -583,25 +609,34 @@ export function getLocalDB(clinicId = 'demo') {
       relations: {},
       areas: {},
       societies: {},
-    };
-  }
-  if (!db.customShortcuts) db.customShortcuts = [];
-  if (!db.masterMedicines) db.masterMedicines = [];
-  if (!db.masterComplaints) db.masterComplaints = [];
-  if (!db.masterInvestigations) db.masterInvestigations = [];
-  if (!db.masterAreas) db.masterAreas = [];
-  if (!db.masterSocieties) db.masterSocieties = [];
-  if (!db.masterAllergies) db.masterAllergies = [];
-  if (!db.masterRelations) db.masterRelations = [];
+    },
+    masterMedicines: [...defaultMasterMedicines],
+    masterComplaints: [...defaultMasterComplaints],
+    masterInvestigations: [...defaultMasterInvestigations],
+    masterAreas: [...defaultMasterAreas],
+    masterSocieties: [...defaultMasterSocieties],
+    masterAllergies: [...defaultMasterAllergies],
+    masterRelations: [...defaultMasterRelations],
+    customShortcuts: [
+      { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
+      { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', category: 'Navigation' },
+      { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', category: 'Navigation' },
+      { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', category: 'Navigation' },
+      { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', category: 'Navigation' },
+      { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', category: 'Navigation' },
+      { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', category: 'Navigation' },
+      { id: 'sc8', key: 'F8', target: 'feedback', title: 'Send Complaint / Feedback', category: 'Support' },
+      { id: 'sc9', key: '/', target: 'quick_search', title: 'Quick Global Search', category: 'Action' },
+      { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' }
+    ]
+  };
 
-  // Strip any legacy code fields from local master arrays
-  if (Array.isArray(db.masterMedicines)) {
-    db.masterMedicines = db.masterMedicines.map(m => {
-      if (m && m.code) {
-        const { code, ...rest } = m;
-        return rest;
-      }
-      return m;
+  clinicMemoryStore[cleanId] = db;
+
+  // Trigger non-blocking async fetch from MongoDB Atlas
+  if (!syncPromise) {
+    syncPromise = syncClinicDataFromAPI(cleanId).catch(() => {}).finally(() => {
+      syncPromise = null;
     });
   }
 
@@ -609,8 +644,8 @@ export function getLocalDB(clinicId = 'demo') {
 }
 
 export function saveLocalDB(db, clinicId = 'demo') {
-  const key = `clinic-db-${clinicId}`;
-  localStorage.setItem(key, JSON.stringify(db));
+  const cleanId = String(clinicId || 'demo').trim();
+  clinicMemoryStore[cleanId] = db;
 }
 
 function seedLocalDatabase() {

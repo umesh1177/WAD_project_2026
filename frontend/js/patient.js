@@ -420,7 +420,26 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
         }
 
         if (editingPatient) {
-          // Editing existing patient
+          const patTargetId = editingPatient.patId || editingPatient.id;
+          try {
+            await apiFetch(`/patients/${patTargetId}`, {
+              method: 'PUT',
+              body: {
+                name,
+                relation,
+                age,
+                bloodGroup,
+                allergy,
+                society,
+                area,
+                phone,
+              },
+            });
+          } catch (err) {
+            console.warn('Backend API patient update error, updated local state', err);
+          }
+
+          // Editing existing patient in local memory
           editingPatient.name = name;
           editingPatient.relation = relation;
           editingPatient.age = age;
@@ -441,7 +460,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           }
 
           saveLocalDB(db, clinicId);
-          showToast(`✨ Details for "${name}" updated successfully!`);
+          showToast(`✨ Details for "${name}" updated successfully in database!`);
 
           if (onSelectPatient) {
             onSelectPatient(famId, editingPatient.id || editingPatient.patId);

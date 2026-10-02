@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Consultation = require('../models/Consultation');
 const Patient = require('../models/Patient');
 const Family = require('../models/Family');
@@ -178,8 +179,11 @@ const updateConsultation = async (req, res) => {
       due: dueNum,
     };
 
+    const isMongoId = mongoose.Types.ObjectId.isValid(id);
+    const query = isMongoId ? { $or: [{ _id: id }, { caseId: id }], clinicId } : { caseId: id, clinicId };
+
     const updated = await Consultation.findOneAndUpdate(
-      { $or: [{ _id: id }, { caseId: id }], clinicId },
+      query,
       updateData,
       { new: true }
     );
@@ -200,7 +204,10 @@ const deleteConsultation = async (req, res) => {
     const { id } = req.params;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
 
-    const deleted = await Consultation.findOneAndDelete({ $or: [{ _id: id }, { caseId: id }], clinicId });
+    const isMongoId = mongoose.Types.ObjectId.isValid(id);
+    const query = isMongoId ? { $or: [{ _id: id }, { caseId: id }], clinicId } : { caseId: id, clinicId };
+
+    const deleted = await Consultation.findOneAndDelete(query);
     if (deleted && deleted.caseId) {
       await Prescription.deleteMany({ caseId: deleted.caseId, clinicId });
       await Bill.deleteMany({ caseId: deleted.caseId, clinicId });

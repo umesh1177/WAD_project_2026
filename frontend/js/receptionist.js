@@ -7,6 +7,8 @@
  */
 
 import {
+  apiFetch,
+  syncClinicDataFromAPI,
   getLocalDB,
   saveLocalDB,
   getAuthSession,
@@ -36,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   boot();
 });
 
-function boot() {
+async function boot() {
   session = getAuthSession();
   if (!session || !session.profile) {
     window.location.replace('../login.html');
@@ -66,9 +68,13 @@ function boot() {
   }
 
   db = getLocalDB(clinicId);
-  if (!db.patientQueue) {
-    try { db.patientQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { db.patientQueue = []; }
-    saveLocalDB(db, clinicId);
+
+  // Sync latest data from MongoDB Atlas
+  try {
+    await syncClinicDataFromAPI(clinicId);
+    db = getLocalDB(clinicId);
+  } catch (e) {
+    console.warn('API sync in boot notice', e);
   }
 
   setupHeader();
@@ -751,34 +757,53 @@ function openQueueDetailModal(token) {
 function saveQueue(queueArr) {
   db.patientQueue = queueArr;
   saveLocalDB(db, clinicId);
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queueArr));
   updateQueueBadge();
 }
 
-function pushToQueue(data) {
+async function pushToQueue(data) {
   const queue = db.patientQueue || [];
   const today = todayISO();
   const todayQ = queue.filter(q => (q.date || today) === today);
   const token = 'T-' + pad(todayQ.length + 1, 2);
 
-  queue.push({
+  const payload = {
     token,
     patientId: data.patientId,
     patientName: data.patientName,
+    familyId: data.familyId || '',
+    age: data.age || '',
+    gender: data.gender || '',
+    phone: data.phone || '',
+    queueDate: today,
+    queueTime: nowTime(),
+    reason: data.complaint || 'OPD Consultation',
+    notes: data.vitals ? `BP: ${data.vitals.bp || '-'}, Pulse: ${data.vitals.pulse || '-'}` : '',
+    status: 'Waiting'
+  };
+
+  let savedItem = null;
+  try {
+    const res = await apiFetch('/queue', {
+      method: 'POST',
+      body: payload,
+    });
+    if (res && res.success && res.data) {
+      savedItem = res.data;
+    }
+  } catch (err) {
+    console.warn('API queue error', err);
+  }
+
+  const queueEntry = savedItem || {
+    ...payload,
+    _id: `q_${Date.now()}`,
     name: data.patientName,
-    familyId: data.familyId,
     familyHead: data.familyHead,
-    age: data.age,
-    gender: data.gender,
-    phone: data.phone,
-    area: data.area,
-    complaint: data.complaint || 'OPD Consultation',
-    vitals: data.vitals || {},
     arrivedAt: nowTime(),
     date: today,
-    status: 'Waiting'
-  });
+  };
 
+  queue.push(queueEntry);
   saveQueue(queue);
   return token;
 }

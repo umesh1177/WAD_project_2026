@@ -25,13 +25,16 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
   const clinicId = session?.profile?.activeClinicId || 'demo';
   const db = getLocalDB(clinicId);
 
-  // Sync patient queue from DB or localStorage
+  // Sync patient queue from MongoDB Atlas API
   let queue = db.patientQueue || [];
-  if (!queue || queue.length === 0) {
-    try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-      if (raw) queue = JSON.parse(raw);
-    } catch (e) {}
+  try {
+    const res = await apiFetch('/queue');
+    if (res && res.success && Array.isArray(res.data)) {
+      queue = res.data;
+      db.patientQueue = queue;
+    }
+  } catch (err) {
+    console.warn('API queue fetch error, using cache', err);
   }
 
   // Filter state - default to 'pending'
@@ -276,18 +279,20 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
     // Start Consultation Direct Button
     container.querySelectorAll('.btn-start-consultation-direct').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const token = btn.getAttribute('data-token');
         const patId = btn.getAttribute('data-patid');
         const famId = btn.getAttribute('data-famid');
 
         // Mark in consultation in queue
-        const item = queue.find((q) => q.token === token);
+        const item = queue.find((q) => String(q.token) === String(token));
         if (item) {
           item.status = 'In Consultation';
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          if (item._id) {
+            apiFetch(`/queue/${item._id}`, { method: 'PATCH', body: { status: 'In Consultation' } }).catch(() => {});
+          }
         }
 
         // Navigate doctor directly to consultation view with preselected patient!
@@ -309,14 +314,16 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
     // Mark Done Button
     container.querySelectorAll('.btn-mark-queue-done').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const token = btn.getAttribute('data-token');
-        const item = queue.find((q) => q.token === token);
+        const item = queue.find((q) => String(q.token) === String(token));
         if (item) {
           item.status = 'Completed';
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          if (item._id) {
+            apiFetch(`/queue/${item._id}`, { method: 'PATCH', body: { status: 'Completed' } }).catch(() => {});
+          }
           renderView();
           showToast(`Token ${token} marked as Completed`);
         }
@@ -325,13 +332,16 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
     // Remove from Queue
     container.querySelectorAll('.btn-del-queue-item').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const token = btn.getAttribute('data-token');
         if (confirm(`Remove token ${token} from today's queue?`)) {
-          queue = queue.filter((q) => q.token !== token);
+          const item = queue.find((q) => String(q.token) === String(token));
+          queue = queue.filter((q) => String(q.token) !== String(token));
           db.patientQueue = queue;
           saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          if (item && item._id) {
+            apiFetch(`/queue/${item._id}`, { method: 'DELETE' }).catch(() => {});
+          }
           renderView();
           showToast(`Token ${token} removed from queue`);
         }
@@ -585,7 +595,7 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       }
     });
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const patientName = nameInput.value.trim().toUpperCase();
       const age = ageInput.value.trim();
@@ -595,28 +605,43 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       const pulse = modalRoot.querySelector('#walkin-pulse').value.trim();
       const temp = modalRoot.querySelector('#walkin-temp').value.trim();
 
-      const newEntry = {
+      const newEntryPayload = {
         token: nextToken,
-        patientId: matchedPat?.id || `PAT-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-        name: patientName,
+        patientId: matchedPat?.id || matchedPat?.patId || `PAT-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
         patientName: patientName,
-        familyId: matchedPat?.familyId || 'FAM-WALKIN',
-        familyHead: matchedPat?.familyHead || patientName,
+        familyId: matchedPat?.familyId || '',
         age: age || '35',
         gender: gender,
         phone: matchedPat?.phone || '',
-        area: matchedPat?.area || 'Surat',
-        arrivedAt: nowTime(),
-        date: todayISO(),
-        complaint: complaint,
-        vitals: { bp, pulse, temp },
+        queueDate: todayISO(),
+        reason: complaint || 'General Consultation',
+        notes: `Vitals: BP ${bp || '-'}, Pulse ${pulse || '-'}, Temp ${temp || '-'}`,
         status: 'Waiting',
       };
 
-      queue.push(newEntry);
+      let createdQueueItem = null;
+      try {
+        const res = await apiFetch('/queue', {
+          method: 'POST',
+          body: newEntryPayload,
+        });
+        if (res && res.success && res.data) {
+          createdQueueItem = res.data;
+        }
+      } catch (err) {
+        console.warn('Could not post queue to API, fallback state used', err);
+      }
+
+      const finalQueueItem = createdQueueItem || {
+        ...newEntryPayload,
+        _id: `q_${Date.now()}`,
+        name: patientName,
+        arrivedAt: nowTime(),
+      };
+
+      queue.push(finalQueueItem);
       db.patientQueue = queue;
       saveLocalDB(db, clinicId);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
 
       closeModal();
       showToast(`✅ Added ${patientName} to Patient Queue (${nextToken})`);

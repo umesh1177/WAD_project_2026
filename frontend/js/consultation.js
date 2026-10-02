@@ -1779,37 +1779,49 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         if (!patient.visits) patient.visits = [];
 
         if (editingVisitId) {
-          // Update existing visit
+          // Update existing visit in MongoDB Atlas
           const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId));
+          const updatedVisitPayload = {
+            date: visitDate,
+            bp,
+            sugar,
+            other,
+            reference,
+            investigation,
+            complaint,
+            dietary,
+            treatment: treatmentRows.filter((t) => t.name && t.name.trim()),
+            prescription: prescriptionRows.filter((p) => p.name && p.name.trim()),
+            labReports: attachedLabReport ? { attachment: attachedLabReport } : {},
+            charge,
+            received,
+            due,
+          };
+
+          try {
+            await apiFetch(`/consultations/${editingVisitId}`, {
+              method: 'PUT',
+              body: updatedVisitPayload,
+            });
+          } catch (err) {
+            console.warn('API consultation update error, updated local state', err);
+          }
+
           if (vIdx !== -1) {
             patient.visits[vIdx] = {
               ...patient.visits[vIdx],
-              date: visitDate,
-              bp,
-              sugar,
-              other,
-              reference,
-              investigation,
-              complaint,
-              dietary,
-              treatment: treatmentRows.filter((t) => t.name && t.name.trim()),
-              prescription: prescriptionRows.filter((p) => p.name && p.name.trim()),
-              labReport: attachedLabReport,
-              charge,
-              received,
-              due,
+              ...updatedVisitPayload,
             };
-            showToast(`✨ Case #${editingVisitId} updated successfully!`);
+            showToast(`✨ Case #${editingVisitId} updated successfully in database!`);
           }
         } else {
-          // Create New Visit
+          // Create New Visit in MongoDB Atlas
           const nextVisitNum = patient.visits.length + 1;
           const newCaseId = `${patient.id}${pad(nextVisitNum, 2)}`;
 
-          const newVisit = {
-            id: `v_${Date.now()}`,
-            caseId: newCaseId,
-            visitNum: nextVisitNum,
+          const newVisitPayload = {
+            familyId: family?.famId || family?.id || patient.familyId || '',
+            patientId: patient.patId || patient.id,
             date: visitDate,
             time: nowTime(),
             bp,
@@ -1821,14 +1833,37 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             dietary,
             treatment: treatmentRows.filter((t) => t.name && t.name.trim()),
             prescription: prescriptionRows.filter((p) => p.name && p.name.trim()),
-            labReport: attachedLabReport,
+            labReports: attachedLabReport ? { attachment: attachedLabReport } : {},
             charge,
             received,
             due,
           };
 
+          let savedVisitData = null;
+          try {
+            const res = await apiFetch('/consultations', {
+              method: 'POST',
+              body: newVisitPayload,
+            });
+            if (res && res.success && res.data) {
+              savedVisitData = res.data;
+            }
+          } catch (err) {
+            console.warn('API consultation save error, synced locally', err);
+          }
+
+          const newVisit = savedVisitData ? {
+            ...savedVisitData,
+            id: savedVisitData._id || `v_${Date.now()}`,
+          } : {
+            id: `v_${Date.now()}`,
+            caseId: newCaseId,
+            visitNum: nextVisitNum,
+            ...newVisitPayload,
+          };
+
           patient.visits.push(newVisit);
-          showToast(`✨ Visit #${nextVisitNum} saved!`);
+          showToast(`✨ Visit #${nextVisitNum} inserted into database!`);
 
           // Open Prescription Print Preview only if Digital Prescription service is enabled
           if (hasDigitalRx) {

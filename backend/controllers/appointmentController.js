@@ -23,7 +23,7 @@ const getAppointments = async (req, res) => {
 const createAppointment = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const { patientId, appointmentDate, appointmentTime, reason, notes } = req.body;
+    const { patientId, appointmentDate, appointmentTime, reason, notes, phone } = req.body;
 
     if (!patientId || !appointmentDate) {
       return res.status(400).json({ success: false, message: 'Patient ID and date are required' });
@@ -32,6 +32,7 @@ const createAppointment = async (req, res) => {
     const patient = await Patient.findOne({ patId: patientId, clinicId });
     const patientName = patient ? patient.name : req.body.patientName || 'Patient';
     const familyId = patient ? patient.familyId : '';
+    const contactPhone = phone || (patient ? patient.phone : '');
 
     const newAppointment = new Appointment({
       patientId,
@@ -41,6 +42,7 @@ const createAppointment = async (req, res) => {
       doctorId: req.user?.id || 'demo',
       appointmentDate,
       appointmentTime: appointmentTime || '10:00',
+      phone: contactPhone || '',
       reason: reason || 'Consultation',
       notes: notes || '',
     });
@@ -61,18 +63,37 @@ const createAppointment = async (req, res) => {
 const updateAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, appointmentDate, appointmentTime, notes } = req.body;
+    const { status, appointmentDate, appointmentTime, notes, reason, phone } = req.body;
 
-    const updated = await Appointment.findByIdAndUpdate(
-      id,
-      {
-        ...(status && { status }),
-        ...(appointmentDate && { appointmentDate }),
-        ...(appointmentTime && { appointmentTime }),
-        ...(notes !== undefined && { notes }),
-      },
-      { new: true }
-    );
+    let updated = null;
+    try {
+      updated = await Appointment.findByIdAndUpdate(
+        id,
+        {
+          ...(status && { status }),
+          ...(appointmentDate && { appointmentDate }),
+          ...(appointmentTime && { appointmentTime }),
+          ...(reason && { reason }),
+          ...(phone !== undefined && { phone }),
+          ...(notes !== undefined && { notes }),
+        },
+        { new: true }
+      );
+    } catch (e) {
+      // If id is not an ObjectId
+      updated = await Appointment.findOneAndUpdate(
+        { patientId: id },
+        {
+          ...(status && { status }),
+          ...(appointmentDate && { appointmentDate }),
+          ...(appointmentTime && { appointmentTime }),
+          ...(reason && { reason }),
+          ...(phone !== undefined && { phone }),
+          ...(notes !== undefined && { notes }),
+        },
+        { new: true }
+      );
+    }
 
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
@@ -88,7 +109,12 @@ const updateAppointment = async (req, res) => {
 const deleteAppointment = async (req, res) => {
   try {
     const { id } = req.params;
-    await Appointment.findByIdAndDelete(id);
+    let deleted = null;
+    try {
+      deleted = await Appointment.findByIdAndDelete(id);
+    } catch (e) {
+      deleted = await Appointment.findOneAndDelete({ patientId: id });
+    }
     res.json({ success: true, message: 'Appointment deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

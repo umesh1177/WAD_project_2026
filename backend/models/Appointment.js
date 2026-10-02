@@ -9,11 +9,11 @@ const AppointmentSchema = new mongoose.Schema(
     clinicId: { type: String, default: 'demo', index: true },
     appointmentDate: { type: String, required: true }, // YYYY-MM-DD
     appointmentTime: { type: String, default: '10:00' },
+    phone: { type: String, default: '' },
     reason: { type: String, default: 'General Consultation' },
     status: {
       type: String,
-      enum: ['scheduled', 'in-progress', 'completed', 'cancelled'],
-      default: 'scheduled',
+      default: 'Scheduled',
     },
     notes: { type: String, default: '' },
   },

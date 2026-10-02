@@ -119,8 +119,47 @@ const getDuesReport = async (req, res) => {
   }
 };
 
+// Update bill status / payment
+const updateBill = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paidAmount, status, notes } = req.body;
+
+    const bill = await Bill.findById(id);
+    if (!bill) {
+      return res.status(404).json({ success: false, message: 'Bill not found' });
+    }
+
+    if (paidAmount !== undefined) {
+      bill.paidAmount = Number(paidAmount);
+      bill.dueAmount = Math.max(0, bill.netAmount - bill.paidAmount);
+      bill.status = bill.dueAmount === 0 ? 'Paid' : bill.paidAmount > 0 ? 'Partial' : 'Due';
+    }
+    if (status) bill.status = status;
+    if (notes) bill.notes = notes;
+
+    await bill.save();
+    res.json({ success: true, message: 'Bill updated successfully', data: bill });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete bill
+const deleteBill = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Bill.findByIdAndDelete(id);
+    res.json({ success: true, message: 'Bill deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getBills,
   createBill,
+  updateBill,
+  deleteBill,
   getDuesReport,
 };

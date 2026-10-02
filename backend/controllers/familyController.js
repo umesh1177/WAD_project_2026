@@ -3,21 +3,26 @@ const Patient = require('../models/Patient');
 const Consultation = require('../models/Consultation');
 const { pad } = require('../utils/generateId');
 
-// Get all families for the active clinic with their members
+// Get all families for the active clinic with their members and visits
 const getFamilies = async (req, res) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
     const families = await Family.find({ clinicId }).sort({ createdAt: -1 });
     const patients = await Patient.find({ clinicId });
+    const consultations = await Consultation.find({ clinicId }).sort({ date: -1, time: -1 });
 
-    // Attach patients mapped to their respective families
+    // Attach patients mapped to their respective families along with their consultations
     const result = families.map((fam) => {
       const famObj = fam.toObject();
       famObj.patients = {};
       patients
         .filter((p) => p.familyId === fam.famId)
         .forEach((p) => {
-          famObj.patients[p.patId] = p;
+          const patObj = p.toObject();
+          patObj.visits = consultations
+            .filter((c) => c.patientId === p.patId)
+            .map((c) => c.toObject());
+          famObj.patients[p.patId] = patObj;
         });
       return famObj;
     });
@@ -40,10 +45,15 @@ const getFamilyById = async (req, res) => {
     }
 
     const patients = await Patient.find({ familyId: id, clinicId });
+    const consultations = await Consultation.find({ familyId: id, clinicId }).sort({ date: -1, time: -1 });
     const famObj = family.toObject();
     famObj.patients = {};
     patients.forEach((p) => {
-      famObj.patients[p.patId] = p;
+      const patObj = p.toObject();
+      patObj.visits = consultations
+        .filter((c) => c.patientId === p.patId)
+        .map((c) => c.toObject());
+      famObj.patients[p.patId] = patObj;
     });
 
     res.json({ success: true, data: famObj });
