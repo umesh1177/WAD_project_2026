@@ -1249,3 +1249,71 @@
   border-color: #a7f3d0;
 }
 
+/* =========================================================
+   PATIENT & CONSULTATION MOBILE RESPONSIVENESS
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .cms-consultation-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .cms-case-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .cms-case-banner-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cms-vitals-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .cms-prescription-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cms-prescription-table {
+    min-width: 600px;
+  }
+
+  .cms-history-row-compact .cms-compact-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .cms-master-field-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cms-family-filter-bar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cms-family-search-input {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .cms-vitals-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cms-history-date-text {
+    font-size: 12px;
+  }
+}
+
+

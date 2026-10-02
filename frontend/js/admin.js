@@ -3227,6 +3227,38 @@ setInterval(updateDoctorClock, 1000);
 window.addEventListener('hashchange', () => navigate());
 document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
 
+// Mobile Drawer Toggle
+const menuToggleBtn = document.getElementById('menuToggle');
+const adminSidebar = document.querySelector('.sidebar');
+if (menuToggleBtn && adminSidebar) {
+  let adminBackdrop = document.querySelector('.admin-sidebar-backdrop');
+  if (!adminBackdrop) {
+    adminBackdrop = document.createElement('div');
+    adminBackdrop.className = 'cms-sidebar-backdrop admin-sidebar-backdrop';
+    document.body.appendChild(adminBackdrop);
+  }
+
+  menuToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = adminSidebar.classList.toggle('mobile-open');
+    adminBackdrop.classList.toggle('active', isOpen);
+  });
+
+  adminBackdrop.addEventListener('click', () => {
+    adminSidebar.classList.remove('mobile-open');
+    adminBackdrop.classList.remove('active');
+  });
+
+  document.querySelectorAll('.sidebar a').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        adminSidebar.classList.remove('mobile-open');
+        adminBackdrop.classList.remove('active');
+      }
+    });
+  });
+}
+
 // Live Cross-Tab Synchronization for Feedback & Support Tickets
 window.addEventListener('storage', (event) => {
   if (

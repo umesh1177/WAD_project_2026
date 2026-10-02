@@ -342,11 +342,37 @@
     /* ---- Logout Handlers ---- */
     document.getElementById('btn-doc-logout').addEventListener('click', logoutUser);
 
-    /* ---- Sidebar Toggle ---- */
+    /* ---- Sidebar Toggle & Mobile Drawer ---- */
     const sidebar = document.getElementById('cms-sidebar');
-    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
+    let sidebarBackdrop = document.querySelector('.cms-sidebar-backdrop');
+    if (!sidebarBackdrop) {
+      sidebarBackdrop = document.createElement('div');
+      sidebarBackdrop.className = 'cms-sidebar-backdrop';
+      document.body.appendChild(sidebarBackdrop);
+    }
+
+    function toggleSidebar() {
+      if (window.innerWidth <= 768) {
+        const isOpen = sidebar.classList.toggle('mobile-open');
+        sidebarBackdrop.classList.toggle('active', isOpen);
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+    }
+
+    function closeMobileSidebar() {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove('mobile-open');
+        sidebarBackdrop.classList.remove('active');
+      }
+    }
+
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebar();
     });
+
+    sidebarBackdrop.addEventListener('click', closeMobileSidebar);
 
     /* ---- Doctor Profile Dropdown ---- */
     const profileBtn = document.getElementById('btn-doc-profile');
@@ -390,6 +416,7 @@
     /* ---- Navigation Handler ---- */
     document.querySelectorAll('.cms-nav-item').forEach(item => {
       item.addEventListener('click', () => {
+        closeMobileSidebar();
         document.querySelectorAll('.cms-nav-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         currentView = item.getAttribute('data-view');
