@@ -1606,3 +1606,9 @@ setInterval(updateDoctorClock, 1000);
 window.addEventListener('hashchange', () => navigate());
 document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
 navigate();
+
+window.handleAdminLogout = function() {
+  localStorage.removeItem('clinic-auth-session');
+  sessionStorage.clear();
+  window.location.href = '../login.html?logout=true';
+};

@@ -58,54 +58,67 @@ const validatePatient = (req, res, next) => {
 
 // ---- Appointment ----
 const validateAppointment = (req, res, next) => {
-  const { patientName, date, clinicId } = req.body;
+  const patient = req.body.patientName || req.body.patId || req.body.patientId;
+  const aptDate = req.body.appointmentDate || req.body.date;
 
-  if (!isNonEmpty(patientName) && !isNonEmpty(req.body.patId))
+  if (!isNonEmpty(patient))
     return validationError(res, 'Patient information is required for the appointment.', 'patientName');
-  if (!isNonEmpty(date))
-    return validationError(res, 'Appointment date is required.', 'date');
+  if (!isNonEmpty(aptDate))
+    return validationError(res, 'Appointment date is required.', 'appointmentDate');
 
   next();
 };
 
 // ---- Consultation ----
 const validateConsultation = (req, res, next) => {
-  const { patId, clinicId, visitDate } = req.body;
+  const patient = req.body.patId || req.body.patientId;
+  const family = req.body.familyId || req.body.famId;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required to create a consultation.', 'patId');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient ID is required to create a consultation.', 'patientId');
+  if (!isNonEmpty(family))
+    return validationError(res, 'Family ID is required to create a consultation.', 'familyId');
 
   next();
 };
 
 // ---- Prescription ----
 const validatePrescription = (req, res, next) => {
-  const { patId, medicines } = req.body;
+  const patient = req.body.patId || req.body.patientId;
+  const caseRef = req.body.caseId;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the prescription.', 'patId');
+  if (!isNonEmpty(patient) && !isNonEmpty(caseRef))
+    return validationError(res, 'Patient ID or Case ID is required for the prescription.', 'patientId');
 
   next();
 };
 
 // ---- Billing ----
 const validateBill = (req, res, next) => {
-  const { patId, amount, items } = req.body;
+  const patient = req.body.patId || req.body.patientId;
+  const amount = req.body.totalCharge !== undefined ? req.body.totalCharge : req.body.amount;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required to create a bill.', 'patId');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient ID is required to create a bill.', 'patientId');
   if (amount !== undefined && !isPositiveNum(amount))
-    return validationError(res, 'Bill amount must be a non-negative number.', 'amount');
+    return validationError(res, 'Bill amount must be a non-negative number.', 'totalCharge');
 
   next();
 };
 
 // ---- Medical Certificate ----
 const validateCertificate = (req, res, next) => {
-  const { patId, certType, templateId } = req.body;
+  const patient = req.body.patientName || req.body.patId || req.body.patientId;
+  const diagnosis = req.body.diagnosis;
+  const fromDate = req.body.fromDate;
+  const toDate = req.body.toDate;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the certificate.', 'patId');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient name is required for the certificate.', 'patientName');
+  if (!isNonEmpty(diagnosis))
+    return validationError(res, 'Diagnosis is required for the certificate.', 'diagnosis');
+  if (!isNonEmpty(fromDate) || !isNonEmpty(toDate))
+    return validationError(res, 'Valid from and to dates are required for the certificate.', 'fromDate');
 
   next();
 };
@@ -140,10 +153,11 @@ const validateFeedback = (req, res, next) => {
 
 // ---- Follow-Up ----
 const validateFollowUp = (req, res, next) => {
-  const { patId, followUpDate } = req.body;
+  const patient = req.body.patId || req.body.patientId;
+  const followUpDate = req.body.followUpDate || req.body.date;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the follow-up.', 'patId');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient ID is required for the follow-up.', 'patientId');
   if (!isNonEmpty(followUpDate))
     return validationError(res, 'Follow-up date is required.', 'followUpDate');
 
@@ -152,36 +166,33 @@ const validateFollowUp = (req, res, next) => {
 
 // ---- Diagnosis ----
 const validateDiagnosis = (req, res, next) => {
-  const { diagnosis, patId } = req.body;
+  const diagName = req.body.name || req.body.diagnosis;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required to record a diagnosis.', 'patId');
-  if (!isNonEmpty(diagnosis) && !isNonEmpty(req.body.name))
-    return validationError(res, 'Diagnosis name is required.', 'diagnosis');
+  if (!isNonEmpty(diagName))
+    return validationError(res, 'Diagnosis name is required.', 'name');
 
   next();
 };
 
 // ---- Payment ----
 const validatePayment = (req, res, next) => {
-  const { billId, amount, method } = req.body;
+  const { billId, patId, patientId, amount } = req.body;
+  const patient = patId || patientId || billId;
 
-  if (!isNonEmpty(billId) && !isNonEmpty(req.body.patId))
-    return validationError(res, 'Bill ID or Patient ID is required for payment.', 'billId');
-  if (!isPositiveNum(amount))
-    return validationError(res, 'A valid payment amount is required.', 'amount');
-  if (Number(amount) <= 0)
-    return validationError(res, 'Payment amount must be greater than zero.', 'amount');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient ID or Bill ID is required for payment.', 'patientId');
+  if (!isPositiveNum(amount) || Number(amount) <= 0)
+    return validationError(res, 'A valid positive payment amount is required.', 'amount');
 
   next();
 };
 
 // ---- History ----
 const validateHistory = (req, res, next) => {
-  const { patId } = req.body;
+  const patient = req.body.patId || req.body.patientId || req.params.patientId;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required to save medical history.', 'patId');
+  if (!isNonEmpty(patient))
+    return validationError(res, 'Patient ID is required to save medical history.', 'patientId');
 
   next();
 };

@@ -69,7 +69,16 @@ const getPrintData = async (req, res) => {
     }
 
     const patient = await Patient.findOne({ patId: visit.patientId, clinicId });
-    const doctor = (await User.findById(visit.doctorId)) || { name: 'Dr. Chirag Paghdal', username: 'dhyey' };
+    const mongoose = require('mongoose');
+    let doctor = null;
+    if (visit.doctorId && mongoose.Types.ObjectId.isValid(visit.doctorId)) {
+      doctor = await User.findById(visit.doctorId);
+    } else if (visit.doctorId) {
+      doctor = await User.findOne({ username: visit.doctorId });
+    }
+    if (!doctor) {
+      doctor = { name: 'Dr. Chirag Paghdal', username: 'dhyey', degree: 'B.H.M.S.', regNo: 'G-9035' };
+    }
 
     res.json({
       success: true,
