@@ -8,26 +8,28 @@
 
 import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection, addSharedMasterItem, todayISO } from './api.js';
 
-export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
-  const session = getAuthSession();
-  const clinicId = session?.profile?.activeClinicId || 'demo';
-  const db = getLocalDB(clinicId);
-
-  // Initialize custom datalists if missing
-  if (!db.customRelations) db.customRelations = [];
-  if (!db.customSocieties) db.customSocieties = [];
-  if (!db.customAreas) db.customAreas = [];
-  if (!db.customAllergies) db.customAllergies = [];
-
+export async function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   let selectedFamId = presetFamId || null;
-  let targetFamily = selectedFamId
-    ? (db.families?.[selectedFamId] || Object.values(db.families || {}).find(f => f.famId === selectedFamId || f.id === selectedFamId))
-    : null;
+  let targetFamily = null;
+  let editingPatient = null;
+  let allFamiliesCache = [];
 
-  // Check if editing an existing patient
-  let editingPatient = (editPatientId && targetFamily?.patients)
-    ? (targetFamily.patients[editPatientId] || Object.values(targetFamily.patients).find(p => p.id === editPatientId || p.patId === editPatientId))
-    : null;
+  try {
+    const res = await apiFetch('/families');
+    if (res.success && res.data) {
+      allFamiliesCache = res.data;
+      if (selectedFamId) {
+        targetFamily = allFamiliesCache.find(f => f.famId === selectedFamId || f._id === selectedFamId || f.id === selectedFamId);
+      }
+    }
+  } catch (e) { }
+
+  if (editPatientId && targetFamily) {
+    try {
+      const pRes = await apiFetch('/patients/' + editPatientId);
+      if (pRes.success && pRes.data) editingPatient = pRes.data;
+    } catch (e) { }
+  }
 
   function renderView() {
     container.innerHTML = `
@@ -37,13 +39,12 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
             <div class="font-display" style="font-weight: 800; font-size: 16px;">
-              ${
-                editingPatient
-                  ? `✏️ Edit Patient Details &middot; ${editingPatient.name}`
-                  : targetFamily
-                  ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`)
-                  : 'Add Family Member'
-              }
+              ${editingPatient
+        ? `✏️ Edit Patient Details &middot; ${editingPatient.name}`
+        : targetFamily
+          ? (isRedirectFromHeadReg ? 'Step 2 &middot; Add Member to New Family' : `Add Member to Family &middot; ${targetFamily.headName}`)
+          : 'Add Family Member'
+      }
             </div>
             <span class="cms-pill font-mono" style="font-size: 11px; background: ${editingPatient ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.1)'}; color: ${editingPatient ? 'var(--warning-dark, #b45309)' : 'var(--primary)'}; font-weight: 700;">
               <i class="fa-solid ${editingPatient ? 'fa-pen-to-square' : 'fa-user-plus'}"></i> ${editingPatient ? 'Editing Mode' : 'Member Registration'}
@@ -51,9 +52,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           </div>
 
           <!-- Family Head Selection / Search Area -->
-          ${
-            targetFamily
-              ? `
+          ${targetFamily
+        ? `
             <!-- Selected / Pinned Family Head Card -->
             <div style="background: linear-gradient(135deg, rgba(37,99,235,0.07), rgba(59,130,246,0.14)); border: 1.5px solid var(--primary); border-radius: var(--radius-md); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm); flex-wrap: wrap; gap: 10px;">
               <div style="display: flex; align-items: center; gap: 12px;">
@@ -74,19 +74,18 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="cms-pill cms-badge-paid font-mono" style="font-size: 12px; font-weight: 800;">FAM ${selectedFamId}</span>
-                ${
-                  !isRedirectFromHeadReg && !editingPatient
-                    ? `
+                ${!isRedirectFromHeadReg && !editingPatient
+          ? `
                   <button type="button" id="btn-change-family" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 4px 10px; font-size: 11.5px; border: 1px solid var(--border);" title="Select a different family">
                     <i class="fa-solid fa-arrows-rotate"></i> Change Family
                   </button>
                 `
-                    : ''
-                }
+          : ''
+        }
               </div>
             </div>
           `
-              : `
+        : `
             <!-- Family Head Search Input & Results -->
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <label class="cms-label" style="font-size: 12.5px; font-weight: 700; margin-bottom: 2px;">
@@ -101,12 +100,11 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div id="family-search-suggestions-container" style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;"></div>
             </div>
           `
-          }
+      }
 
           <!-- Member Form Fields (Shown only when a Family Head is selected) -->
-          ${
-            targetFamily
-              ? `
+          ${targetFamily
+        ? `
             <form id="form-add-member" style="display: flex; flex-direction: column; gap: 14px;">
               <!-- Member Name & Relation -->
               <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
@@ -175,15 +173,14 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
 
               <!-- Action Buttons -->
               <div style="display: flex; gap: 8px; margin-top: 4px; padding-top: 4px;">
-                ${
-                  editingPatient
-                    ? `
+                ${editingPatient
+          ? `
                   <button type="button" id="btn-cancel-edit-member" class="cms-btn cms-btn-ghost" style="flex: 1; border: 1px solid var(--border); padding: 10px 16px; font-weight: 700;">
                     <i class="fa-solid fa-xmark"></i> Cancel
                   </button>
                 `
-                    : ''
-                }
+          : ''
+        }
                 <button type="submit" id="btn-submit-member" class="cms-btn ${editingPatient ? 'cms-btn-warning' : 'cms-btn-primary'}" style="flex: 2; padding: 10px 16px;">
                   <span><i class="fa-solid ${editingPatient ? 'fa-floppy-disk' : 'fa-user-plus'}"></i></span>
                   <span>${editingPatient ? 'Update Member & Return to Patient Record' : 'Save Member & Open Patient Record'}</span>
@@ -192,7 +189,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               </div>
             </form>
           `
-              : `
+        : `
             <!-- Prompt when no family is selected -->
             <div style="padding: 30px 20px; text-align: center; color: var(--text-muted); background: var(--surface-alt); border-radius: var(--radius-md); border: 1px dashed var(--border);">
               <div style="font-size: 32px; color: var(--primary); margin-bottom: 8px; opacity: 0.8;"><i class="fa-solid fa-magnifying-glass"></i></div>
@@ -200,13 +197,13 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               <div style="font-size: 12px; margin-top: 3px;">Once a family head is selected, the member details form will appear.</div>
             </div>
           `
-          }
+      }
         </div>
       </div>
     `;
 
     // Render Datalists
-    renderMemberDatalists(db);
+    renderMemberDatalists(allFamiliesCache);
 
     // Cancel Edit Button
     const btnCancelEdit = container.querySelector('#btn-cancel-edit-member');
@@ -238,7 +235,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       function updateSearchResults() {
         const query = searchInput.value.trim().toLowerCase();
         if (!query) {
-          const allFams = Object.values(db.families || {}).slice(0, 5);
+          const allFams = allFamiliesCache.slice(0, 5);
           if (allFams.length === 0) {
             suggestionsContainer.innerHTML = `
               <div style="background: rgba(239,68,68,0.06); border: 1.5px dashed var(--danger); border-radius: var(--radius-md); padding: 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -289,7 +286,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
             item.addEventListener('click', () => {
               const fid = item.getAttribute('data-famid');
               selectedFamId = fid;
-              targetFamily = db.families?.[fid] || Object.values(db.families || {}).find(f => f.famId === fid || f.id === fid);
+              targetFamily = allFamiliesCache.find(f => f.famId === fid || f._id === fid || f.id === fid);
               renderView();
             });
           });
@@ -297,7 +294,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
         }
 
         // Filter families by query
-        const allFams = Object.values(db.families || {});
+        const allFams = allFamiliesCache;
         const matches = allFams.filter((f) => {
           const fid = (f.famId || f.id || '').toLowerCase();
           const name = (f.headName || '').toLowerCase();
@@ -355,7 +352,7 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
             item.addEventListener('click', () => {
               const fid = item.getAttribute('data-famid');
               selectedFamId = fid;
-              targetFamily = db.families?.[fid] || Object.values(db.families || {}).find(f => f.famId === fid || f.id === fid);
+              targetFamily = allFamiliesCache.find(f => f.famId === fid || f._id === fid || f.id === fid);
               renderView();
             });
           });
@@ -403,54 +400,22 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
           return;
         }
 
-        // Auto-Learn new datalist values with Doctor-Friendly popups
-        // Calling addSharedMasterItem natively handles duplicates within the shared catalogue. 
-        // We run it universally to forcefully migrate legacy local `customX` into the global shared collections!
-        if (relation) {
-          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name: relation, category: 'General', createdAt: todayISO() }, db);
-        }
-        if (society) {
-          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: society, area: '', createdAt: todayISO() }, db);
-        }
-        if (area) {
-          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: area, city: '', pincode: '', createdAt: todayISO() }, db);
-        }
-        if (allergy) {
-          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: allergy, category: 'General', severity: 'None', createdAt: todayISO() }, db);
-        }
-
         if (editingPatient) {
           // Editing existing patient
-          editingPatient.name = name;
-          editingPatient.relation = relation;
-          editingPatient.age = age;
-          editingPatient.bloodGroup = bloodGroup;
-          editingPatient.allergy = allergy;
-          editingPatient.society = society;
-          editingPatient.area = area;
-          editingPatient.phone = phone;
-
-          // If this patient is Head, also keep family meta synced
-          if (editingPatient.relation === 'Head' || relation === 'Head') {
-            if (targetFamily) {
-              targetFamily.headName = name;
-              targetFamily.society = society;
-              targetFamily.area = area;
-              targetFamily.phone = phone;
+          try {
+            await apiFetch('/patients/' + (editingPatient._id || editingPatient.patId || editingPatient.id), {
+              method: 'PUT',
+              body: { name, relation, age, bloodGroup, allergy, society, area, phone }
+            });
+            showToast(`✨ Details for "${name}" updated successfully!`);
+            if (onSelectPatient) {
+              onSelectPatient(famId, editingPatient.patId || editingPatient.id || editingPatient._id);
             }
-          }
-
-          saveLocalDB(db, clinicId);
-          showToast(`✨ Details for "${name}" updated successfully!`);
-
-          if (onSelectPatient) {
-            onSelectPatient(famId, editingPatient.id || editingPatient.patId);
-          }
+          } catch (e) { }
           return;
         }
 
         // New member addition
-        let createdPatId = null;
         try {
           const res = await apiFetch('/patients/member', {
             method: 'POST',
@@ -466,130 +431,34 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
               phone,
             },
           });
-          if (res && res.success && res.data) {
-            createdPatId = res.data.patId || res.data.id;
+          const pat = res.data || {};
+          showToast(`${name} added to Family!`);
+          memberForm.reset();
+
+          if (onSelectPatient) {
+            onSelectPatient(famId, pat.patId || pat._id || pat.id);
           }
         } catch (err) {
-          console.warn('Backend API member create error, continuing with local DB', err);
-        }
-
-        const famSeqCode = (famId || '').slice(-4) || '0001';
-        const nextMemberSeq = pad((db.families[famId]?.patients ? Object.keys(db.families[famId].patients).length : 0) + 1, 4);
-        const finalPatId = createdPatId || `${famSeqCode}${nextMemberSeq}`;
-
-        const pat = {
-          id: finalPatId,
-          patId: finalPatId,
-          familyId: famId,
-          name,
-          relation,
-          age,
-          bloodGroup,
-          allergy,
-          society,
-          area,
-          phone,
-          visits: [],
-        };
-
-        if (!db.counters) db.counters = { family: 0, patient: 0, visit: 0 };
-        db.counters.patient = (db.counters.patient || 0) + 1;
-
-        if (db.families && db.families[famId]) {
-          if (!db.families[famId].patients) db.families[famId].patients = {};
-          db.families[famId].patients[finalPatId] = pat;
-        }
-        saveLocalDB(db, clinicId);
-
-        showToast(`${name} added to Family ${famId}!`);
-        memberForm.reset();
-
-        if (onSelectPatient) {
-          onSelectPatient(famId, finalPatId);
+          console.warn('Backend API member create error', err);
         }
       });
     }
   }
 
-  function getKnownRelations(db) {
-    const defaultRelations = ['Head', 'Wife', 'Husband', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Grandfather', 'Grandmother', 'Other'];
-    const rels = new Set(defaultRelations);
-    (db.customRelations || []).forEach(r => rels.add(r.trim()));
-    const normalized = new Set();
-    rels.forEach(r => normalized.add(r.toLowerCase()));
-    return normalized;
-  }
-
-  function getKnownSocieties(db) {
-    const shared = getSharedMasterCollection('societies').map(s => s.name.trim());
-    const socs = new Set(shared);
-    (db.customSocieties || []).forEach(s => socs.add(s.trim()));
-    (db.masterSocieties || []).forEach(s => socs.add(s.name.trim()));
-    const normalized = new Set();
-    socs.forEach(s => normalized.add(s.toLowerCase()));
-    return normalized;
-  }
-
-  function getKnownAreas(db) {
-    const shared = getSharedMasterCollection('areas').map(a => a.name.trim());
-    const areas = new Set(shared);
-    (db.customAreas || []).forEach(a => areas.add(a.trim()));
-    (db.masterAreas || []).forEach(a => areas.add(a.name.trim()));
-    const normalized = new Set();
-    areas.forEach(a => normalized.add(a.toLowerCase()));
-    return normalized;
-  }
-
-  function getKnownAllergies(db) {
-    const shared = getSharedMasterCollection('allergies').map(a => a.name.trim());
-    const als = new Set(shared);
-    (db.customAllergies || []).forEach(a => als.add(a.trim()));
-    (db.masterAllergies || []).forEach(a => als.add(a.name.trim()));
-    const normalized = new Set();
-    als.forEach(a => normalized.add(a.toLowerCase()));
-    return normalized;
-  }
-
-  function renderMemberDatalists(db) {
+  function renderMemberDatalists(cache) {
     let dlRel = document.getElementById('dl-relation-list');
-    if (!dlRel) {
-      dlRel = document.createElement('datalist');
-      dlRel.id = 'dl-relation-list';
-      document.body.appendChild(dlRel);
-    }
-    const sharedRels = getSharedMasterCollection('relations').map(r => r.name);
-    const allRels = [...sharedRels, ...(db.customRelations || [])];
-    dlRel.innerHTML = Array.from(new Set(allRels)).map(r => `<option value="${r}"></option>`).join('');
+    if (!dlRel) { dlRel = document.createElement('datalist'); dlRel.id = 'dl-relation-list'; document.body.appendChild(dlRel); }
+    dlRel.innerHTML = ['Head', 'Wife', 'Husband', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister'].map(r => `<option value="${r}"></option>`).join('');
 
     let dlSoc = document.getElementById('dl-member-society-list');
-    if (!dlSoc) {
-      dlSoc = document.createElement('datalist');
-      dlSoc.id = 'dl-member-society-list';
-      document.body.appendChild(dlSoc);
-    }
-    const sharedSocs = getSharedMasterCollection('societies').map(s => s.name);
-    const allSocs = [...sharedSocs, ...(db.customSocieties || []), ...(db.masterSocieties || []).map(s => s.name)];
-    dlSoc.innerHTML = Array.from(new Set(allSocs)).map(s => `<option value="${s}"></option>`).join('');
+    if (!dlSoc) { dlSoc = document.createElement('datalist'); dlSoc.id = 'dl-member-society-list'; document.body.appendChild(dlSoc); }
+    const socs = new Set(cache.map(f => f.society).filter(Boolean));
+    dlSoc.innerHTML = Array.from(socs).map(s => `<option value="${s}"></option>`).join('');
 
     let dlArea = document.getElementById('dl-member-area-list');
-    if (!dlArea) {
-      dlArea = document.createElement('datalist');
-      dlArea.id = 'dl-member-area-list';
-      document.body.appendChild(dlArea);
-    }
-    const sharedAreas = getSharedMasterCollection('areas').map(a => a.name);
-    const allAreas = [...sharedAreas, ...(db.customAreas || []), ...(db.masterAreas || []).map(a => a.name)];
-    dlArea.innerHTML = Array.from(new Set(allAreas)).map(a => `<option value="${a}"></option>`).join('');
-
-    let dlAllergy = document.getElementById('dl-member-allergy-list');
-    if (!dlAllergy) {
-      dlAllergy = document.createElement('datalist');
-      dlAllergy.id = 'dl-member-allergy-list';
-      document.body.appendChild(dlAllergy);
-    }
-    const sharedAllergies = getSharedMasterCollection('allergies').map(a => a.name);
-    const allAllergies = [...sharedAllergies, ...(db.customAllergies || []), ...(db.masterAllergies || []).map(a => a.name)];
-    dlAllergy.innerHTML = Array.from(new Set(allAllergies)).map(a => `<option value="${a}"></option>`).join('');
+    if (!dlArea) { dlArea = document.createElement('datalist'); dlArea.id = 'dl-member-area-list'; document.body.appendChild(dlArea); }
+    const areas = new Set(cache.map(f => f.area).filter(Boolean));
+    dlArea.innerHTML = Array.from(areas).map(s => `<option value="${s}"></option>`).join('');
   }
 
   // Initial render

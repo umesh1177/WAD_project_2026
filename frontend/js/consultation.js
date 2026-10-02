@@ -20,10 +20,59 @@ import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, nowTi
 import { openPrescriptionModal, DIETARY_TRANSLATIONS } from './prescription.js';
 import { openLabReportModal } from './history.js';
 
-export function renderConsultationView(container, selection, onSelectPatient, onPrintRequested, onOpenLabReports, onEditPatient) {
+export async function renderConsultationView(container, selection, onSelectPatient, onPrintRequested, onOpenLabReports, onEditPatient) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const db = getLocalDB(clinicId);
+  
+  const db = { families: {}, customAllergies: [], customAreas: [], customSocieties: [], customRelations: [] };
+  try {
+    const [pRes, cRes] = await Promise.all([apiFetch('/patients'), apiFetch('/consultations')]);
+    if (pRes && pRes.success) {
+      pRes.data.forEach(p => {
+        const famId = p.familyId ? (p.familyId.famId || p.familyId._id || p.familyId) : 'UNKNOWN';
+        if (!db.families[famId]) db.families[famId] = { patients: {} };
+        db.families[famId].patients[p.patId||p._id||p.id] = { ...p, visits: [] };
+      });
+    }
+    if (cRes && cRes.success) {
+      cRes.data.forEach(c => {
+        const patId = c.patientId ? (c.patientId._id || c.patientId.patId || c.patientId) : null;
+        if(patId) {
+          Object.values(db.families).forEach(f => {
+            if(f.patients[patId]) {
+              f.patients[patId].visits.push({ ...c, id: c._id });
+            }
+          });
+        }
+      });
+      for (let famKey in db.families) {
+        for (let patKey in db.families[famKey].patients) {
+          if (db.families[famKey].patients[patKey].visits) {
+            db.families[famKey].patients[patKey].visits.sort((a,b) => new Date(b.date) - new Date(a.date));
+          }
+        }
+      }
+    }
+  } catch(e) {}
+
+  window.syncVisitsToDB = async () => {
+    if (!patient || !patient.visits) return;
+    try {
+      for (let i = 0; i < patient.visits.length; i++) {
+        let v = patient.visits[i];
+        if (!v._id) {
+          v.patientId = patient._id || patient.patId || patient.id;
+          v.clinicId = clinicId;
+          const r = await apiFetch('/consultations', { method: 'POST', body: v });
+          if(r.success) { v._id = r.data._id; v.id = r.data._id; }
+        } else {
+          v.patientId = patient._id || patient.patId || patient.id;
+          await apiFetch('/consultations/'+v._id, { method: 'PUT', body: v });
+        }
+      }
+    } catch(e){}
+  };
+
 
   // Determine active clinic services
   const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
@@ -1273,7 +1322,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
     overlay.querySelector('#btn-modal-view-lab')?.addEventListener('click', () => {
       openLabReportModal(p, family, v, v.labReport, (savedData) => {
         v.labReport = savedData;
-        saveLocalDB(db, clinicId);
+        window.syncVisitsToDB();
         showToast('Lab report updated');
       });
     });
@@ -1350,7 +1399,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
     }
 
     // 5. Persist to local storage
-    saveLocalDB(db, clinicId);
+    window.syncVisitsToDB();
 
     // 6. Asynchronously notify backend API (if server is running)
     try {
@@ -1490,7 +1539,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
       delPatientBtn.addEventListener('click', async () => {
         if (confirm(`Are you sure you want to delete patient record for "${patient.name}"?`)) {
           delete family.patients[patient.id];
-          saveLocalDB(db, clinicId);
+          window.syncVisitsToDB();
           showToast(`Patient ${patient.name} deleted`, 'error');
           const nextPat = Object.values(family.patients || {})[0];
           patient = nextPat || null;
@@ -1840,7 +1889,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           }
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncVisitsToDB();
         isNewVisitOpen = false;
         editingVisitId = null;
         attachedLabReport = null;
@@ -2030,7 +2079,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           if (v) {
             openLabReportModal(patient, family, v, v.labReport || {}, (savedLab) => {
               v.labReport = savedLab;
-              saveLocalDB(db, clinicId);
+              window.syncVisitsToDB();
               showToast('✨ Attached Lab Report updated');
               renderView();
             });
@@ -2101,7 +2150,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             }
           });
 
-          saveLocalDB(db, clinicId);
+          window.syncVisitsToDB();
           showToast(`✨ Case #${v.caseId} updated successfully!`);
           inlineEditingVisitId = null;
           renderView();
@@ -2143,7 +2192,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           v.received = received;
           v.due = due;
 
-          saveLocalDB(db, clinicId);
+          window.syncVisitsToDB();
           showToast(`✨ Case #${v.caseId} saved! Opening prescription...`);
           inlineEditingVisitId = null;
           renderView();
@@ -2217,7 +2266,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         if (v && v.labReport) {
           openLabReportModal(patient, family, v, v.labReport, (updatedLab) => {
             v.labReport = updatedLab;
-            saveLocalDB(db, clinicId);
+            window.syncVisitsToDB();
             renderView();
           });
         }
@@ -3116,7 +3165,7 @@ function openQuickAddDietaryModal(container, db, clinicId, onSuccess) {
     };
 
     db.dietary[code] = newEntry;
-    saveLocalDB(db, clinicId);
+    window.syncVisitsToDB();
     showToast(`✨ Dietary Template "${code}" saved to Master Data`);
 
     closeModal();

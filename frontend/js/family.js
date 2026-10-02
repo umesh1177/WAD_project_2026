@@ -8,16 +8,31 @@
 
 import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 
-export function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
+export async function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
   const clinicCode = getClinicPrefix(clinicId);
-  const db = getLocalDB(clinicId);
+  const db = {
+    families: {},
+    counters: { family: 0, patient: 0 },
+    customSocieties: [], customAreas: [], customAllergies: []
+  };
 
-  // Initialize custom datalist arrays if missing
-  if (!db.customSocieties) db.customSocieties = [];
-  if (!db.customAreas) db.customAreas = [];
-  if (!db.customAllergies) db.customAllergies = [];
+  try {
+    const res = await apiFetch('/families');
+    if (res.success && res.data) {
+      res.data.forEach(f => {
+        const id = f.famId || f.id || f._id;
+        db.families[id] = f;
+        if (f.patients && Array.isArray(f.patients)) {
+          const patMap = {};
+          f.patients.forEach(p => { patMap[p.patId || p.id || p._id] = p; });
+          db.families[id].patients = patMap;
+        }
+      });
+      db.counters.family = res.data.length;
+    }
+  } catch (e) { }
 
   let filterQuery = '';
   let expandedFamId = null;
@@ -28,8 +43,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
 
   // Calculate live next family ID preview
   const currentYear = new Date().getFullYear();
-  const existingFamilies = Object.values(db.families || {});
-  const nextSequence = (db.counters?.family || existingFamilies.length) + 1;
+  const nextSequence = (db.counters?.family || Object.keys(db.families || {}).length) + 1;
   const previewFamilyId = generateFamilyId(clinicId, currentYear, nextSequence);
 
   container.innerHTML = `
@@ -390,15 +404,6 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
   // Auto-Learn Datalist helper
   function checkAndLearnDatalist(val, type) {
     if (!val || !val.trim()) return;
-    const trimmed = val.trim();
-
-    if (type === 'society') {
-      addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: trimmed, area: '', createdAt: todayISO() }, db);
-    } else if (type === 'area') {
-      addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: trimmed, city: '', pincode: '', createdAt: todayISO() }, db);
-    } else if (type === 'allergy') {
-      addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: trimmed, category: 'General', severity: 'None', createdAt: todayISO() }, db);
-    }
   }
 
   headNameInput.addEventListener('input', (e) => {
@@ -481,6 +486,14 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
           const headPatKey = Object.keys(fam.patients).find(k => fam.patients[k].relation === 'Head') || Object.keys(fam.patients)[0];
           if (headPatKey && fam.patients[headPatKey]) {
             const hp = fam.patients[headPatKey];
+
+            try {
+              await apiFetch('/patients/' + (hp._id || hp.patId || hp.id), {
+                method: 'PUT',
+                body: { name: headName, age, bloodGroup, allergy, society, area, phone }
+              });
+            } catch (e) { }
+
             hp.name = headName;
             hp.age = age;
             hp.bloodGroup = bloodGroup;
@@ -490,7 +503,6 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
             hp.phone = phone;
           }
         }
-        saveLocalDB(db, clinicId);
       }
 
       showToast(`Family Head for FAM ${targetFamId} updated successfully!`);
@@ -571,7 +583,6 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     db.counters.patient = (db.counters.patient || 0) + 1;
     if (!db.families) db.families = {};
     db.families[finalFamId] = fam;
-    saveLocalDB(db, clinicId);
 
     showToast(`Family ID ${finalFamId} registered successfully!`);
     form.reset();
@@ -738,9 +749,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
             </div>
           </div>
 
-          ${
-            isExpanded
-              ? `
+          ${isExpanded
+            ? `
             <div style="padding: 8px 12px 10px; background: rgba(0,0,0,0.025); border-top: 1px solid var(--border-subtle);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: flex; align-items: center; gap: 5px;">
@@ -753,7 +763,7 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
               </div>
             </div>
           `
-              : ''
+            : ''
           }
         </div>
       `;
@@ -820,9 +830,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
         if (confirm(`Are you sure you want to permanently delete Family ID ${famId}? This will erase all members and visits.`)) {
           try {
             await apiFetch(`/families/${famId}`, { method: 'DELETE' });
-          } catch (err) {}
+          } catch (err) { }
           delete db.families[famId];
-          saveLocalDB(db, clinicId);
           if (editingFamId === famId) {
             clearEditMode();
           }

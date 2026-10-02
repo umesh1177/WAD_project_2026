@@ -68,10 +68,30 @@ export const AVAILABLE_SHORTCUT_TARGETS = [
   { category: 'Action', title: 'Toggle Light / Dark Theme Mode', target: 'toggle_theme', keyHint: 'Alt+T' },
 ];
 
-export function renderMastersView(container) {
+export async function renderMastersView(container) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const db = getLocalDB(clinicId);
+    const db = { 
+    dietary: {}, clinicShortcuts: { medicines:{}, complaints:{}, investigations:{}, allergies:{}, relations:{}, areas:{}, societies:{} }, 
+    customShortcuts: [] 
+  };
+  try {
+    const mRes = await apiFetch('/masters');
+    // minimal loading hook
+  } catch(e){}
+
+  window.syncMasters = async () => {
+    try {
+      // Masters update instantly over apiFetch via addSharedMasterItem, but for specific dietaries
+      for(let k in db.dietary) {
+        let d = db.dietary[k];
+        if(!d._id) {
+          let r = await apiFetch('/masters', { method: 'POST', body: Object.assign({}, d, { type: 'dietary', value: d.disease }) });
+          if(r.success) d._id = r.data._id;
+        }
+      }
+    } catch(e){}
+  };
 
   // Ensure clinic-specific structures exist in db
   if (!db.dietary) db.dietary = {};
@@ -105,7 +125,7 @@ export function renderMastersView(container) {
   (db.customShortcuts || []).forEach((sc, idx) => {
     if (!sc.id) sc.id = `sc_${idx + 1}_${(sc.key || '').toLowerCase()}`;
   });
-  saveLocalDB(db, clinicId);
+  window.syncMasters();
 
   // Active sub-tab state: 'dietary' | 'complaints' | 'investigations' | 'areas' | 'medicines' | 'allergies' | 'relations' | 'societies' | 'shortcuts'
   let activeTab = 'dietary';
@@ -1458,7 +1478,7 @@ export function renderMastersView(container) {
           updatedAt: todayISO(),
         };
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Dietary template "${code}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'complaints') {
         const code = backdrop.querySelector('#modal-complaint-code').value.trim().toUpperCase();
@@ -1484,7 +1504,7 @@ export function renderMastersView(container) {
         if (!db.customComplaints) db.customComplaints = [];
         if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Complaint "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'investigations') {
         const code = backdrop.querySelector('#modal-inv-code').value.trim().toUpperCase();
@@ -1510,7 +1530,7 @@ export function renderMastersView(container) {
         if (!db.customInvestigations) db.customInvestigations = [];
         if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Investigation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'areas') {
         const name = backdrop.querySelector('#modal-area-name').value.trim();
@@ -1523,7 +1543,7 @@ export function renderMastersView(container) {
           addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() }, db);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Area "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'medicines') {
         const code = backdrop.querySelector('#modal-med-code').value.trim().toUpperCase();
@@ -1547,7 +1567,7 @@ export function renderMastersView(container) {
           addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Medicine "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'allergies') {
         const code = backdrop.querySelector('#modal-allergy-code').value.trim().toUpperCase();
@@ -1571,7 +1591,7 @@ export function renderMastersView(container) {
           addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Allergy "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'relations') {
         const code = backdrop.querySelector('#modal-rel-code').value.trim().toUpperCase();
@@ -1595,7 +1615,7 @@ export function renderMastersView(container) {
           addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Relation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'societies') {
         const name = backdrop.querySelector('#modal-soc-name').value.trim();
@@ -1608,7 +1628,7 @@ export function renderMastersView(container) {
           addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() }, db);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Society "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'shortcuts') {
         const key = backdrop.querySelector('#modal-sc-key').value.trim().toUpperCase();
@@ -1635,7 +1655,7 @@ export function renderMastersView(container) {
           });
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         showToast(`✨ Shortcut "${key}" ${isEdit ? 'updated' : 'added'} successfully!`);
       }
 
@@ -1878,7 +1898,7 @@ export function renderMastersView(container) {
           showToast(`🗑️ Shortcut "${recordTitle}" deleted.`);
         }
 
-        saveLocalDB(db, clinicId);
+        window.syncMasters();
         renderView();
         return;
       }

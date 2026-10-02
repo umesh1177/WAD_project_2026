@@ -8,8 +8,8 @@
 const API_BASE_URL = window.location.origin.includes('5000')
   ? ''
   : window.location.port === '' || window.location.port === '80'
-  ? ''
-  : 'http://localhost:5000';
+    ? ''
+    : 'http://localhost:5000';
 
 /* ---- Storage & Helpers ---- */
 export const pad = (n, len = 4) => String(n || 0).padStart(len, '0');
@@ -123,8 +123,8 @@ export async function apiFetch(endpoint, options = {}) {
     }
     return data;
   } catch (err) {
-    console.warn(`[API Network fallback for ${endpoint}]:`, err.message);
-    return fallbackLocalHandler(endpoint, config);
+    console.error(`[API Network Error for ${endpoint}]:`, err.message);
+    throw err;
   }
 }
 
@@ -489,123 +489,17 @@ export const defaultFeedbacks = [
 
 /* ---- Offline/Local DB Fallback Engine ---- */
 export function getLocalDB(clinicId = 'demo') {
-  const cleanId = String(clinicId || 'demo').trim();
-  const key = `clinic-db-${cleanId}`;
-  let db = null;
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) db = JSON.parse(stored);
-  } catch (e) {}
-
-  if (cleanId === 'demo') {
-    // Only the default demo clinic gets seeded with demo patients and demo shortcuts
-    const hasLegacyPatIds = db && db.families && Object.values(db.families).some(f => Object.keys(f.patients || {}).some(pk => pk.length > 8));
-    if (!db || !db.families || Object.keys(db.families).length < 4 || Object.keys(db.families).some(k => k.includes('-') || k.length < 12) || hasLegacyPatIds || !db.appointments || db.appointments.length === 0) {
-      db = seedLocalDatabase();
-      localStorage.setItem(key, JSON.stringify(db));
-    }
-  } else {
-    // Custom clinics are strictly isolated and start clean with zero other clinic data or shortcuts!
-    if (!db) {
-      db = {
-        counters: { family: 0, patient: 0, visit: 0 },
-        families: {},
-        appointments: [],
-        certificates: [],
-        certificateTemplates: [...defaultCertificateTemplates],
-        bills: [],
-        feedbacks: [],
-        dietary: {}, // Completely clean and empty for new clinics
-        clinicShortcuts: {
-          medicines: {},
-          complaints: {},
-          investigations: {},
-          allergies: {},
-          relations: {},
-          areas: {},
-          societies: {},
-        },
-        _shortcutsCleanedV2: true,
-        masterMedicines: [],
-        masterComplaints: [],
-        masterInvestigations: [],
-        masterAreas: [],
-        masterSocieties: [],
-        masterAllergies: [],
-        masterRelations: [],
-        customShortcuts: [
-          { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
-          { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', category: 'Navigation' },
-          { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', category: 'Navigation' },
-          { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', category: 'Navigation' },
-          { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', category: 'Navigation' },
-          { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', category: 'Navigation' },
-          { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', category: 'Navigation' },
-          { id: 'sc8', key: 'F8', target: 'feedback', title: 'Send Complaint / Feedback', category: 'Support' },
-          { id: 'sc9', key: '/', target: 'quick_search', title: 'Quick Global Search', category: 'Action' },
-          { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' }
-        ]
-      };
-      localStorage.setItem(key, JSON.stringify(db));
-    } else if (db._shortcutsCleanedV2 !== true) {
-      // Clean legacy demo shortcuts from any previously seeded non-demo clinic
-      db.clinicShortcuts = {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      };
-      if (db.counters && db.counters.family === 6 && db.counters.patient === 16) {
-        db.dietary = {};
-      }
-      db._shortcutsCleanedV2 = true;
-      localStorage.setItem(key, JSON.stringify(db));
-    }
-  }
-
-  // Ensure all collections exist
-  if (!db.families) db.families = {};
-  if (!db.appointments) db.appointments = [];
-  if (!db.certificates) db.certificates = [];
-  if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
-  if (!db.bills) db.bills = [];
-  if (!db.feedbacks) db.feedbacks = [];
-  if (!db.dietary) db.dietary = {};
-  if (!db.clinicShortcuts) {
-    db.clinicShortcuts = {
-      medicines: {},
-      complaints: {},
-      investigations: {},
-      allergies: {},
-      relations: {},
-      areas: {},
-      societies: {},
-    };
-  }
-  if (!db.customShortcuts) db.customShortcuts = [];
-  if (!db.masterMedicines) db.masterMedicines = [];
-  if (!db.masterComplaints) db.masterComplaints = [];
-  if (!db.masterInvestigations) db.masterInvestigations = [];
-  if (!db.masterAreas) db.masterAreas = [];
-  if (!db.masterSocieties) db.masterSocieties = [];
-  if (!db.masterAllergies) db.masterAllergies = [];
-  if (!db.masterRelations) db.masterRelations = [];
-
-  // Strip any legacy code fields from local master arrays
-  if (Array.isArray(db.masterMedicines)) {
-    db.masterMedicines = db.masterMedicines.map(m => {
-      if (m && m.code) {
-        const { code, ...rest } = m;
-        return rest;
-      }
-      return m;
-    });
-  }
-
-  return db;
+  return {
+    families: {},
+    counters: { family: 0, patient: 0, visit: 0 },
+    customShortcuts: [], masterMedicines: [], masterComplaints: [], masterInvestigations: [],
+    masterAreas: [], masterSocieties: [], masterAllergies: [], masterRelations: [],
+    dietary: {}, billing: { payments: {}, total: 0 }, fees: {}, defaultInventory: [],
+    stock: {}, labInvestigations: [],
+    certificateTemplates: [], patientCertificates: {},
+    feedbacks: [], feedbackForms: [],
+    clinicRequests: [],
+  };
 }
 
 export function saveLocalDB(db, clinicId = 'demo') {
@@ -1638,7 +1532,7 @@ function fallbackLocalHandler(endpoint, config) {
         const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
         globalTickets.unshift(newTicket);
         localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
-      } catch (e) {}
+      } catch (e) { }
 
       return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
     }

@@ -23,15 +23,12 @@ const QUEUE_STORAGE_KEY = 'clinic_consultation_queue';
 export async function renderPatientQueueView(container, onSelectPatientForConsultation) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const db = getLocalDB(clinicId);
-
-  // Sync patient queue from DB or localStorage
-  let queue = db.patientQueue || [];
-  if (!queue || queue.length === 0) {
-    try {
-      const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-      if (raw) queue = JSON.parse(raw);
-    } catch (e) {}
+  let queue = [];
+  try {
+    const res = await apiFetch('/appointments');
+    if (res.success) queue = res.data || [];
+  } catch (e) {
+    console.error('Failed to load queue', e);
   }
 
   // Filter state - default to 'pending'
@@ -102,9 +99,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
             </span>
           </div>
 
-          ${
-            activeList.length === 0
-              ? `
+          ${activeList.length === 0
+        ? `
             <div style="text-align: center; padding: 50px 20px; color: var(--text-muted);">
               <i class="fa-solid ${currentQueueTab === 'completed' ? 'fa-clipboard-check' : 'fa-users-slash'}" style="font-size: 40px; margin-bottom: 12px; display: block; opacity: 0.4;"></i>
               <div style="font-size: 16px; font-weight: 800; color: var(--text);">
@@ -113,18 +109,17 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
               <p style="font-size: 12.5px; margin-top: 6px;">
                 ${currentQueueTab === 'completed' ? 'Consultations completed by the doctor will appear here.' : 'Arriving patients registered by the receptionist will appear here live in real-time.'}
               </p>
-              ${
-                currentQueueTab === 'pending'
-                  ? `
+              ${currentQueueTab === 'pending'
+          ? `
                 <button type="button" id="btn-add-walkin-empty" class="cms-btn cms-btn-primary" style="margin-top: 14px; padding: 9px 20px;">
                   <i class="fa-solid fa-user-plus"></i> Add Walk-In Patient to Queue
                 </button>
               `
-                  : ''
-              }
+          : ''
+        }
             </div>
           `
-              : `
+        : `
             <div class="cms-table-wrapper" style="margin: 0;">
               <table class="cms-table" style="width: 100%;">
                 <thead>
@@ -141,24 +136,24 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
                 </thead>
                 <tbody>
                   ${activeList
-                    .map((q, idx) => {
-                      const st = q.status || 'Waiting';
-                      const statusColor = {
-                        Waiting: '#b91c1c',
-                        'In Consultation': '#166534',
-                        Completed: '#0369a1',
-                        Done: '#0369a1',
-                      };
-                      const statusBg = {
-                        Waiting: '#fee2e2',
-                        'In Consultation': '#dcfce7',
-                        Completed: '#e0f2fe',
-                        Done: '#e0f2fe',
-                      };
-                      const col = statusColor[st] || 'var(--text-muted)';
-                      const bg = statusBg[st] || 'var(--surface-alt)';
+          .map((q, idx) => {
+            const st = q.status || 'Waiting';
+            const statusColor = {
+              Waiting: '#b91c1c',
+              'In Consultation': '#166534',
+              Completed: '#0369a1',
+              Done: '#0369a1',
+            };
+            const statusBg = {
+              Waiting: '#fee2e2',
+              'In Consultation': '#dcfce7',
+              Completed: '#e0f2fe',
+              Done: '#e0f2fe',
+            };
+            const col = statusColor[st] || 'var(--text-muted)';
+            const bg = statusBg[st] || 'var(--surface-alt)';
 
-                      return `
+            return `
                       <tr>
                         <td>
                           <span class="cms-pill font-mono" style="background: var(--primary-soft); color: var(--primary-dark); font-weight: 900; font-size: 13px;">
@@ -187,17 +182,16 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
                           </div>
                         </td>
                         <td>
-                          ${
-                            q.vitals && (q.vitals.bp || q.vitals.pulse || q.vitals.temp || q.vitals.spo2 || q.vitals.weight)
-                              ? `
+                          ${q.vitals && (q.vitals.bp || q.vitals.pulse || q.vitals.temp || q.vitals.spo2 || q.vitals.weight)
+                ? `
                             <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                               ${q.vitals.bp ? `<span class="cms-pill" style="font-size: 10px; background: var(--surface-alt); border: 1px solid var(--border); font-weight: 700;">BP: ${q.vitals.bp}</span>` : ''}
                               ${q.vitals.pulse ? `<span class="cms-pill" style="font-size: 10px; background: var(--surface-alt); border: 1px solid var(--border); font-weight: 700;">HR: ${q.vitals.pulse}</span>` : ''}
                               ${q.vitals.temp ? `<span class="cms-pill" style="font-size: 10px; background: var(--surface-alt); border: 1px solid var(--border); font-weight: 700;">${q.vitals.temp}</span>` : ''}
                             </div>
                           `
-                              : `<span style="font-size: 11px; color: #94a3b8; font-style: italic;">No vitals</span>`
-                          }
+                : `<span style="font-size: 11px; color: #94a3b8; font-style: italic;">No vitals</span>`
+              }
                         </td>
                         <td style="font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text-muted);">
                           ${q.arrivedAt || '-'}
@@ -220,15 +214,14 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
                               <span>${st === 'In Consultation' ? 'Continue' : st === 'Completed' ? 'Reopen' : 'Consult'}</span>
                             </button>
 
-                            ${
-                              st !== 'Completed'
-                                ? `
+                            ${st !== 'Completed'
+                ? `
                               <button type="button" class="cms-btn cms-btn-ghost btn-mark-queue-done" data-token="${q.token}" style="font-size: 11px; padding: 5px 8px; border: 1px solid var(--border); color: #059669;" title="Mark as Completed">
                                 <i class="fa-solid fa-check"></i>
                               </button>
                             `
-                                : ''
-                            }
+                : ''
+              }
 
                             <button type="button" class="cms-btn cms-btn-danger btn-del-queue-item" data-token="${q.token}" style="font-size: 11px; padding: 5px 8px;" title="Remove from Queue">
                               <i class="fa-solid fa-trash-can"></i>
@@ -237,13 +230,13 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
                         </td>
                       </tr>
                     `;
-                    })
-                    .join('')}
+          })
+          .join('')}
                 </tbody>
               </table>
             </div>
           `
-          }
+      }
         </div>
 
       </div>
@@ -285,9 +278,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
         const item = queue.find((q) => q.token === token);
         if (item) {
           item.status = 'In Consultation';
-          db.patientQueue = queue;
-          saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          const apiId = item._id || item.id;
+          if (apiId) apiFetch(`/appointments/${apiId}`, { method: 'PUT', body: { status: 'In Consultation' } }).catch(console.error);
         }
 
         // Navigate doctor directly to consultation view with preselected patient!
@@ -314,9 +306,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
         const item = queue.find((q) => q.token === token);
         if (item) {
           item.status = 'Completed';
-          db.patientQueue = queue;
-          saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          const apiId = item._id || item.id;
+          if (apiId) apiFetch(`/appointments/${apiId}`, { method: 'PUT', body: { status: 'Completed' } }).catch(console.error);
           renderView();
           showToast(`Token ${token} marked as Completed`);
         }
@@ -327,11 +318,11 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
     container.querySelectorAll('.btn-del-queue-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         const token = btn.getAttribute('data-token');
+        const item = queue.find((q) => q.token === token);
         if (confirm(`Remove token ${token} from today's queue?`)) {
           queue = queue.filter((q) => q.token !== token);
-          db.patientQueue = queue;
-          saveLocalDB(db, clinicId);
-          localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+          const apiId = item ? (item._id || item.id) : null;
+          if (apiId) apiFetch(`/appointments/${apiId}`, { method: 'DELETE' }).catch(console.error);
           renderView();
           showToast(`Token ${token} removed from queue`);
         }
@@ -401,9 +392,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
             <!-- Pre-Consultation Vitals -->
             <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px;">
               <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">OPD Triage Vitals</div>
-              ${
-                item.vitals && (item.vitals.bp || item.vitals.pulse || item.vitals.temp || item.vitals.spo2 || item.vitals.weight)
-                  ? `
+              ${item.vitals && (item.vitals.bp || item.vitals.pulse || item.vitals.temp || item.vitals.spo2 || item.vitals.weight)
+        ? `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px;">
                   ${item.vitals.bp ? `<div style="background: var(--surface-alt); padding: 6px 8px; border-radius: 6px; font-size: 11.5px;"><span style="color: var(--text-muted); display: block; font-size: 10px;">BP</span><b>${item.vitals.bp}</b></div>` : ''}
                   ${item.vitals.pulse ? `<div style="background: var(--surface-alt); padding: 6px 8px; border-radius: 6px; font-size: 11.5px;"><span style="color: var(--text-muted); display: block; font-size: 10px;">Pulse</span><b>${item.vitals.pulse}</b></div>` : ''}
@@ -412,8 +402,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
                   ${item.vitals.weight ? `<div style="background: var(--surface-alt); padding: 6px 8px; border-radius: 6px; font-size: 11.5px;"><span style="color: var(--text-muted); display: block; font-size: 10px;">Weight</span><b>${item.vitals.weight}</b></div>` : ''}
                 </div>
               `
-                  : `<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">No pre-consultation vitals recorded.</div>`
-              }
+        : `<div style="font-size: 12px; color: var(--text-muted); font-style: italic;">No pre-consultation vitals recorded.</div>`
+      }
             </div>
 
             <div style="font-size: 11.5px; color: var(--text-muted); display: flex; justify-content: space-between;">
@@ -440,9 +430,8 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
     modalRoot.querySelector('#btn-start-consult-from-modal')?.addEventListener('click', () => {
       closeModal();
       item.status = 'In Consultation';
-      db.patientQueue = queue;
-      saveLocalDB(db, clinicId);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+      const apiId = item._id || item.id;
+      if (apiId) apiFetch(`/appointments/${apiId}`, { method: 'PUT', body: { status: 'In Consultation' } }).catch(console.error);
 
       if (typeof onSelectPatientForConsultation === 'function') {
         onSelectPatientForConsultation({ familyId: item.familyId, patientId: item.patientId });
@@ -458,26 +447,26 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
   }
 
   // Add Walk-in Modal
-  function openWalkinModal() {
+  async function openWalkinModal() {
     const modalRoot = container.querySelector('#modal-add-walkin-container');
     if (!modalRoot) return;
 
-    // Collect all registered patients for autocomplete
-    const allPatients = [];
-    Object.values(db.families || {}).forEach((f) => {
-      Object.values(f.patients || {}).forEach((p) => {
-        allPatients.push({
-          id: p.id || p.patId,
+    let allPatients = [];
+    try {
+      const res = await apiFetch('/patients');
+      if (res.success && res.data) {
+        allPatients = res.data.map(p => ({
+          id: p._id || p.patId,
           name: p.name,
           age: p.age,
           gender: p.gender,
-          familyId: f.famId || f.id,
-          familyHead: f.headName,
-          phone: p.phone || f.phone,
-          area: f.area,
-        });
-      });
-    });
+          familyId: p.familyId ? (typeof p.familyId === 'object' ? p.familyId._id : p.familyId) : '',
+          familyHead: p.familyId && p.familyId.headName ? p.familyId.headName : (p.familyHead || 'Self'),
+          phone: p.phone,
+          area: p.area
+        }));
+      }
+    } catch (e) { }
 
     const nextToken = `T-${pad(queue.length + 1, 2)}`;
 
@@ -507,11 +496,11 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
               <input type="text" id="walkin-lookup" class="cms-input" list="dl-walkin-patients" placeholder="Type name or phone to auto-fill..." style="padding: 7px 10px;" />
               <datalist id="dl-walkin-patients">
                 ${allPatients
-                  .map(
-                    (p) =>
-                      `<option value="${p.name}">ID: ${p.id} &bull; Head: ${p.familyHead} &bull; Ph: ${p.phone}</option>`
-                  )
-                  .join('')}
+        .map(
+          (p) =>
+            `<option value="${p.name}">ID: ${p.id} &bull; Head: ${p.familyHead} &bull; Ph: ${p.phone}</option>`
+        )
+        .join('')}
               </datalist>
             </div>
 
@@ -585,7 +574,7 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       }
     });
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const patientName = nameInput.value.trim().toUpperCase();
       const age = ageInput.value.trim();
@@ -613,10 +602,14 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
         status: 'Waiting',
       };
 
-      queue.push(newEntry);
-      db.patientQueue = queue;
-      saveLocalDB(db, clinicId);
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+      try {
+        const res = await apiFetch('/appointments', {
+          method: 'POST',
+          body: newEntry
+        });
+        if (res && res.success && res.data) queue.push(res.data);
+        else queue.push(newEntry);
+      } catch (e) { queue.push(newEntry); }
 
       closeModal();
       showToast(`✅ Added ${patientName} to Patient Queue (${nextToken})`);
@@ -627,14 +620,12 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
   // Cross-tab real-time sync with Receptionist desk
   const storageHandler = (e) => {
     if (e.key === QUEUE_STORAGE_KEY || (e.key && e.key.startsWith('clinic_db_'))) {
-      const freshDb = getLocalDB(clinicId);
-      queue = freshDb.patientQueue || [];
-      if (!queue || queue.length === 0) {
-        try {
-          const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-          if (raw) queue = JSON.parse(raw);
-        } catch (err) {}
-      }
+      apiFetch('/appointments').then(res => {
+        if (res.success) {
+          queue = res.data || [];
+          renderView();
+        }
+      }).catch(() => { });
       renderView();
     }
   };

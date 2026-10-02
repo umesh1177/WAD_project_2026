@@ -65,11 +65,7 @@ function boot() {
     return;
   }
 
-  db = getLocalDB(clinicId);
-  if (!db.patientQueue) {
-    try { db.patientQueue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { db.patientQueue = []; }
-    saveLocalDB(db, clinicId);
-  }
+  // db load stripped
 
   setupHeader();
   setupInteractions();
@@ -77,14 +73,7 @@ function boot() {
   startClock();
   navigateTo('dashboard');
 
-  // Cross-tab sync
-  window.addEventListener('storage', e => {
-    if (e.key === QUEUE_KEY || (e.key || '').startsWith('clinic_db_')) {
-      db = getLocalDB(clinicId);
-      updateQueueBadge();
-      if (currentView === 'dashboard' || currentView === 'queue') renderView();
-    }
-  });
+  // Storage sync stripped
 }
 
 // ---- Clinic Header Setup ----
@@ -154,15 +143,20 @@ function startClock() {
 }
 
 // ---- Queue Badge ----
-function updateQueueBadge() {
-  const waiting = (db.patientQueue || []).filter(q => !q.status || q.status === 'Waiting').length;
+async function updateQueueBadge() {
   const kbd = document.getElementById('rec-queue-kbd');
   if (!kbd) return;
-  if (waiting > 0) {
-    kbd.innerHTML = `<span style="background:#d32f2f;color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:800;">${waiting}</span>`;
-  } else {
-    kbd.innerHTML = `<i class="fa-solid fa-clock"></i>`;
-  }
+  try {
+    const res = await apiFetch('/appointments');
+    if (res.success && res.data) {
+      const waiting = res.data.filter(q => !q.status || q.status === 'Waiting').length;
+      if (waiting > 0) {
+        kbd.innerHTML = `<span style="background:#d32f2f;color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:800;">${waiting}</span>`;
+      } else {
+        kbd.innerHTML = `<i class="fa-solid fa-clock"></i>`;
+      }
+    }
+  } catch (e) { }
 }
 
 // ---- Interactions ----
@@ -247,19 +241,18 @@ function navigateTo(view, selection = null) {
     item.classList.toggle('active', item.dataset.view === view);
   });
 
-  db = getLocalDB(clinicId);
   updateQueueBadge();
   renderView();
 }
 
 // ---- View Router ----
-function renderView() {
+async function renderView() {
   const container = document.getElementById('rec-view-container');
   if (!container) return;
   container.innerHTML = '';
 
   if (currentView === 'dashboard') {
-    renderDashboard(container);
+    await renderDashboard(container);
   } else if (currentView === 'family') {
     // Reuses exact same form as doctor dashboard
     renderFamilyRegistration(
@@ -292,9 +285,9 @@ function renderView() {
     // Setup dynamic submit button text for receptionist
     setupReceptionistMemberForm(container);
   } else if (currentView === 'queue') {
-    renderQueueView(container);
+    await renderQueueView(container);
   } else if (currentView === 'search') {
-    renderSearchView(container);
+    await renderSearchView(container);
   }
 }
 
@@ -352,59 +345,52 @@ function setupReceptionistMemberForm(container) {
 
 // ---- Direct Queue Push (No popup required) ----
 async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation') {
-  db = getLocalDB(clinicId);
-  const family = db.families?.[familyId] || Object.values(db.families || {}).find(f => f.famId === familyId || f.id === familyId);
-  const patient = family?.patients
-    ? (family.patients[patientId] || Object.values(family.patients).find(p => p.patId === patientId || p.id === patientId))
-    : null;
-
-  const patName = patient?.name || family?.headName || 'Patient';
-  const age = patient?.age || '';
-  const gender = patient?.gender || 'Male';
-  const phone = patient?.phone || family?.phone || '';
-  const area = patient?.area || family?.area || '';
-
-  const token = pushToQueue({
-    patientId: patient?.patId || patient?.id || patientId,
-    patientName: patName,
-    familyId: family?.famId || family?.id || familyId,
-    familyHead: family?.headName || patName,
-    age,
-    gender,
-    phone,
-    area,
-    complaint,
-    vitals: {}
-  });
-
-  // Sync to backend API dynamically
   try {
-    await apiFetch('/queue/push', {
+    const pRes = await apiFetch('/patients');
+    const allPats = pRes.data || [];
+    const patient = allPats.find(p => p._id === patientId || p.patId === patientId);
+
+    const token = 'T-' + pad(Math.floor(Math.random() * 99), 2);
+    await apiFetch('/appointments', {
       method: 'POST',
       body: {
-        patientId: patient?.patId || patient?.id || patientId,
-        patientName: patName,
-        familyId: family?.famId || family?.id || familyId,
+        token: token,
+        patientId: patient ? (patient._id || patientId) : patientId,
+        patientName: patient?.name || 'Patient',
+        name: patient?.name || 'Patient',
+        familyId: patient?.familyId ? (patient.familyId._id || familyId) : familyId,
+        familyHead: patient?.familyId?.headName || patient?.name,
+        age: patient?.age || '',
+        gender: patient?.gender || '',
+        phone: patient?.phone || '',
+        area: patient?.area || '',
         complaint,
-        token,
-        vitals: {}
+        vitals: {},
+        date: todayISO()
       }
     });
+    showToast(`✅ Added to Patient Queue`);
   } catch (err) {
     console.warn('Backend queue push sync note:', err);
   }
-
-  showToast(`✅ ${patName} added to Patient Queue (Token: ${token})`);
   navigateTo('queue');
 }
 
 // ---- Dashboard View ----
-function renderDashboard(container) {
-  const families = Object.values(db.families || {});
+async function renderDashboard(container) {
   let totalPatients = 0;
-  families.forEach(f => { totalPatients += Object.keys(f.patients || {}).length; });
+  let familiesCount = 0;
+  let queue = [];
+  try {
+    const patRes = await apiFetch('/patients');
+    if (patRes.success) {
+      totalPatients = patRes.data.length;
+      familiesCount = new Set(patRes.data.map(p => p.familyId && p.familyId._id ? p.familyId._id : p.familyId)).size;
+    }
+    const aptRes = await apiFetch('/appointments');
+    if (aptRes.success) queue = aptRes.data || [];
+  } catch (e) { }
 
-  const queue = db.patientQueue || [];
   const waiting = queue.filter(q => !q.status || q.status === 'Waiting');
   const inConsult = queue.filter(q => q.status === 'In Consultation');
   const completed = queue.filter(q => q.status === 'Completed' || q.status === 'Done');
@@ -432,7 +418,7 @@ function renderDashboard(container) {
 
       <!-- KPI Summary Cards -->
       <div class="cms-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
-        ${kpiCard('fa-people-roof', families.length, 'Registered Families', 'var(--primary)')}
+        ${kpiCard('fa-people-roof', familiesCount, 'Registered Families', 'var(--primary)')}
         ${kpiCard('fa-users', totalPatients, 'Total Patients', 'var(--info)')}
         ${kpiCard('fa-clock', waiting.length, 'Waiting in Queue', 'var(--danger)')}
         ${kpiCard('fa-stethoscope', inConsult.length, 'In Consultation', 'var(--accent)')}
@@ -472,8 +458,13 @@ window.recNav = (view) => navigateTo(view);
 // ---- Queue View ----
 let currentQueueTab = 'pending'; // 'pending' | 'completed'
 
-function renderQueueView(container) {
-  const queue = db.patientQueue || [];
+async function renderQueueView(container) {
+  let queue = [];
+  try {
+    const r = await apiFetch('/appointments');
+    if (r.success) queue = r.data || [];
+  } catch (e) { }
+
   const pendingQueue = queue.filter(q => !q.status || q.status === 'Waiting' || q.status === 'In Consultation');
   const completedQueue = queue.filter(q => q.status === 'Completed' || q.status === 'Done');
 
@@ -545,16 +536,16 @@ function renderQueueTable(list, activeTab) {
         </thead>
         <tbody>
           ${list.map((q, i) => {
-            const st = q.status || 'Waiting';
-            const col = statusColor[st] || 'var(--text-muted)';
-            const bg = statusBg[st] || 'var(--surface-alt)';
-            return `
+    const st = q.status || 'Waiting';
+    const col = statusColor[st] || 'var(--text-muted)';
+    const bg = statusBg[st] || 'var(--surface-alt)';
+    return `
               <tr>
-                <td><span class="cms-pill font-mono" style="background:var(--primary-soft);color:var(--primary-dark);font-weight:800;font-size:12px;">${q.token || 'T-' + pad(i+1,2)}</span></td>
+                <td><span class="cms-pill font-mono" style="background:var(--primary-soft);color:var(--primary-dark);font-weight:800;font-size:12px;">${q.token || 'T-' + pad(i + 1, 2)}</span></td>
                 <td>
                   <div style="font-weight:800;color:var(--text);font-size:13.5px;">${q.patientName || q.name}</div>
                   <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">
-                    ${q.age ? q.age+' Yrs' : 'Adult'}${q.gender ? ' · '+q.gender : ''} · <span class="font-mono">${q.patientId || 'ID-N/A'}</span>
+                    ${q.age ? q.age + ' Yrs' : 'Adult'}${q.gender ? ' · ' + q.gender : ''} · <span class="font-mono">${q.patientId || 'ID-N/A'}</span>
                   </div>
                 </td>
                 <td>
@@ -590,7 +581,7 @@ function renderQueueTable(list, activeTab) {
                 </td>
               </tr>
             `;
-          }).join('')}
+  }).join('')}
         </tbody>
       </table>
     </div>
@@ -615,35 +606,42 @@ function wireQueueActions(container) {
 
   // Action Buttons
   container.querySelectorAll('.queue-action-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const action = btn.dataset.action;
       const token = btn.dataset.token;
-      const queue = db.patientQueue || [];
-      const item = queue.find(q => q.token === token);
 
       if (action === 'remove') {
-        db.patientQueue = queue.filter(q => q.token !== token);
-        saveQueue(db.patientQueue);
-        showToast(`Removed token ${token} from queue`);
-      } else if (item) {
-        if (action === 'consult') {
-          item.status = 'In Consultation';
-          showToast(`${item.patientName} called for consultation`);
-        } else if (action === 'complete') {
-          item.status = 'Completed';
-          showToast(`${item.patientName} marked as completed`);
-        }
-        saveQueue(queue);
+        // Here we'd map token back to ID or query the ID. Best to hit API to find it.
+        try {
+          const r = await apiFetch('/appointments');
+          const i = (r.data || []).find(x => x.token === token);
+          if (i && i._id) await apiFetch('/appointments/' + i._id, { method: 'DELETE' });
+          showToast(`Removed token ${token}`);
+          renderQueueView(container);
+        } catch (e) { }
+      } else {
+        try {
+          const r = await apiFetch('/appointments');
+          const item = (r.data || []).find(x => x.token === token);
+          if (item && item._id) {
+            const newStat = action === 'consult' ? 'In Consultation' : 'Completed';
+            await apiFetch('/appointments/' + item._id, { method: 'PUT', body: { status: newStat } });
+            showToast(`${item.patientName || item.name} updated to ${newStat}`);
+            renderQueueView(container);
+          }
+        } catch (e) { }
       }
-      db = getLocalDB(clinicId);
-      renderQueueView(container);
     });
   });
 }
 
-function openQueueDetailModal(token) {
-  db = getLocalDB(clinicId);
-  const queue = db.patientQueue || [];
+async function openQueueDetailModal(token) {
+  let queue = [];
+  try {
+    const r = await apiFetch('/appointments');
+    if (r.success) queue = r.data || [];
+  } catch (e) { }
+
   const item = queue.find(q => q.token === token);
   if (!item) {
     showToast('Patient record not found in queue', 'error');
@@ -721,49 +719,24 @@ function openQueueDetailModal(token) {
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
-function saveQueue(queueArr) {
-  db.patientQueue = queueArr;
-  saveLocalDB(db, clinicId);
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queueArr));
-  updateQueueBadge();
-}
-
-function pushToQueue(data) {
-  const queue = db.patientQueue || [];
-  const today = todayISO();
-  const todayQ = queue.filter(q => (q.date || today) === today);
-  const token = 'T-' + pad(todayQ.length + 1, 2);
-
-  queue.push({
-    token,
-    patientId: data.patientId,
-    patientName: data.patientName,
-    name: data.patientName,
-    familyId: data.familyId,
-    familyHead: data.familyHead,
-    age: data.age,
-    gender: data.gender,
-    phone: data.phone,
-    area: data.area,
-    complaint: data.complaint || 'OPD Consultation',
-    vitals: data.vitals || {},
-    arrivedAt: nowTime(),
-    date: today,
-    status: 'Waiting'
-  });
-
-  saveQueue(queue);
-  return token;
-}
+// Disabled local pushToQueue implementations
 
 // ---- Search & Direct Push View ----
-function renderSearchView(container) {
-  const allPats = [];
-  Object.values(db.families || {}).forEach(f => {
-    Object.values(f.patients || {}).forEach(p => {
-      allPats.push({ ...p, familyId: f.famId||f.id, familyHead: f.headName, familyPhone: f.phone, area: f.area });
-    });
-  });
+async function renderSearchView(container) {
+  let allPats = [];
+  try {
+    const res = await apiFetch('/patients');
+    if (res.success && res.data) {
+      allPats = res.data.map(p => ({
+        ...p,
+        id: p._id || p.patId,
+        familyId: p.familyId ? (p.familyId._id || p.familyId) : '',
+        familyHead: p.familyId && p.familyId.headName ? p.familyId.headName : (p.familyHead || 'Self'),
+        familyPhone: p.phone,
+        area: p.area
+      }));
+    }
+  } catch (e) { }
 
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:16px;">
@@ -797,12 +770,12 @@ function buildSearchCards(list, q) {
   const ql = (q || '').trim().toLowerCase();
   const filtered = list.filter(p => {
     if (!ql) return true;
-    return (p.name||'').toLowerCase().includes(ql)
-      || (p.patId||p.id||'').toLowerCase().includes(ql)
-      || (p.familyHead||'').toLowerCase().includes(ql)
-      || (p.familyId||'').toLowerCase().includes(ql)
-      || (p.phone||p.familyPhone||'').includes(ql)
-      || (p.area||'').toLowerCase().includes(ql);
+    return (p.name || '').toLowerCase().includes(ql)
+      || (p.patId || p.id || '').toLowerCase().includes(ql)
+      || (p.familyHead || '').toLowerCase().includes(ql)
+      || (p.familyId || '').toLowerCase().includes(ql)
+      || (p.phone || p.familyPhone || '').includes(ql)
+      || (p.area || '').toLowerCase().includes(ql);
   });
 
   if (!filtered.length) return `
@@ -823,19 +796,19 @@ function buildSearchCards(list, q) {
       <div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <div>
-            <span class="cms-pill cms-badge-paid font-mono" style="font-size:10px;">${p.patId||p.id}</span>
+            <span class="cms-pill cms-badge-paid font-mono" style="font-size:10px;">${p.patId || p.id}</span>
             <div style="font-size:15px;font-weight:800;color:var(--text);margin:5px 0 2px;">${p.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${p.age?p.age+' yrs':''} ${p.gender?'· '+p.gender:''} · <b>${p.relation||'Self'}</b></div>
+            <div style="font-size:12px;color:var(--text-muted);">${p.age ? p.age + ' yrs' : ''} ${p.gender ? '· ' + p.gender : ''} · <b>${p.relation || 'Self'}</b></div>
           </div>
           ${p.bloodGroup ? `<span class="cms-pill" style="background:var(--danger-soft);color:var(--danger);font-size:10.5px;">${p.bloodGroup}</span>` : ''}
         </div>
         <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:8px 10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);">
           <div><i class="fa-solid fa-people-roof" style="color:var(--primary);"></i> Head: <b style="color:var(--text);">${p.familyHead}</b></div>
-          <div style="margin-top:2px;"><i class="fa-solid fa-phone"></i> ${p.phone||p.familyPhone||'-'} &bull; ${p.area||'General'}</div>
+          <div style="margin-top:2px;"><i class="fa-solid fa-phone"></i> ${p.phone || p.familyPhone || '-'} &bull; ${p.area || 'General'}</div>
         </div>
       </div>
       <button type="button" class="cms-btn cms-btn-primary btn-push-queue"
-        data-patid="${p.patId||p.id}" data-famid="${p.familyId}"
+        data-patid="${p.patId || p.id}" data-famid="${p.familyId}"
         style="font-size:12.5px;justify-content:center;">
         <i class="fa-solid fa-arrow-right-to-bracket"></i> Add to Patient Queue
       </button>

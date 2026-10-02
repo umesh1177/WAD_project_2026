@@ -28,10 +28,27 @@ export async function renderFeedbackView(container) {
     name: 'Dhyey Clinic & Hospital',
   };
 
-  const db = getLocalDB(clinicId);
+    const db = { feedbacks: [], feedbackForms: [] };
+  try {
+    const fRes = await apiFetch('/feedbacks');
+    if (fRes && fRes.success) {
+      db.feedbacks = fRes.data;
+    }
+  } catch(e){}
+
+  window.syncFeedback = async () => {
+    try {
+      for(let f of db.feedbacks) {
+        if(!f._id) { 
+          let r = await apiFetch('/feedbacks', { method: 'POST', body: f });
+          if(r.success) f._id = r.data._id;
+        }
+      }
+    } catch(e){}
+  };
   if (!db.feedbacks || db.feedbacks.length === 0) {
     db.feedbacks = [...defaultFeedbacks];
-    saveLocalDB(db, clinicId);
+    window.syncFeedback();
   }
 
   // Load tickets from API with local fallback
@@ -41,7 +58,7 @@ export async function renderFeedbackView(container) {
     if (res && res.data) {
       tickets = res.data;
       db.feedbacks = tickets;
-      saveLocalDB(db, clinicId);
+      window.syncFeedback();
     }
   } catch (e) {}
 
@@ -719,7 +736,7 @@ export async function renderFeedbackView(container) {
             tickets[ticketIndex] = { ...tickets[ticketIndex], ...res.data, id: res.data._id || res.data.id || id };
           }
           db.feedbacks = tickets;
-          saveLocalDB(db, clinicId);
+          window.syncFeedback();
 
           try {
             const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
@@ -812,7 +829,7 @@ export async function renderFeedbackView(container) {
 
           tickets.unshift(createdTicket);
           db.feedbacks = tickets;
-          saveLocalDB(db, clinicId);
+          window.syncFeedback();
 
           // Save to global shared tickets store for immediate cross-tab Admin visibility
           try {

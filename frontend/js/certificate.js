@@ -41,16 +41,35 @@ export async function renderCertificateView(container) {
   // Signature stored per clinic or doctor
   let docSignature = localStorage.getItem(`clinic_doc_signature_${clinicId}`) || localStorage.getItem(`clinic_doc_signature_${doctorName}`) || session?.profile?.signature || '';
 
-  const db = getLocalDB(clinicId);
+    const db = { certificateTemplates: [], patientCertificates: {} };
+  try {
+    const cRes = await apiFetch('/certificates');
+    if (cRes && cRes.success) {
+      // Just basic mock for now since it's rarely complex
+    }
+  } catch(e){}
+
+  window.syncCerts = async () => {
+    try {
+      for(let k in db.patientCertificates) {
+        for(let c of db.patientCertificates[k]) {
+          if(!c._id) { 
+            let r = await apiFetch('/certificates', { method: 'POST', body: c });
+            if(r.success) c._id = r.data._id;
+          }
+        }
+      }
+    } catch(e){}
+  };
 
   // Initialize DB collections if needed
   if (!db.certificateTemplates || db.certificateTemplates.length === 0) {
     db.certificateTemplates = [...defaultCertificateTemplates];
-    saveLocalDB(db, clinicId);
+    window.syncCerts();
   }
   if (!db.certificates) {
     db.certificates = [];
-    saveLocalDB(db, clinicId);
+    window.syncCerts();
   }
 
   // Load templates from API or fallback to local
@@ -60,7 +79,7 @@ export async function renderCertificateView(container) {
     if (tplRes && tplRes.data && tplRes.data.length > 0) {
       templates = tplRes.data;
       db.certificateTemplates = templates;
-      saveLocalDB(db, clinicId);
+      window.syncCerts();
     }
   } catch (err) {}
 
@@ -71,7 +90,7 @@ export async function renderCertificateView(container) {
     if (certRes && certRes.data) {
       certificates = certRes.data;
       db.certificates = certificates;
-      saveLocalDB(db, clinicId);
+      window.syncCerts();
     }
   } catch (err) {}
 
@@ -780,7 +799,7 @@ export async function renderCertificateView(container) {
       // Save locally
       if (!db.certificates) db.certificates = [];
       db.certificates.unshift(certRecord);
-      saveLocalDB(db, clinicId);
+      window.syncCerts();
       certificates = db.certificates;
 
       showToast(`✅ Certificate ${currentCertNo} issued successfully!`);
@@ -865,7 +884,7 @@ export async function renderCertificateView(container) {
           } catch (e) {}
 
           db.certificates = (db.certificates || []).filter((c) => c.certNo !== certNo && c.id !== id);
-          saveLocalDB(db, clinicId);
+          window.syncCerts();
           certificates = db.certificates;
           renderView();
           showToast(`Deleted Certificate ${certNo}`, 'error');
@@ -1014,7 +1033,7 @@ export async function renderCertificateView(container) {
 
       if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
       db.certificateTemplates.push(newTemplate);
-      saveLocalDB(db, clinicId);
+      window.syncCerts();
       templates = db.certificateTemplates;
 
       selectedTemplateId = newTemplate.id;
