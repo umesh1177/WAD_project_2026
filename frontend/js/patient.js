@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection, addSharedMasterItem, todayISO } from './api.js';
 
 export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   const session = getAuthSession();
@@ -404,37 +404,19 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
         }
 
         // Auto-Learn new datalist values with Doctor-Friendly popups
+        // Calling addSharedMasterItem natively handles duplicates within the shared catalogue. 
+        // We run it universally to forcefully migrate legacy local `customX` into the global shared collections!
         if (relation) {
-          const knownRelations = getKnownRelations(db);
-          if (!knownRelations.has(relation.toLowerCase())) {
-            if (!db.customRelations) db.customRelations = [];
-            db.customRelations.push(relation);
-            showToast(`✨ Added "${relation}" to Relation suggestions!`);
-          }
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name: relation, category: 'General', createdAt: todayISO() }, db);
         }
         if (society) {
-          const knownSocieties = getKnownSocieties(db);
-          if (!knownSocieties.has(society.toLowerCase())) {
-            if (!db.customSocieties) db.customSocieties = [];
-            db.customSocieties.push(society);
-            showToast(`✨ Added "${society}" to Society suggestions!`);
-          }
+          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: society, area: '', createdAt: todayISO() }, db);
         }
         if (area) {
-          const knownAreas = getKnownAreas(db);
-          if (!knownAreas.has(area.toLowerCase())) {
-            if (!db.customAreas) db.customAreas = [];
-            db.customAreas.push(area);
-            showToast(`✨ Added "${area}" to Area suggestions!`);
-          }
+          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: area, city: '', pincode: '', createdAt: todayISO() }, db);
         }
         if (allergy) {
-          const knownAllergies = getKnownAllergies(db);
-          if (!knownAllergies.has(allergy.toLowerCase())) {
-            if (!db.customAllergies) db.customAllergies = [];
-            db.customAllergies.push(allergy);
-            showToast(`✨ Added "${allergy}" to Known Allergies!`);
-          }
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: allergy, category: 'General', severity: 'None', createdAt: todayISO() }, db);
         }
 
         if (editingPatient) {

@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 
 export function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
   const session = getAuthSession();
@@ -393,32 +393,11 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     const trimmed = val.trim();
 
     if (type === 'society') {
-      const knownSocieties = getKnownSocieties(db);
-      if (!knownSocieties.has(trimmed.toLowerCase())) {
-        if (!db.customSocieties) db.customSocieties = [];
-        db.customSocieties.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new society "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('societies', { id: `s_${Date.now()}`, name: trimmed, area: '', createdAt: todayISO() }, db);
     } else if (type === 'area') {
-      const knownAreas = getKnownAreas(db);
-      if (!knownAreas.has(trimmed.toLowerCase())) {
-        if (!db.customAreas) db.customAreas = [];
-        db.customAreas.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new area "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('areas', { id: `a_${Date.now()}`, name: trimmed, city: '', pincode: '', createdAt: todayISO() }, db);
     } else if (type === 'allergy') {
-      const knownAllergies = getKnownAllergies(db);
-      if (!knownAllergies.has(trimmed.toLowerCase())) {
-        if (!db.customAllergies) db.customAllergies = [];
-        db.customAllergies.push(trimmed);
-        saveLocalDB(db, clinicId);
-        renderDatalists(container, db);
-        showToast(`✨ Added new allergy "${trimmed}" to list!`);
-      }
+      addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name: trimmed, category: 'General', severity: 'None', createdAt: todayISO() }, db);
     }
   }
 

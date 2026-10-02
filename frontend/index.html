@@ -468,34 +468,187 @@
       }
     }
 
-    /* ---- Global Search Handler ---- */
-    document.getElementById('cms-global-search-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const q = document.getElementById('cms-top-search').value.toLowerCase().trim();
-      if (!q) return;
+    /* ---- Global Search Handler with Live Suggestions ---- */
+    const searchForm = document.getElementById('cms-global-search-form');
+    const searchInput = document.getElementById('cms-top-search');
 
+    // Live search suggestions container
+    let searchDropdown = document.getElementById('cms-top-search-dropdown');
+    if (!searchDropdown) {
+      searchDropdown = document.createElement('div');
+      searchDropdown.id = 'cms-top-search-dropdown';
+      searchDropdown.style.cssText = `
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        min-width: 320px;
+        background: var(--surface, #ffffff);
+        border: 1.5px solid var(--border, #e2e8f0);
+        border-radius: var(--radius-md, 8px);
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1);
+        max-height: 380px;
+        overflow-y: auto;
+        z-index: 9999;
+        display: none;
+      `;
+      if (searchForm) {
+        searchForm.style.position = 'relative';
+        searchForm.appendChild(searchDropdown);
+      }
+    }
+
+    function searchPatients(q) {
       const curSession = initAuth();
       const db = getLocalDB(curSession?.profile?.activeClinicId || 'demo');
-      let found = null;
+      const results = [];
+      const query = (q || '').toLowerCase().trim();
+      if (!query) return results;
 
       for (const fam of Object.values(db.families || {})) {
+        // Match family head
+        const famMatches = (fam.id && fam.id.toLowerCase().includes(query)) ||
+                           (fam.headName && fam.headName.toLowerCase().includes(query)) ||
+                           (fam.phone && fam.phone.includes(query)) ||
+                           (fam.area && fam.area.toLowerCase().includes(query)) ||
+                           (fam.society && fam.society.toLowerCase().includes(query));
+
         for (const pat of Object.values(fam.patients || {})) {
-          if (pat.id.toLowerCase() === q || pat.name.toLowerCase().includes(q)) {
-            found = { familyId: fam.id, patientId: pat.id };
-            break;
+          let patMatches = famMatches ||
+                           (pat.id && pat.id.toLowerCase().includes(query)) ||
+                           (pat.name && pat.name.toLowerCase().includes(query)) ||
+                           (pat.phone && pat.phone.includes(query));
+
+          let matchedCase = null;
+          if (!patMatches && pat.visits) {
+            for (const v of pat.visits) {
+              if ((v.caseId && String(v.caseId).toLowerCase().includes(query)) ||
+                  (v.complaint && v.complaint.toLowerCase().includes(query)) ||
+                  (v.diagnosis && v.diagnosis.toLowerCase().includes(query))) {
+                patMatches = true;
+                matchedCase = v.caseId;
+                break;
+              }
+            }
+          }
+
+          if (patMatches) {
+            results.push({
+              familyId: fam.id,
+              headName: fam.headName,
+              patientId: pat.id,
+              patientName: pat.name,
+              age: pat.age,
+              gender: pat.gender,
+              relation: pat.relation,
+              phone: pat.phone || fam.phone,
+              area: pat.area || fam.area,
+              matchedCase
+            });
           }
         }
-        if (found) break;
+      }
+      return results;
+    }
 
-        if (fam.id.toLowerCase() === q || fam.headName.toLowerCase().includes(q) || (fam.area || '').toLowerCase().includes(q)) {
-          found = { familyId: fam.id, patientId: Object.keys(fam.patients || {})[0] || null };
-          break;
-        }
+    function renderSearchDropdown(results, q) {
+      if (!results || results.length === 0) {
+        searchDropdown.innerHTML = `
+          <div style="padding: 14px 16px; text-align: center; color: var(--text-muted, #64748b); font-size: 13px;">
+            <i class="fa-solid fa-magnifying-glass" style="margin-right: 6px; opacity: 0.6;"></i> No patients or cases found for "<strong>${q}</strong>"
+          </div>
+        `;
+        searchDropdown.style.display = 'block';
+        return;
       }
 
-      if (found) {
-        navigateTo('case', found);
-        document.getElementById('cms-top-search').value = '';
+      searchDropdown.innerHTML = `
+        <div style="padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between;">
+          <span>Matching Patients (${results.length})</span>
+          <span>Press Enter to select</span>
+        </div>
+        <div style="display: flex; flex-direction: column;">
+          ${results.slice(0, 8).map((r, idx) => `
+            <div class="cms-search-result-item" data-famid="${r.familyId}" data-patid="${r.patientId}" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-subtle, #f1f5f9); display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: background 0.15s ease;">
+              <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                  ${r.patientName.charAt(0).toUpperCase()}
+                </div>
+                <div style="min-width: 0;">
+                  <div style="font-weight: 700; font-size: 13px; color: var(--text, #1e293b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${r.patientName}
+                    ${r.relation ? `<span style="font-size: 11px; font-weight: 500; color: var(--text-muted); margin-left: 4px;">(${r.relation})</span>` : ''}
+                  </div>
+                  <div style="font-size: 11.5px; color: var(--text-muted, #64748b); display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span><i class="fa-solid fa-users" style="font-size: 10px;"></i> ${r.headName}</span>
+                    ${r.phone ? `<span><i class="fa-solid fa-phone" style="font-size: 10px;"></i> ${r.phone}</span>` : ''}
+                    ${r.area ? `<span><i class="fa-solid fa-location-dot" style="font-size: 10px;"></i> ${r.area}</span>` : ''}
+                    ${r.matchedCase ? `<span class="cms-pill" style="font-size: 10px; padding: 1px 5px; background: rgba(13,110,253,0.1); color: #0d6efd;">Case #${r.matchedCase}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <span class="cms-pill font-mono" style="font-size: 11px; flex-shrink: 0; background: var(--surface-alt, #f8fafc); border: 1px solid var(--border);">
+                ${r.patientId}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      searchDropdown.style.display = 'block';
+
+      // Attach click events to result items
+      searchDropdown.querySelectorAll('.cms-search-result-item').forEach(item => {
+        item.addEventListener('mouseenter', () => {
+          item.style.background = 'var(--surface-hover, #f8fafc)';
+        });
+        item.addEventListener('mouseleave', () => {
+          item.style.background = 'transparent';
+        });
+        item.addEventListener('click', () => {
+          const famId = item.getAttribute('data-famid');
+          const patId = item.getAttribute('data-patid');
+          navigateTo('case', { familyId: famId, patientId: patId });
+          searchInput.value = '';
+          searchDropdown.style.display = 'none';
+        });
+      });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      if (!q) {
+        searchDropdown.style.display = 'none';
+        return;
+      }
+      const results = searchPatients(q);
+      renderSearchDropdown(results, q);
+    });
+
+    searchInput.addEventListener('focus', (e) => {
+      const q = e.target.value.trim();
+      if (q) {
+        const results = searchPatients(q);
+        renderSearchDropdown(results, q);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchForm.contains(e.target)) {
+        searchDropdown.style.display = 'none';
+      }
+    });
+
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = searchInput.value.toLowerCase().trim();
+      if (!q) return;
+
+      const results = searchPatients(q);
+      if (results.length > 0) {
+        const topResult = results[0];
+        navigateTo('case', { familyId: topResult.familyId, patientId: topResult.patientId });
+        searchInput.value = '';
+        searchDropdown.style.display = 'none';
       } else {
         showToast(`No patient or family found for "${q}"`, 'error');
       }

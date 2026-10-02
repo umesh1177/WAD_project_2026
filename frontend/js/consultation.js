@@ -1749,18 +1749,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         const received = Number(paidInput?.value || 0);
         const due = Math.max(0, charge - received);
 
-        // Auto-learn newly typed complaints and investigations into shared master catalogue
+        // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
         if (complaint) {
           const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
           complaintTokens.forEach(cName => {
-            const sharedComplaints = getSharedMasterCollection('complaints');
-            const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
-                           (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
-            if (!exists && cName.length > 1) {
-              addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
-              if (!db.customComplaints) db.customComplaints = [];
-              db.customComplaints.push(cName);
-              showToast(`✨ Added "${cName}" to Complaints Master`);
+            if (cName.length > 1) {
+              addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
             }
           });
         }
@@ -1768,17 +1762,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         if (investigation) {
           const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
           investigationTokens.forEach(invName => {
-            const sharedInvs = getSharedMasterCollection('investigations');
-            const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
-                           (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
-            if (!exists && invName.length > 1) {
-              addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
-              if (!db.customInvestigations) db.customInvestigations = [];
-              db.customInvestigations.push(invName);
-              showToast(`✨ Added "${invName}" to Investigations Master`);
+            if (invName.length > 1) {
+              addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
             }
           });
         }
+
+        const cleanPrescription = prescriptionRows.filter((p) => p.name && p.name.trim());
+        cleanPrescription.forEach(p => {
+          const mName = p.name.trim();
+          if (mName.length > 1) {
+            addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() });
+          }
+        });
 
         if (!patient.visits) patient.visits = [];
 
@@ -2078,17 +2074,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           v.received = received;
           v.due = due;
 
-          // Auto-learn newly typed complaints and investigations into shared master catalogue
+          // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
           if (complaint) {
             const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
             complaintTokens.forEach(cName => {
-              const sharedComplaints = getSharedMasterCollection('complaints');
-              const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
-                             (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
-              if (!exists && cName.length > 1) {
-                addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
-                if (!db.customComplaints) db.customComplaints = [];
-                db.customComplaints.push(cName);
+              if (cName.length > 1) {
+                addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() }, db);
               }
             });
           }
@@ -2096,16 +2087,19 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           if (investigation) {
             const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
             investigationTokens.forEach(invName => {
-              const sharedInvs = getSharedMasterCollection('investigations');
-              const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
-                             (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
-              if (!exists && invName.length > 1) {
-                addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
-                if (!db.customInvestigations) db.customInvestigations = [];
-                db.customInvestigations.push(invName);
+              if (invName.length > 1) {
+                addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() }, db);
               }
             });
           }
+
+          const cleanInlinePrescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
+          cleanInlinePrescription.forEach(p => {
+            const mName = p.name.trim();
+            if (mName.length > 1) {
+              addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() }, db);
+            }
+          });
 
           saveLocalDB(db, clinicId);
           showToast(`✨ Case #${v.caseId} updated successfully!`);
