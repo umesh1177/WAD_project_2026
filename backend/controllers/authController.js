@@ -27,37 +27,6 @@ const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide both username and password' });
     }
 
-    // Hardcoded Admin Check Fallback
-    if (username.trim() === 'admin' && password === 'admin') {
-      const adminPayload = { id: 'admin', username: 'admin', role: 'admin', name: 'System Administrator' };
-      const token = generateToken(adminPayload);
-      return res.json({
-        success: true,
-        token,
-        user: { role: 'admin', username: 'admin', name: 'System Administrator' },
-      });
-    }
-
-    // Doctor Demo Check Fallback
-    if (username.trim().toLowerCase() === 'dhyey' && password === '123') {
-      const demoDoctor = {
-        id: 'demo',
-        username: 'dhyey',
-        role: 'doctor',
-        name: 'Dr. Chirag Paghdal',
-        degree: 'B.H.M.S.',
-        regNo: 'G-9035',
-        clinics: [{ id: 'demo', name: 'Dhyey Clinic & Nursing Home' }],
-        activeClinicId: 'demo',
-      };
-      const token = generateToken(demoDoctor);
-      return res.json({
-        success: true,
-        token,
-        user: demoDoctor,
-      });
-    }
-
     // Check in MongoDB
     let user = await User.findOne({ username: username.trim() });
     if (user) {

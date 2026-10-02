@@ -9,7 +9,7 @@ const connectDB = async () => {
 
   const uri =
     process.env.MONGO_URI ||
-    'mongodb+srv://hp1707697_db_user:n7Raegkyn92va5y1@clinicmanagementsystem.4ugkqkv.mongodb.net/clinicmanagementsystem?retryWrites=true&w=majority&appName=clinicmanagementsystem';
+    'mongodb://127.0.0.1:27017/clinicmanagementsystem';
 
   try {
     const conn = await mongoose.connect(uri, {

@@ -1,50 +1,42 @@
 const mongoose = require('mongoose');
 
-const TreatmentItemSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  qty: { type: String, default: '1' },
-  cost: { type: Number, default: 0 },
-});
-
-const PrescriptionItemSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  qty: { type: String, default: '1' },
-  mor: { type: String, default: '0' },
-  noon: { type: String, default: '0' },
-  eve: { type: String, default: '0' },
-  ngt: { type: String, default: '0' },
-  timing: { type: String, default: 'AF' }, // 'BF' or 'AF' or 'custom'
-  notes: { type: String, default: '' },
-});
-
-const ConsultationSchema = new mongoose.Schema(
-  {
-    caseId: { type: String, required: true, index: true }, // e.g. "0001000101"
-    visitNum: { type: Number, default: 1 },
-    patientId: { type: String, required: true, index: true },
-    familyId: { type: String, required: true, index: true },
-    doctorId: { type: String, default: 'demo' },
-    clinicId: { type: String, default: 'demo', index: true },
-    date: { type: String, required: true }, // YYYY-MM-DD
-    time: { type: String, default: '10:00' },
-    weight: { type: String, default: '' },
-    bp: { type: String, default: '' },
-    sugar: { type: String, default: '' },
-    pulse: { type: String, default: '' },
-    temp: { type: String, default: '' },
-    other: { type: String, default: '' },
-    reference: { type: String, default: 'Self' },
-    complaint: { type: String, default: '' },
-    diagnosis: { type: String, default: '' },
-    investigation: { type: String, default: '' },
-    treatment: [TreatmentItemSchema],
-    prescription: [PrescriptionItemSchema],
-    labReports: { type: mongoose.Schema.Types.Mixed, default: {} },
-    charge: { type: Number, default: 0 },
-    received: { type: Number, default: 0 },
-    due: { type: Number, default: 0 },
+const consultationSchema = new mongoose.Schema({
+  caseId: { type: String, required: true, unique: true },
+  patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true },
+  familyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Family' },
+  date: { type: String },
+  time: { type: String },
+  bp: { type: String },
+  sugar: { type: String },
+  other: { type: String },
+  reference: { type: String },
+  complaint: { type: String },
+  investigation: { type: String },
+  dietary: { type: String },
+  vitals: {
+    bp: String,
+    pulse: String,
+    temp: String,
+    spo2: String,
+    weight: String
   },
-  { timestamps: true }
-);
+  treatment: [{
+    name: String,
+    qty: String
+  }],
+  prescription: [{
+    name: String,
+    qty: String,
+    mor: String,
+    noon: String,
+    eve: String,
+    ngt: String,
+    timing: String
+  }],
+  labReport: { type: Boolean, default: false },
+  charge: { type: Number, default: 0 },
+  paid: { type: Number, default: 0 },
+  due: { type: Number, default: 0 }
+}, { timestamps: true });
 
-module.exports = mongoose.model('Consultation', ConsultationSchema);
+module.exports = mongoose.model('Consultation', consultationSchema);
