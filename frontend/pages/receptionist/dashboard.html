@@ -3,465 +3,165 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Receptionist Desk - Dhyey Clinic Management System</title>
-  <!-- Google Fonts -->
+  <title>Receptionist Desk - Dhyey Clinic</title>
+  <meta name="description" content="Receptionist portal for Dhyey Clinic. Register families, add patients, manage patient queue." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <!-- Receptionist Stylesheet -->
-  <link rel="stylesheet" href="../css/receptionist.css" />
+  <link rel="stylesheet" href="../../css/receptionist.css" />
+  <style>
+    /* ---- Receptionist-specific extras ---- */
+    .queue-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #dc2626; color: #fff; border-radius: 999px;
+      font-size: 10px; font-weight: 800; min-width: 18px; height: 18px; padding: 0 5px;
+      margin-left: 6px; line-height: 1;
+    }
+    .token-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--primary-teal); color: #fff;
+      border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 800;
+    }
+    .status-pill-waiting  { background: #fef9c3; color: #a16207; border: 1px solid #fde68a; }
+    .status-pill-in-consultation { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-pill-done { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+    .queue-card {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+      transition: box-shadow .15s;
+    }
+    .queue-card:hover { box-shadow: 0 4px 18px rgba(20,107,92,0.1); }
+    .queue-token-num { font-size: 22px; font-weight: 900; color: var(--primary-teal); width: 44px; text-align: center; }
+    .queue-info strong { font-size: 13px; color: var(--text-main); display: block; }
+    .queue-info span { font-size: 11px; color: var(--text-muted); }
+    .btn-start-consult {
+      background: var(--primary-teal); color: #fff; border: none;
+      border-radius: var(--radius-md); padding: 7px 14px;
+      font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .btn-start-consult:hover { background: #0d7e74; }
+    .btn-remove-queue {
+      background: none; border: 1px solid #fca5a5; color: #b91c1c;
+      border-radius: var(--radius-md); padding: 5px 10px;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .btn-remove-queue:hover { background: #fff1f2; }
+    .section-divider { border: none; border-top: 1px solid var(--border-color); margin: 16px 0 12px; }
+    .form-error { color: #b91c1c; font-size: 11px; margin-top: 3px; display: none; }
+    .form-error.show { display: block; }
+    .patient-found-card {
+      background: rgba(20,107,92,0.06); border: 1px solid var(--primary-teal-border);
+      border-radius: var(--radius-md); padding: 12px 14px; margin-top: 10px;
+    }
+    .family-member-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border-color);
+    }
+    .family-member-row:last-child { border-bottom: none; }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Left Navigation Sidebar -->
-    <aside class="sidebar">
-      <div>
-        <div class="sidebar-header">
-          <div class="brand-logo" style="background: var(--primary-teal);">
-            <i class="fa-solid fa-clipboard-user"></i>
-          </div>
-          <div>
-            <span class="brand-title">Dhyey Clinic</span>
-            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Reception OPD Desk</div>
-          </div>
+<div class="app-container">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="mainSidebar">
+    <div>
+      <div class="sidebar-header">
+        <div class="brand-logo" style="background: var(--primary-teal);">
+          <i class="fa-solid fa-clipboard-user"></i>
         </div>
-
-        <nav class="sidebar-nav">
-          <a class="nav-item active" id="nav-f1" href="javascript:void(0)" onclick="switchView('regView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-id-card nav-icon"></i>
-              <span>Family Registration</span>
-            </div>
-            <span class="badge-key">F1</span>
-          </a>
-
-          <a class="nav-item" id="nav-f2" href="javascript:void(0)" onclick="switchView('patientsView')">
-            <div class="nav-item-left">
-              <i class="fa-solid fa-users nav-icon"></i>
-              <span>Patient Directory</span>
-            </div>
-            <span class="badge-key">F2</span>
-          </a>
-        </nav>
-      </div>
-
-      <div class="sidebar-footer-guide">
-        <h6>Reception Quick Keys</h6>
-        <div><kbd class="badge-key">F1</kbd> Family Reg</div>
-        <div><kbd class="badge-key">F2</kbd> Patients / Arrival</div>
-        <div><kbd class="badge-key">/</kbd> Instant Search</div>
-      </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="main-wrapper">
-      <!-- Top Navbar Header -->
-      <header class="top-navbar">
-        <div class="top-navbar-left">
-          <button class="menu-toggle-btn" aria-label="Toggle menu" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">
-            <i class="fa-solid fa-bars"></i>
-          </button>
-          <div class="page-title-group">
-            <h1 class="page-header-title">
-              <i class="fa-solid fa-clipboard-user"></i> Receptionist & Patient Check-in
-            </h1>
-            <span class="page-header-date" id="headerDateText">Clinic OPD · 01/10/2026</span>
-          </div>
-        </div>
-
-        <div class="top-navbar-right">
-          <!-- Global Live Search -->
-          <div class="top-search-form">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input id="globalSearchInput" class="top-search-input" type="text" placeholder="Search patient, family head, UHID or mobile..." oninput="globalSearch(this.value)" />
-            <span class="search-shortcut-tag">/</span>
-          </div>
-
-          <!-- Theme Toggle -->
-          <button class="btn-icon" type="button" title="Toggle theme" onclick="toggleTheme();">
-            <i class="fa-regular fa-moon"></i>
-          </button>
-
-          <!-- Logout -->
-          <a href="../login.html" class="btn-icon" title="Logout" style="text-decoration:none; color: var(--danger-text);">
-            <i class="fa-solid fa-right-from-bracket"></i>
-          </a>
-        </div>
-      </header>
-
-      <!-- Main Body Container -->
-      <div class="content-body">
-        <!-- Quick View Tabs Pills -->
-        <div class="tab-pills-bar">
-          <button class="btn-pill active" id="pill-reg" type="button" onclick="switchView('regView')">
-            <i class="fa-solid fa-id-card"></i>
-            Family & Patient Registration
-            <span class="badge-key">F1</span>
-          </button>
-          <button class="btn-pill" id="pill-patients" type="button" onclick="switchView('patientsView')">
-            <i class="fa-solid fa-users"></i>
-            Patient Directory & Arrival
-            <span class="badge-key">F2</span>
-          </button>
-          <button class="btn-pill" id="pill-queue" type="button" onclick="switchView('queueView')">
-            <i class="fa-solid fa-stethoscope"></i>
-            Live OPD Queue
-            <span class="badge-key">F3</span>
-          </button>
-        </div>
-
-        <!-- ====================================================
-             1. FAMILY & PATIENT REGISTRATION (F1)
-             ==================================================== -->
-        <section id="regView" style="display:block;">
-          <div class="grid-split-2">
-            <!-- Left: Family Head Registration Form -->
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <div>
-                  <h3 class="card-title"><i class="fa-solid fa-user-plus" style="color: var(--primary-teal);"></i> Register Family Head</h3>
-                  <p class="card-subtitle">Auto-creates Family ID and registers Head as first patient</p>
-                </div>
-                <span class="badge-key" style="background:#e8f7f4; color:#095c54; font-size:11px;">Auto Family ID</span>
-              </div>
-
-              <form id="familyRegistrationForm" onsubmit="handleGenerateFamilyId(event)">
-                <div class="form-group">
-                  <label class="form-label" for="familyHeadName">Family Head Full Name <span class="req">*</span></label>
-                  <input id="familyHeadName" class="form-input" type="text" placeholder="e.g. PATEL RAMESHBHAI GOVINDBHAI" required />
-                </div>
-
-                <div class="form-row-2">
-                  <div class="form-group">
-                    <label class="form-label" for="familyPhone">Mobile Number <span class="req">*</span></label>
-                    <input id="familyPhone" class="form-input" type="tel" placeholder="9876543210" required />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="familyArea">Area / Colony <span class="req">*</span></label>
-                    <input id="familyArea" class="form-input" type="text" placeholder="e.g. Vastrapur" required />
-                  </div>
-                </div>
-
-                <div class="form-row-3">
-                  <div class="form-group">
-                    <label class="form-label" for="familyHeadAge">Age</label>
-                    <input id="familyHeadAge" class="form-input" type="number" value="45" min="1" max="120" />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="familyHeadGender">Gender</label>
-                    <select id="familyHeadGender" class="form-select">
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label" for="familyHeadBlood">Blood Group</label>
-                    <select id="familyHeadBlood" class="form-select">
-                      <option value="B+">B+</option>
-                      <option value="A+">A+</option>
-                      <option value="O+">O+</option>
-                      <option value="AB+">AB+</option>
-                      <option value="O-">O-</option>
-                      <option value="A-">A-</option>
-                      <option value="B-">B-</option>
-                      <option value="AB-">AB-</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label" for="familyAddress">Residential Address</label>
-                  <textarea id="familyAddress" class="form-textarea" rows="2" placeholder="House/Flat No, Apartment, Road, Landmark..."></textarea>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
-                  <button class="btn-secondary" type="reset">
-                    <i class="fa-solid fa-rotate-left"></i> Reset Form
-                  </button>
-                  <button class="btn-primary" type="submit">
-                    <i class="fa-solid fa-check"></i> Generate Family ID & Register
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <!-- Right: Registered Families Directory -->
-            <div class="card">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <div>
-                  <h3 class="card-title"><i class="fa-solid fa-people-roof" style="color: var(--primary-teal);"></i> Registered Families</h3>
-                  <p class="card-subtitle">Click on any family to view members or add new member</p>
-                </div>
-                <button class="btn-secondary" style="font-size:11px; padding:5px 10px;" onclick="openAddMemberModal()">
-                  <i class="fa-solid fa-user-plus"></i> + Add Member
-                </button>
-              </div>
-
-              <div id="familyListContainer" class="family-list-container" style="max-height: 480px; overflow-y: auto;"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ====================================================
-             2. ALL PATIENTS DIRECTORY & ARRIVAL (F2)
-             ==================================================== -->
-        <section id="patientsView" style="display:none;">
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
-              <div>
-                <h3 class="card-title"><i class="fa-solid fa-users" style="color: var(--primary-teal);"></i> Patient Lookup & Arrival Desk</h3>
-                <p class="card-subtitle">Search registered patients and click "Patient Arrived" to send them to the Doctor's Queue</p>
-              </div>
-              <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="openAddMemberModal()">
-                  <i class="fa-solid fa-user-plus"></i> + Add Family Member
-                </button>
-                <button class="btn-primary" onclick="switchView('regView')">
-                  <i class="fa-solid fa-plus"></i> Register New Family
-                </button>
-              </div>
-            </div>
-
-            <div id="patientDirectoryList" class="patient-directory-list" style="display:flex; flex-direction:column; gap:12px;"></div>
-          </div>
-        </section>
-
-        <!-- ====================================================
-             3. LIVE DOCTOR CONSULTATION QUEUE (F3)
-             ==================================================== -->
-        <section id="queueView" style="display:none;">
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
-              <div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <h3 class="card-title"><i class="fa-solid fa-stethoscope" style="color: #0284c7;"></i> Live Doctor Consultation Queue</h3>
-                  <span class="badge-key" style="background:#0284c7; color:#fff;">Live Realtime Sync</span>
-                </div>
-                <p class="card-subtitle">Arrived patients automatically appear on the Doctor's Clinical Dashboard screen</p>
-              </div>
-
-              <div style="display:flex; gap:10px;">
-                <button class="btn-secondary" onclick="switchView('patientsView')">
-                  <i class="fa-solid fa-hospital-user"></i> + Check-in Arriving Patient
-                </button>
-                <a href="../doctor/dashboard.html" class="btn-primary" style="background:#0284c7; text-decoration:none;">
-                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Doctor Desk
-                </a>
-              </div>
-            </div>
-
-            <div id="liveQueueContainer" class="live-queue-container" style="display:flex; flex-direction:column; gap:14px;"></div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Bottom Ticker Bar -->
-      <footer class="bottom-ticker-bar">
-        <div class="ticker-shortcuts">
-          <span class="ticker-item"><i class="fa-solid fa-circle" style="color:#10b981; font-size:8px;"></i> Dhyey Clinic Management</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F1</kbd> Family Reg</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F2</kbd> Patients</span>
-          <span class="ticker-item"><i class="fa-solid fa-keyboard"></i> <kbd>F3</kbd> Queue</span>
-          <span class="ticker-item"><i class="fa-solid fa-magnifying-glass"></i> <kbd>/</kbd> Search</span>
-        </div>
-        <div id="tickerClock" class="ticker-clock">10:00:00 AM</div>
-      </footer>
-    </main>
-  </div>
-
-  <!-- ====================================================
-       MODALS
-       ==================================================== -->
-
-  <!-- Modal: Add Family Member (F2) -->
-  <div id="addMemberModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 540px;">
-      <div class="modal-header">
-        <h3 class="modal-title"><i class="fa-solid fa-user-plus" style="color:var(--primary-teal);"></i> Add Family Member</h3>
-        <button class="modal-close-btn" onclick="closeModal('addMemberModal')">&times;</button>
-      </div>
-
-      <form id="addMemberForm" onsubmit="handleAddMemberSubmit(event)">
-        <div class="form-group">
-          <label class="form-label">Link to Family <span class="req">*</span></label>
-          <select id="memberFamilySelect" class="form-select" required></select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Member Full Name <span class="req">*</span></label>
-          <input id="memberName" class="form-input" type="text" placeholder="e.g. PATEL DHRUV RAMESHBHAI" required>
-        </div>
-
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Relationship to Head <span class="req">*</span></label>
-            <select id="memberRelation" class="form-select" required>
-              <option value="Spouse">Spouse</option>
-              <option value="Son">Son</option>
-              <option value="Daughter">Daughter</option>
-              <option value="Father">Father</option>
-              <option value="Mother">Mother</option>
-              <option value="Brother">Brother</option>
-              <option value="Sister">Sister</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Age <span class="req">*</span></label>
-            <input id="memberAge" class="form-input" type="number" min="0" max="120" value="22" required>
-          </div>
-        </div>
-
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <select id="memberGender" class="form-select">
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Blood Group</label>
-            <select id="memberBlood" class="form-select">
-              <option value="B+">B+</option>
-              <option value="A+">A+</option>
-              <option value="O+">O+</option>
-              <option value="AB+">AB+</option>
-              <option value="O-">O-</option>
-              <option value="A-">A-</option>
-              <option value="B-">B-</option>
-              <option value="AB-">AB-</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Personal Phone (Optional)</label>
-          <input id="memberPhone" class="form-input" type="tel" placeholder="Leave blank to use Family phone">
-        </div>
-
-        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-          <button class="btn-secondary" type="button" onclick="closeModal('addMemberModal')">Cancel</button>
-          <button class="btn-primary" type="submit">
-            <i class="fa-solid fa-user-check"></i> Save Family Member
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal: Patient Arrival & Send to Doctor Queue -->
-  <div id="sendToDoctorModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 560px;">
-      <div class="modal-header">
         <div>
-          <h3 class="modal-title"><i class="fa-solid fa-hospital-user" style="color:#0284c7;"></i> Patient Arrival Check-In</h3>
-          <p style="margin:2px 0 0; font-size:12px; color:var(--text-muted);">Send patient directly into the Doctor's Consultation queue</p>
-        </div>
-        <button class="modal-close-btn" onclick="closeModal('sendToDoctorModal')">&times;</button>
-      </div>
-
-      <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h4 id="modalArrivePatientName" style="margin:0; font-size:15px; font-weight:800; color:#0369a1;">PATIENT NAME</h4>
-            <div id="modalArrivePatientInfo" style="font-size:12px; color:#0284c7; margin-top:2px;">PAT-0000 · Family Info</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:10px; font-weight:700; color:#0369a1;">ASSIGNED TOKEN</div>
-            <div id="arriveTokenPreview" style="font-size:18px; font-weight:900; color:#0284c7;">T-03</div>
-          </div>
+          <span class="brand-title" id="sb-clinic-name">Dhyey Clinic</span>
+          <div style="font-size:11px; color:var(--text-muted); font-weight:600;">Reception OPD Desk</div>
         </div>
       </div>
 
-      <form id="sendToDoctorForm" onsubmit="handleSendToDoctorSubmit(event)">
-        <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">Consulting Doctor <span class="req">*</span></label>
-            <select id="arriveDoctorSelect" class="form-select" required>
-              <option value="Dr. Shah (General Medicine)">Dr. Shah (General Medicine - Room 04)</option>
-              <option value="Dr. Mehta (Family Physician)">Dr. Mehta (Family Physician - Room 02)</option>
-              <option value="Dr. Patel (Pediatrics)">Dr. Patel (Pediatrics - Room 01)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Visit Priority</label>
-            <select id="arrivePriority" class="form-select">
-              <option value="Normal">Normal</option>
-              <option value="Urgent">Urgent / Emergency</option>
-              <option value="Follow-up">Follow-up Visit</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row-3">
-          <div class="form-group">
-            <label class="form-label">BP (mmHg)</label>
-            <input id="arriveBP" class="form-input" type="text" placeholder="120/80" value="120/80">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Pulse (bpm)</label>
-            <input id="arrivePulse" class="form-input" type="number" placeholder="72" value="72">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Temp (°F)</label>
-            <input id="arriveTemp" class="form-input" type="text" placeholder="98.6" value="98.6">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Weight (kg)</label>
-          <input id="arriveWeight" class="form-input" type="number" placeholder="65" value="65">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Chief Complaint / Symptoms</label>
-          <textarea id="arriveComplaints" class="form-textarea" rows="2" placeholder="e.g. Mild fever, dry cough for 2 days"></textarea>
-        </div>
-
-        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
-          <button class="btn-secondary" type="button" onclick="closeModal('sendToDoctorModal')">Cancel</button>
-          <button class="btn-primary" type="submit" style="background:#0284c7;">
-            <i class="fa-solid fa-paper-plane"></i> Send to Doctor Consultation
-          </button>
-        </div>
-      </form>
+      <nav class="sidebar-nav" aria-label="Receptionist navigation">
+        <a class="nav-item active" id="nav-dashboard" href="javascript:void(0)" onclick="switchView('dashboard')">
+          <div class="nav-item-left"><i class="fa-solid fa-gauge-high nav-icon"></i><span>Dashboard</span></div>
+          <span class="badge-key">F4</span>
+        </a>
+        <a class="nav-item" id="nav-reg" href="javascript:void(0)" onclick="switchView('reg')">
+          <div class="nav-item-left"><i class="fa-solid fa-id-card nav-icon"></i><span>Family Registration</span></div>
+          <span class="badge-key">F1</span>
+        </a>
+        <a class="nav-item" id="nav-member" href="javascript:void(0)" onclick="switchView('member')">
+          <div class="nav-item-left"><i class="fa-solid fa-user-plus nav-icon"></i><span>Add Member</span></div>
+          <span class="badge-key">F2</span>
+        </a>
+        <a class="nav-item" id="nav-queue-mgmt" href="javascript:void(0)" onclick="switchView('queue')">
+          <div class="nav-item-left"><i class="fa-solid fa-list-check nav-icon"></i><span>Patient Queue</span></div>
+          <span class="badge-key" id="queue-count-badge">F3</span>
+        </a>
+        <a class="nav-item" id="nav-search" href="javascript:void(0)" onclick="switchView('search')">
+          <div class="nav-item-left"><i class="fa-solid fa-magnifying-glass nav-icon"></i><span>Find Patient</span></div>
+          <span class="badge-key">F5</span>
+        </a>
+      </nav>
     </div>
-  </div>
 
-  <!-- Modal: Post Family Registration Action Prompt -->
-  <div id="postRegActionModal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 460px; text-align:center;">
-      <div style="width:50px; height:50px; background:#dcfce7; color:#15803d; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 12px;">
-        <i class="fa-solid fa-circle-check"></i>
-      </div>
-      <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--text-main);">Registration Successful!</h3>
-      <p style="margin:6px 0 0; font-size:13px; color:var(--text-muted);" id="postRegFamName">Patel Family (FAM-0001)</p>
-      <div style="font-size:12px; color:var(--primary-teal); font-weight:700; margin-top:2px;" id="postRegPatientName">Head registered as PAT-0101</div>
-
-      <div style="display:flex; flex-direction:column; gap:10px; margin-top:24px;">
-        <button id="btnPromptSendDoctor" class="btn-primary" style="justify-content:center; padding:12px; background:#0284c7;">
-          <i class="fa-solid fa-hospital-user"></i> Patient Arrived · Send Head to Doctor
-        </button>
-        <button id="btnPromptAddMember" class="btn-secondary" style="justify-content:center; padding:12px;">
-          <i class="fa-solid fa-user-plus"></i> + Add Another Family Member
-        </button>
-        <button class="btn-secondary" style="justify-content:center; border:none; background:transparent; color:var(--text-muted);" onclick="closeModal('postRegActionModal')">
-          Done / Close
-        </button>
-      </div>
+    <div class="sidebar-footer-guide">
+      <h6 style="color:var(--text-muted); font-size:11px; margin-bottom:8px;">Reception Quick Keys</h6>
+      <div><kbd class="badge-key">F1</kbd> Family Reg</div>
+      <div><kbd class="badge-key">F2</kbd> Add Member</div>
+      <div><kbd class="badge-key">F3</kbd> Patient Queue</div>
+      <div><kbd class="badge-key">F4</kbd> Dashboard</div>
+      <div><kbd class="badge-key">F5</kbd> Find Patient</div>
+      <div><kbd class="badge-key">/</kbd> Search focus</div>
     </div>
-  </div>
+  </aside>
 
-  <div id="toastContainer" class="toast-container"></div>
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-wrapper">
+    <!-- TOP NAVBAR -->
+    <header class="top-navbar">
+      <div class="top-navbar-left">
+        <button class="menu-toggle-btn" aria-label="Toggle sidebar" onclick="document.getElementById('mainSidebar').classList.toggle('is-collapsed')">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="page-title-group">
+          <h1 class="page-header-title" id="view-title">
+            <i class="fa-solid fa-clipboard-user"></i> Reception Desk
+          </h1>
+          <span class="page-header-date" id="headerDate"></span>
+        </div>
+      </div>
 
-  <!-- Application Logic -->
-  <script src="../js/receptionist.js"></script>
+      <div class="top-navbar-right">
+        <div class="top-search-form">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="globalSearchInput" class="top-search-input" type="text"
+            placeholder="Search patient, family head, mobile..." oninput="globalSearch(this.value)" />
+          <span class="search-shortcut-tag">/</span>
+        </div>
+        <button class="btn-icon" type="button" title="Toggle theme" onclick="toggleTheme()">
+          <i class="fa-regular fa-moon" id="themeIcon"></i>
+        </button>
+        <button class="btn-icon" type="button" title="Logout" style="color:#b91c1c;" onclick="handleLogout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <div class="content-body" id="mainContent" aria-live="polite">
+      <!-- Views rendered here by JS -->
+    </div>
+
+    <footer class="bottom-ticker-bar">
+      <div id="sb-clinic-footer">Dhyey Clinic · Reception Desk</div>
+      <div class="ticker-time" id="receptionClock"></div>
+    </footer>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modals Mount -->
+<div id="modalMount"></div>
+
+<script type="module" src="../../js/receptionist.js"></script>
 </body>
 </html>

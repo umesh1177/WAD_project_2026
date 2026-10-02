@@ -16,7 +16,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, nowTime, fmtDate, fmtMoney, uid, showToast } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, nowTime, fmtDate, fmtMoney, uid, showToast, getSharedMasterCollection, addSharedMasterItem } from './api.js';
 import { openPrescriptionModal, DIETARY_TRANSLATIONS } from './prescription.js';
 import { openLabReportModal } from './history.js';
 
@@ -24,6 +24,24 @@ export function renderConsultationView(container, selection, onSelectPatient, on
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
   const db = getLocalDB(clinicId);
+
+  // Determine active clinic services
+  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+  const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
+  const activeClinicObj = (session?.profile?.clinics || []).find(c => c.id === clinicId) || session?.profile?.clinics?.[0];
+  const matchedAdminClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinicObj?.name || c.id === activeClinicObj?.id);
+  const matchedAdminDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
+
+  let clinicServices = matchedAdminClinic?.services || matchedAdminDoc?.services || activeClinicObj?.services || session?.profile?.services;
+  if (!clinicServices || !Array.isArray(clinicServices)) {
+    clinicServices = clinicId === 'demo'
+      ? ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+      : ['digitalPrescription', 'certificates', 'billing'];
+  }
+
+  const hasDigitalRx = clinicServices.includes('digitalPrescription');
+  const hasCertificates = clinicServices.includes('certificates');
+  const hasBilling = clinicServices.includes('billing');
 
   let { familyId, patientId } = selection || {};
   let family = familyId ? (db.families[familyId] || Object.values(db.families || {}).find(f => (f.famId === familyId || f.id === familyId))) : null;
@@ -259,19 +277,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   </div>
 
                   <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    <!-- Quick Shortcut Chips -->
+                    <!-- Quick Shortcut Chips (Rendered dynamically from clinic db.dietary) -->
                     <div style="display: flex; gap: 3px; flex-wrap: wrap;" class="form-dietary-chips">
-                      <span class="cms-pill form-diet-chip" data-code="DB" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 800;" title="Diabetes Mellitus">+ DB</span>
-                      <span class="cms-pill form-diet-chip" data-code="BP" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #fce7f3; color: #be185d; font-weight: 800;" title="High BP / Hypertension">+ BP</span>
-                      <span class="cms-pill form-diet-chip" data-code="ACID" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #fef9c3; color: #a16207; font-weight: 800;" title="Acidity & GERD">+ ACID</span>
-                      <span class="cms-pill form-diet-chip" data-code="THYROID" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #f3e8ff; color: #7e22ce; font-weight: 800;" title="Thyroid">+ THYROID</span>
-                      <span class="cms-pill form-diet-chip" data-code="URIC" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #dcfce7; color: #15803d; font-weight: 800;" title="Uric Acid">+ URIC</span>
-                      <span class="cms-pill form-diet-chip" data-code="STONE" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #fee2e2; color: #b91c1c; font-weight: 800;" title="Kidney Stone">+ STONE</span>
-                      <span class="cms-pill form-diet-chip" data-code="CONST" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #f1f5f9; color: #334155; font-weight: 800;" title="Constipation">+ CONST</span>
-                      <span class="cms-pill form-diet-chip" data-code="FEV" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #fef3c7; color: #b45309; font-weight: 800;" title="Fever">+ FEV</span>
-                      <span class="cms-pill form-diet-chip" data-code="LIPID" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #ede9fe; color: #6d28d9; font-weight: 800;" title="Cholesterol">+ LIPID</span>
-                      <span class="cms-pill form-diet-chip" data-code="LIVER" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #ecfdf5; color: #047857; font-weight: 800;" title="Liver / Jaundice">+ LIVER</span>
-                      <span class="cms-pill form-diet-chip" data-code="WEIGHT" style="font-size: 10px; padding: 2px 6px; cursor: pointer; background: #f0fdf4; color: #166534; font-weight: 800;" title="Weight Loss">+ WEIGHT</span>
+                      ${renderDietaryChipsHTML(db, 'form')}
                     </div>
 
                     <button type="button" id="btn-quick-add-dietary" class="cms-btn cms-btn-ghost cms-btn-sm" style="padding: 2px 8px; font-size: 11px; color: #0f5132; border: 1px solid #86efac; background: #fff; font-weight: 700; border-radius: 4px;" title="Create new Dietary Template into Masters">
@@ -285,8 +293,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                 </div>
               </div>
 
-              <!-- Row 2: Split Panels for Treatment (Clinic) & Prescription (Medical Store) -->
-              <div class="cms-visit-split-row">
+              <!-- Row 2: Split Panels for Treatment & Prescription (Adapted to clinic services) -->
+              <div class="cms-visit-split-row" style="${!hasDigitalRx ? 'grid-template-columns: 1fr;' : ''}">
                 
                 <!-- Left: Treatment (Clinic) -->
                 <div class="cms-treatment-panel">
@@ -299,6 +307,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   <div id="treatment-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
 
+                ${
+                  hasDigitalRx
+                    ? `
                 <!-- Right: Prescription (Medical Store) -->
                 <div class="cms-prescription-panel">
                   <div class="cms-prescription-panel-title">
@@ -309,6 +320,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   </div>
                   <div id="prescription-items-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
+                `
+                    : ''
+                }
               </div>
 
               <!-- Row 3: Financials (Charge, Paid, Due) & Action Buttons (Defaults to 0) -->
@@ -346,7 +360,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
                   </button>
                   <button type="submit" class="cms-btn" style="background: #0f5132; color: #fff; padding: 7px 24px; border-radius: 6px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    <span id="btn-submit-case-text">${editingVisitId ? 'Update & Print' : 'Save & Print'}</span>
+                    <span id="btn-submit-case-text">${editingVisitId ? (hasDigitalRx ? 'Update & Print' : 'Update Visit') : (hasDigitalRx ? 'Save & Print' : 'Save Visit')}</span>
                   </button>
                 </div>
               </div>
@@ -491,10 +505,11 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px;">
-            ${v.labReport ? `<button type="button" class="cms-btn cms-btn-ghost btn-card-view-lab" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: #0284c7; border: 1px solid #bae6fd; background: #f0f9ff; font-weight: 700; border-radius: 4px;" title="View / Print Attached Lab Report"><i class="fa-solid fa-flask-vial"></i> Lab Report</button>` : ''}
+            ${v.labReport ? `<button type="button" class="cms-btn cms-btn-ghost btn-card-view-lab" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: #0284c7; border: 1px solid #bae6fd; background: #f0fdf4; font-weight: 700; border-radius: 4px;" title="View / Print Attached Lab Report"><i class="fa-solid fa-flask-vial"></i> Lab Report</button>` : ''}
+            ${hasDigitalRx ? `
             <button type="button" class="cms-btn cms-btn-ghost btn-card-print-rx" data-visitid="${visitKey}" style="padding: 2px 8px; font-size: 11px; color: #0f5132; border: 1px solid #86efac; background: #f0fdf4; font-weight: 700; border-radius: 4px;" title="Print Prescription for Case #${v.caseId}">
               <i class="fa-solid fa-print"></i> Print Rx
-            </button>
+            </button>` : ''}
             <a class="cms-link-view-detail btn-view-detail" data-visitid="${visitKey}" title="Open Case #${v.caseId} in editable form">
               <i class="fa-solid fa-pen-to-square" style="font-size: 11px;"></i>
               <span>Edit / View</span>
@@ -516,8 +531,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           ${v.other ? `<div class="cms-pill-other">Other: ${v.other}</div>` : ''}
         </div>
 
-        <!-- Line 3: Split Boxes for Treatment & Prescription -->
-        <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; margin-top: 4px;">
+          <!-- Line 3: Split Boxes for Treatment & Prescription (Adapted to services) -->
+        <div style="display: grid; grid-template-columns: ${hasDigitalRx ? '1fr 1.15fr' : '1fr'}; gap: 12px; margin-top: 4px;">
           <!-- Treatment / Clinic -->
           <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-bottom: 4px;">Treatment / Clinic:</div>
@@ -538,6 +553,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             </div>
           </div>
 
+          ${
+            hasDigitalRx
+              ? `
           <!-- Prescription / Medical Store -->
           <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
             <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
@@ -557,6 +575,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               }
             </div>
           </div>
+          `
+              : ''
+          }
         </div>
       </div>
     `;
@@ -585,9 +606,10 @@ export function renderConsultationView(container, selection, onSelectPatient, on
 
           <div style="display: flex; align-items: center; gap: 8px;">
             ${v.labReport ? `<button type="button" class="cms-btn cms-btn-ghost btn-card-view-lab" data-visitid="${visitKey}" style="padding: 1px 6px; font-size: 10px; color: #0284c7; border: 1px solid #bae6fd; background: #f0f9ff; font-weight: 700; border-radius: 4px;" title="View / Print Attached Lab Report"><i class="fa-solid fa-flask-vial"></i> Lab</button>` : ''}
+            ${hasDigitalRx ? `
             <button type="button" class="cms-btn cms-btn-ghost btn-card-print-rx" data-visitid="${visitKey}" style="padding: 1px 6px; font-size: 10px; color: #0f5132; border: 1px solid #86efac; background: #f0fdf4; font-weight: 700; border-radius: 4px;" title="Print Prescription for Case #${v.caseId}">
               <i class="fa-solid fa-print"></i> Rx
-            </button>
+            </button>` : ''}
             <a class="cms-link-view-detail btn-view-detail" data-visitid="${visitKey}" title="Open Case #${v.caseId} in editable form">
               <i class="fa-solid fa-pen-to-square" style="font-size: 11px;"></i>
               <span>Edit / View</span>
@@ -608,7 +630,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             ${v.other ? `<div class="cms-pill-other">Other: ${v.other}</div>` : ''}
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; margin-top: 2px;">
+          <div style="display: grid; grid-template-columns: ${hasDigitalRx ? '1fr 1.15fr' : '1fr'}; gap: 12px; margin-top: 2px;">
             <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; padding: 6px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-bottom: 4px;">Treatment / Clinic:</div>
               <div style="display: flex; flex-wrap: wrap; gap: 6px;">
@@ -616,12 +638,18 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
 
+            ${
+              hasDigitalRx
+                ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 6px; padding: 6px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 4px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-wrap: wrap; gap: 6px;">
                 ${prescriptions.length === 0 ? `<span style="color: var(--text-muted); font-size: 12px;">-</span>` : prescriptions.map(p => `<span style="background: #ffffff; border: 1px solid #99f6e4; border-radius: 4px; padding: 2px 8px; font-size: 11.5px; font-weight: 700;">${p.name} (${p.mor || '1'}-${p.noon || '0'}-${p.eve || '1'}) ${p.timing || 'AF'}</span>`).join('')}
               </div>
             </div>
+            `
+                : ''
+            }
           </div>
         </div>
       </div>
@@ -726,13 +754,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               
               <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                 <div style="display: flex; gap: 3px; flex-wrap: wrap;" class="inline-dietary-chips">
-                  <span class="cms-pill inline-diet-chip" data-code="DB" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 800;">+ DB</span>
-                  <span class="cms-pill inline-diet-chip" data-code="BP" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #fce7f3; color: #be185d; font-weight: 800;">+ BP</span>
-                  <span class="cms-pill inline-diet-chip" data-code="ACID" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #fef9c3; color: #a16207; font-weight: 800;">+ ACID</span>
-                  <span class="cms-pill inline-diet-chip" data-code="THYROID" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #f3e8ff; color: #7e22ce; font-weight: 800;">+ THYROID</span>
-                  <span class="cms-pill inline-diet-chip" data-code="URIC" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #dcfce7; color: #15803d; font-weight: 800;">+ URIC</span>
-                  <span class="cms-pill inline-diet-chip" data-code="STONE" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #fee2e2; color: #b91c1c; font-weight: 800;">+ STONE</span>
-                  <span class="cms-pill inline-diet-chip" data-code="CONST" style="font-size: 9.5px; padding: 1px 5px; cursor: pointer; background: #f1f5f9; color: #334155; font-weight: 800;">+ CONST</span>
+                  ${renderDietaryChipsHTML(db, 'inline')}
                 </div>
                 <button type="button" class="cms-btn cms-btn-ghost btn-inline-add-diet-tpl" data-visitid="${visitKey}" style="padding: 1px 6px; font-size: 10.5px; color: #0f5132; font-weight: 700;">
                   <i class="fa-solid fa-plus"></i> Add Template
@@ -744,8 +766,8 @@ export function renderConsultationView(container, selection, onSelectPatient, on
             </div>
           </div>
 
-          <!-- Row 2: Split Treatment (Clinic) & Prescription (Store) (Matching User Photo) -->
-          <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px; margin-top: 4px;">
+          <!-- Row 2: Split Treatment & Prescription (Adapted to services) -->
+          <div style="display: grid; grid-template-columns: ${hasDigitalRx ? '1fr 1.15fr' : '1fr'}; gap: 12px; margin-top: 4px;">
             
             <!-- Left: Treatment (Clinic) Pink Box -->
             <div style="background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
@@ -758,6 +780,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <div class="inline-treatment-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
 
+            ${
+              hasDigitalRx
+                ? `
             <!-- Right: Prescription (Store) Cyan Box -->
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
@@ -768,6 +793,9 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
               <div class="inline-prescription-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
+            `
+                : ''
+            }
           </div>
 
           <!-- Row 3: Financials & Actions (Matching User Photo: CHARGE, PAID, DUE, Cancel, Save Changes, Print) -->
@@ -797,10 +825,16 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               <button type="button" class="cms-btn cms-btn-ghost btn-inline-cancel-edit" data-visitid="${visitKey}" style="padding: 6px 14px; border: 1px solid var(--border); font-weight: 700; border-radius: 6px;">
                 Cancel
               </button>
+              ${
+                hasDigitalRx
+                  ? `
               <button type="button" class="cms-btn btn-inline-save-print" data-visitid="${visitKey}" style="background: #0284c7; color: #fff; padding: 6px 16px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Save and immediately print prescription">
                 <i class="fa-solid fa-print"></i>
                 <span>Save &amp; Print</span>
               </button>
+              `
+                  : ''
+              }
               <button type="submit" class="cms-btn" style="background: #0f5132; color: #fff; padding: 6px 18px; border-radius: 6px; font-weight: 800; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                 <i class="fa-solid fa-check"></i>
                 <span>Save Changes</span>
@@ -1154,7 +1188,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           </div>
 
           <!-- Split Treatment & Prescription Boxes -->
-          <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 12px;">
+          <div style="display: grid; grid-template-columns: ${hasDigitalRx ? '1fr 1.15fr' : '1fr'}; gap: 12px;">
             <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px; padding: 10px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #dc2626; text-transform: uppercase; margin-bottom: 6px;">Treatment / Clinic:</div>
               <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -1162,12 +1196,18 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               </div>
             </div>
 
+            ${
+              hasDigitalRx
+                ? `
             <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 10px 12px;">
               <div style="font-size: 11px; font-weight: 800; color: #0d9488; text-transform: uppercase; margin-bottom: 6px;">Prescription / Medical Store:</div>
               <div style="display: flex; flex-direction: column; gap: 4px;">
                 ${prescriptions.length === 0 ? `<span style="color: var(--text-muted); font-size: 12px;">No pharmacy medicines prescribed</span>` : prescriptions.map(rx => `<div style="background: #fff; border: 1px solid #99f6e4; border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700;">• ${rx.name} [Qty ${rx.qty}] (${rx.mor || '1'}-${rx.noon || '0'}-${rx.eve || '1'}) ${rx.timing || 'AF'}</div>`).join('')}
               </div>
             </div>
+            `
+                : ''
+            }
           </div>
 
           <!-- Financial Summary -->
@@ -1202,9 +1242,15 @@ export function renderConsultationView(container, selection, onSelectPatient, on
               `
                   : ''
               }
+              ${
+                hasDigitalRx
+                  ? `
               <button type="button" id="btn-print-case-modal" class="cms-btn cms-btn-ghost" style="border: 1px solid var(--border);">
                 <i class="fa-solid fa-print"></i> Print Prescription
               </button>
+              `
+                  : ''
+              }
               <button type="button" id="btn-dismiss-case-modal" class="cms-btn cms-btn-primary" style="background: #0f5132; padding: 8px 20px;">
                 Close
               </button>
@@ -1582,7 +1628,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
       container,
       '#input-complaint',
       () => {
-        const masters = (db.masterComplaints || []).map(c => ({ name: c.name, code: c.code, category: c.category }));
+        const sharedComplaints = getSharedMasterCollection('complaints');
+        const masters = sharedComplaints.map(c => ({
+          name: c.name,
+          code: db.clinicShortcuts?.complaints?.[c.name] || db.clinicShortcuts?.complaints?.[c.id] || '',
+          category: c.category || 'General'
+        }));
         const customs = (db.customComplaints || []).map(c => ({ name: c, code: '', category: 'Custom' }));
         return [...masters, ...customs];
       }
@@ -1592,7 +1643,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
       container,
       '#input-investigation',
       () => {
-        const masters = (db.masterInvestigations || []).map(inv => ({ name: inv.name, code: inv.code, category: inv.category }));
+        const sharedInvs = getSharedMasterCollection('investigations');
+        const masters = sharedInvs.map(inv => ({
+          name: inv.name,
+          code: db.clinicShortcuts?.investigations?.[inv.name] || db.clinicShortcuts?.investigations?.[inv.id] || '',
+          category: inv.category || 'General'
+        }));
         const customs = (db.customInvestigations || []).map(inv => ({ name: inv, code: '', category: 'Custom' }));
         return [...masters, ...customs];
       }
@@ -1693,13 +1749,15 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         const received = Number(paidInput?.value || 0);
         const due = Math.max(0, charge - received);
 
-        // Auto-learn newly typed complaints and investigations
+        // Auto-learn newly typed complaints and investigations into shared master catalogue
         if (complaint) {
           const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
           complaintTokens.forEach(cName => {
-            const exists = (db.masterComplaints || []).some(m => m.name.toLowerCase() === cName.toLowerCase() || m.code.toLowerCase() === cName.toLowerCase()) ||
+            const sharedComplaints = getSharedMasterCollection('complaints');
+            const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
                            (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
             if (!exists && cName.length > 1) {
+              addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
               if (!db.customComplaints) db.customComplaints = [];
               db.customComplaints.push(cName);
               showToast(`✨ Added "${cName}" to Complaints Master`);
@@ -1710,9 +1768,11 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         if (investigation) {
           const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
           investigationTokens.forEach(invName => {
-            const exists = (db.masterInvestigations || []).some(m => m.name.toLowerCase() === invName.toLowerCase() || m.code.toLowerCase() === invName.toLowerCase()) ||
+            const sharedInvs = getSharedMasterCollection('investigations');
+            const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
                            (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
             if (!exists && invName.length > 1) {
+              addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
               if (!db.customInvestigations) db.customInvestigations = [];
               db.customInvestigations.push(invName);
               showToast(`✨ Added "${invName}" to Investigations Master`);
@@ -1774,11 +1834,13 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           patient.visits.push(newVisit);
           showToast(`✨ Visit #${nextVisitNum} saved!`);
 
-          // Open Prescription Print Preview
-          if (onPrintRequested) {
-            onPrintRequested(patient, newVisit);
-          } else {
-            openPrescriptionModal(patient, newVisit);
+          // Open Prescription Print Preview only if Digital Prescription service is enabled
+          if (hasDigitalRx) {
+            if (onPrintRequested) {
+              onPrintRequested(patient, newVisit);
+            } else {
+              openPrescriptionModal(patient, newVisit);
+            }
           }
         }
 
@@ -1864,7 +1926,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         container,
         '.inline-edit-complaint',
         () => {
-          const masters = (db.masterComplaints || []).map(c => ({ name: c.name, code: c.code, category: c.category }));
+          const sharedComplaints = getSharedMasterCollection('complaints');
+          const masters = sharedComplaints.map(c => ({
+            name: c.name,
+            code: db.clinicShortcuts?.complaints?.[c.name] || db.clinicShortcuts?.complaints?.[c.id] || '',
+            category: c.category || 'General'
+          }));
           const customs = (db.customComplaints || []).map(c => ({ name: c, code: '', category: 'Custom' }));
           return [...masters, ...customs];
         }
@@ -1874,7 +1941,12 @@ export function renderConsultationView(container, selection, onSelectPatient, on
         container,
         '.inline-edit-investigation',
         () => {
-          const masters = (db.masterInvestigations || []).map(inv => ({ name: inv.name, code: inv.code, category: inv.category }));
+          const sharedInvs = getSharedMasterCollection('investigations');
+          const masters = sharedInvs.map(inv => ({
+            name: inv.name,
+            code: db.clinicShortcuts?.investigations?.[inv.name] || db.clinicShortcuts?.investigations?.[inv.id] || '',
+            category: inv.category || 'General'
+          }));
           const customs = (db.customInvestigations || []).map(inv => ({ name: inv, code: '', category: 'Custom' }));
           return [...masters, ...customs];
         }
@@ -2006,13 +2078,15 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           v.received = received;
           v.due = due;
 
-          // Auto-learn newly typed complaints and investigations
+          // Auto-learn newly typed complaints and investigations into shared master catalogue
           if (complaint) {
             const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
             complaintTokens.forEach(cName => {
-              const exists = (db.masterComplaints || []).some(m => m.name.toLowerCase() === cName.toLowerCase() || m.code.toLowerCase() === cName.toLowerCase()) ||
+              const sharedComplaints = getSharedMasterCollection('complaints');
+              const exists = sharedComplaints.some(m => m.name.toLowerCase() === cName.toLowerCase() || (m.code && m.code.toLowerCase() === cName.toLowerCase())) ||
                              (db.customComplaints || []).some(c => c.toLowerCase() === cName.toLowerCase());
               if (!exists && cName.length > 1) {
+                addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
                 if (!db.customComplaints) db.customComplaints = [];
                 db.customComplaints.push(cName);
               }
@@ -2022,9 +2096,11 @@ export function renderConsultationView(container, selection, onSelectPatient, on
           if (investigation) {
             const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
             investigationTokens.forEach(invName => {
-              const exists = (db.masterInvestigations || []).some(m => m.name.toLowerCase() === invName.toLowerCase() || m.code.toLowerCase() === invName.toLowerCase()) ||
+              const sharedInvs = getSharedMasterCollection('investigations');
+              const exists = sharedInvs.some(m => m.name.toLowerCase() === invName.toLowerCase() || (m.code && m.code.toLowerCase() === invName.toLowerCase())) ||
                              (db.customInvestigations || []).some(i => i.toLowerCase() === invName.toLowerCase());
               if (!exists && invName.length > 1) {
+                addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
                 if (!db.customInvestigations) db.customInvestigations = [];
                 db.customInvestigations.push(invName);
               }
@@ -2222,7 +2298,7 @@ export function renderConsultationView(container, selection, onSelectPatient, on
     }
 
     const subText = container.querySelector('#btn-submit-case-text');
-    if (subText) subText.textContent = 'Update & Print';
+    if (subText) subText.textContent = hasDigitalRx ? 'Update & Print' : 'Update Visit';
 
     // Trigger financial update
     const c = Number(chInput?.value || 0);
@@ -2763,29 +2839,23 @@ function getRecentPatients(db) {
 // DIETARY MASTER AUTOCOMPLETE & MODAL HELPERS
 // ==========================================
 
-function getDietaryMasterList(db) {
-  const builtIns = Object.entries(DIETARY_TRANSLATIONS || {}).map(([code, item]) => ({
-    code,
-    disease: item.disease?.EN || code,
-    eat: item.eat?.EN || '',
-    avoid: item.avoid?.EN || '',
-    category: 'Standard Clinical',
-  }));
+export function renderDietaryChipsHTML(db, prefix = 'form') {
+  const tpls = Object.values(db?.dietary || {});
+  if (tpls.length === 0) return '';
+  return tpls.map(tpl => `
+    <span class="cms-pill ${prefix === 'inline' ? 'inline-diet-chip' : 'form-diet-chip'}" data-code="${tpl.code}" style="font-size: ${prefix === 'inline' ? '9.5px' : '10px'}; padding: ${prefix === 'inline' ? '1px 5px' : '2px 6px'}; cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 800;" title="${tpl.disease || tpl.name || tpl.code}">+ ${tpl.code}</span>
+  `).join('');
+}
 
-  const customMasters = Object.values(db.dietary || {}).map((d) => ({
+function getDietaryMasterList(db) {
+  // Only return templates created/saved by the active clinic doctor
+  return Object.values(db?.dietary || {}).map((d) => ({
     code: (d.code || '').toUpperCase(),
     disease: d.disease || d.name || d.code,
     eat: d.eat || '',
     avoid: d.avoid || '',
-    category: 'Custom Master',
+    category: 'Clinic Template',
   }));
-
-  // Deduplicate by code (custom master overrides built-in)
-  const map = new Map();
-  builtIns.forEach((item) => map.set(item.code.toUpperCase(), item));
-  customMasters.forEach((item) => map.set(item.code.toUpperCase(), item));
-
-  return Array.from(map.values());
 }
 
 function setupDietaryAutocomplete(container, inputSelector, getSuggestionsFn) {
@@ -3068,133 +3138,147 @@ function openQuickAddDietaryModal(container, db, clinicId, onSuccess) {
 
 export const CLINICAL_MEDICINES_CATALOG = [
   // Analgesics & Antipyretics
-  { name: 'Paracetamol 650mg (Dolo 650 / Calpol)', code: 'PCM', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Paracetamol 500mg (Crocin)', code: 'PCM500', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Ibuprofen 400mg (Brufen)', code: 'IBU', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Combiflam (Ibuprofen + Paracetamol)', code: 'COMBI', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Zerodol-P (Aceclofenac 100mg + Paracetamol 325mg)', code: 'ZP', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Zerodol-SP (Aceclo + Paracetamol + Serratiopeptidase)', code: 'ZSP', category: 'Anti-inflammatory / Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Voveran 50mg (Diclofenac Sodium)', code: 'VOV', category: 'NSAID / Joint Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Meftal-Spas (Mefenamic Acid + Dicyclomine)', code: 'MEF', category: 'Antispasmodic / Cramps', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Cyclopam (Dicyclomine + Paracetamol)', code: 'CYCLO', category: 'Antispasmodic / Abdominal Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Drotin-M (Drotaverine 80mg + Mefenamic Acid 250mg)', code: 'DROTIN', category: 'Antispasmodic / Colic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Tramadol 50mg + Paracetamol (Ultracet)', code: 'TRAM', category: 'Severe Pain / Opioid Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Paracetamol 650mg (Dolo 650 / Calpol)', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Paracetamol 500mg (Crocin)', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Ibuprofen 400mg (Brufen)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Combiflam (Ibuprofen + Paracetamol)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Zerodol-P (Aceclofenac 100mg + Paracetamol 325mg)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Zerodol-SP (Aceclo + Paracetamol + Serratiopeptidase)', category: 'Anti-inflammatory / Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Voveran 50mg (Diclofenac Sodium)', category: 'NSAID / Joint Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Meftal-Spas (Mefenamic Acid + Dicyclomine)', category: 'Antispasmodic / Cramps', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Cyclopam (Dicyclomine + Paracetamol)', category: 'Antispasmodic / Abdominal Pain', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Drotin-M (Drotaverine 80mg + Mefenamic Acid 250mg)', category: 'Antispasmodic / Colic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Tramadol 50mg + Paracetamol (Ultracet)', category: 'Severe Pain / Opioid Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
 
   // Antibiotics & Anti-infectives
-  { name: 'Amoxicillin 500mg (Novamox 500)', code: 'AMOX', category: 'Antibiotic (Penicillin)', form: 'Capsule', defaultDosage: '1-0-1 AF' },
-  { name: 'Augmentin 625 (Amoxyclav 625 Duo)', code: 'AUG', category: 'Broad Spectrum Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Azithromycin 500mg (Azithral 500)', code: 'AZITH', category: 'Macrolide Antibiotic (RTI)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Azithromycin 250mg (Azithral 250)', code: 'AZI250', category: 'Macrolide Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Cefixime 200mg (Taxim-O 200 / Zifi 200)', code: 'CEF', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Cefuroxime Axetil 500mg (Ceftum 500)', code: 'CEFTUM', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Ciprofloxacin 500mg (Ciplox 500)', code: 'CIPRO', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Ofloxacin 200mg (Oflox 200)', code: 'OFLOX', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Norfloxacin + Tinidazole (Norflox-TZ)', code: 'TZ', category: 'Gastrointestinal Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Ofloxacin + Ornidazole (O2 / Zenflox-OZ)', code: 'O2', category: 'GI Infection / Diarrhea', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Metronidazole 400mg (Metrogyl 400)', code: 'MET', category: 'Antiprotozoal / Amoebiasis', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Levofloxacin 500mg (Levomac 500)', code: 'LEVO', category: 'Respiratory Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Doxycycline 100mg (Doxicip 100)', code: 'DOXY', category: 'Tetracycline Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF' },
-  { name: 'Clindamycin 300mg (Dalacin C)', code: 'CLINDA', category: 'Lincosamide Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF' },
+  { name: 'Amoxicillin 500mg (Novamox 500)', category: 'Antibiotic (Penicillin)', form: 'Capsule', defaultDosage: '1-0-1 AF' },
+  { name: 'Augmentin 625 (Amoxyclav 625 Duo)', category: 'Broad Spectrum Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Azithromycin 500mg (Azithral 500)', category: 'Macrolide Antibiotic (RTI)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Azithromycin 250mg (Azithral 250)', category: 'Macrolide Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Cefixime 200mg (Taxim-O 200 / Zifi 200)', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Cefuroxime Axetil 500mg (Ceftum 500)', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Ciprofloxacin 500mg (Ciplox 500)', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Ofloxacin 200mg (Oflox 200)', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Norfloxacin + Tinidazole (Norflox-TZ)', category: 'Gastrointestinal Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Ofloxacin + Ornidazole (O2 / Zenflox-OZ)', category: 'GI Infection / Diarrhea', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Metronidazole 400mg (Metrogyl 400)', category: 'Antiprotozoal / Amoebiasis', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Levofloxacin 500mg (Levomac 500)', category: 'Respiratory Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Doxycycline 100mg (Doxicip 100)', category: 'Tetracycline Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF' },
+  { name: 'Clindamycin 300mg (Dalacin C)', category: 'Lincosamide Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF' },
 
   // Antacids, PPIs, GERD & GI
-  { name: 'Pantoprazole 40mg (Pan 40 / Pantocid)', code: 'PANTO', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Pantoprazole + Domperidone (Pan-D / Pantop-D)', code: 'PAND', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
-  { name: 'Rabeprazole 20mg (Razo 20 / Happi 20)', code: 'RAB', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Rabeprazole + Domperidone (Rablet-D / Rabekind-D)', code: 'RABD', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
-  { name: 'Omeprazole 20mg (Ocid 20 / Omez)', code: 'OMEZ', category: 'Antacid / PPI', form: 'Capsule', defaultDosage: '1-0-0 BF' },
-  { name: 'Omeprazole + Domperidone (Omez-D)', code: 'OMEZD', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
-  { name: 'Esomeprazole 40mg (Nexpro 40)', code: 'ESOM', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Ranitidine 150mg (Rantac 150 / Aciloc 150)', code: 'RANTAC', category: 'H2 Blocker / Acidity', form: 'Tablet', defaultDosage: '1-0-1 BF' },
-  { name: 'Sucralfate Syrup 100ml (Sucrafil / Sucral)', code: 'SUCRA', category: 'Mucosal Protective / Ulcer', form: 'Syrup', defaultDosage: '2 Tsp BF' },
-  { name: 'Gelusil MPS / Digene Gel (Antacid Syrup)', code: 'GELUSIL', category: 'Antacid Gel', form: 'Syrup', defaultDosage: '2 Tsp AF' },
-  { name: 'Ondansetron 4mg (Ondem 4 / Emeset)', code: 'ONDEM', category: 'Antiemetic / Nausea & Vomiting', form: 'Tablet', defaultDosage: '1-0-1 BF' },
-  { name: 'Domperidone 10mg (Domstal / Vomistop)', code: 'DOM', category: 'Antiemetic / Prokinetic', form: 'Tablet', defaultDosage: '1-0-1 BF' },
+  { name: 'Pantoprazole 40mg (Pan 40 / Pantocid)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Pantoprazole + Domperidone (Pan-D / Pantop-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
+  { name: 'Rabeprazole 20mg (Razo 20 / Happi 20)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Rabeprazole + Domperidone (Rablet-D / Rabekind-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
+  { name: 'Omeprazole 20mg (Ocid 20 / Omez)', category: 'Antacid / PPI', form: 'Capsule', defaultDosage: '1-0-0 BF' },
+  { name: 'Omeprazole + Domperidone (Omez-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF' },
+  { name: 'Esomeprazole 40mg (Nexpro 40)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Ranitidine 150mg (Rantac 150 / Aciloc 150)', category: 'H2 Blocker / Acidity', form: 'Tablet', defaultDosage: '1-0-1 BF' },
+  { name: 'Sucralfate Syrup 100ml (Sucrafil / Sucral)', category: 'Mucosal Protective / Ulcer', form: 'Syrup', defaultDosage: '2 Tsp BF' },
+  { name: 'Gelusil MPS / Digene Gel (Antacid Syrup)', category: 'Antacid Gel', form: 'Syrup', defaultDosage: '2 Tsp AF' },
+  { name: 'Ondansetron 4mg (Ondem 4 / Emeset)', category: 'Antiemetic / Nausea & Vomiting', form: 'Tablet', defaultDosage: '1-0-1 BF' },
+  { name: 'Domperidone 10mg (Domstal / Vomistop)', category: 'Antiemetic / Prokinetic', form: 'Tablet', defaultDosage: '1-0-1 BF' },
 
   // Antihistamines, Cold, Cough & Respiratory
-  { name: 'Cetirizine 10mg (Cetzine / Alerid)', code: 'CET', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS' },
-  { name: 'Levocetirizine 5mg (Levocet / 1-AL)', code: 'LEVOCET', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS' },
-  { name: 'Montair-LC (Levocetirizine 5mg + Montelukast 10mg)', code: 'MONTAIR', category: 'Allergic Rhinitis / Asthma', form: 'Tablet', defaultDosage: '0-0-1 HS' },
-  { name: 'Allegra 120mg (Fexofenadine)', code: 'ALLEGRA', category: 'Non-sedating Antihistamine', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Allegra 180mg (Fexofenadine)', code: 'ALL180', category: 'Allergy / Chronic Urticaria', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Sinarest (Paracetamol + Phenylephrine + CPM)', code: 'SINA', category: 'Cold, Sinus & Fever', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Cheston Cold (Cetirizine + Phenylephrine + PCM)', code: 'CHESTON', category: 'Cold & Cough Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Ascoril-LS Syrup (Levosalbutamol + Ambroxol + Guaiphenesin)', code: 'ASCORIL', category: 'Wet Cough / Expectorant', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
-  { name: 'Ascoril-D Plus Syrup (Dextromethorphan + Phenylephrine)', code: 'ASCORILD', category: 'Dry Cough Suppressant', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
-  { name: 'Grilinctus Syrup (Dextromethorphan + CPM)', code: 'GRIL', category: 'Cough Relief Syrup', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
-  { name: 'Benadryl Cough Syrup (Diphenhydramine)', code: 'BENADRYL', category: 'Allergic Cough Syrup', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
-  { name: 'Asthalin 2mg / 4mg (Salbutamol)', code: 'ASTH', category: 'Bronchodilator / Asthma', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Asthalin Inhaler (Salbutamol 100mcg)', code: 'ASTHINH', category: 'Inhaler / Acute Bronchospasm', form: 'Inhaler', defaultDosage: '2 Puffs SOS' },
-  { name: 'Budecort 200 Inhaler (Budesonide 200mcg)', code: 'BUDECORT', category: 'Inhaled Corticosteroid', form: 'Inhaler', defaultDosage: '1 Puff BD' },
-  { name: 'Deriphyllin Retard 150mg / 300mg', code: 'DERI', category: 'Bronchodilator / COPD', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Cetirizine 10mg (Cetzine / Alerid)', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS' },
+  { name: 'Levocetirizine 5mg (Levocet / 1-AL)', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS' },
+  { name: 'Montair-LC (Levocetirizine 5mg + Montelukast 10mg)', category: 'Allergic Rhinitis / Asthma', form: 'Tablet', defaultDosage: '0-0-1 HS' },
+  { name: 'Allegra 120mg (Fexofenadine)', category: 'Non-sedating Antihistamine', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Allegra 180mg (Fexofenadine)', category: 'Allergy / Chronic Urticaria', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Sinarest (Paracetamol + Phenylephrine + CPM)', category: 'Cold, Sinus & Fever', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Cheston Cold (Cetirizine + Phenylephrine + PCM)', category: 'Cold & Cough Relief', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Ascoril-LS Syrup (Levosalbutamol + Ambroxol + Guaiphenesin)', category: 'Wet Cough / Expectorant', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
+  { name: 'Ascoril-D Plus Syrup (Dextromethorphan + Phenylephrine)', category: 'Dry Cough Suppressant', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
+  { name: 'Grilinctus Syrup (Dextromethorphan + CPM)', category: 'Cough Relief Syrup', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
+  { name: 'Benadryl Cough Syrup (Diphenhydramine)', category: 'Allergic Cough Syrup', form: 'Syrup', defaultDosage: '2 Tsp TDS' },
+  { name: 'Asthalin 2mg / 4mg (Salbutamol)', category: 'Bronchodilator / Asthma', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Asthalin Inhaler (Salbutamol 100mcg)', category: 'Inhaler / Acute Bronchospasm', form: 'Inhaler', defaultDosage: '2 Puffs SOS' },
+  { name: 'Budecort 200 Inhaler (Budesonide 200mcg)', category: 'Inhaled Corticosteroid', form: 'Inhaler', defaultDosage: '1 Puff BD' },
+  { name: 'Deriphyllin Retard 150mg / 300mg', category: 'Bronchodilator / COPD', form: 'Tablet', defaultDosage: '1-0-1 AF' },
 
   // Antidiarrheal, Laxatives & Probiotics
-  { name: 'Loperamide 2mg (Eldoper / Imodium)', code: 'LOPER', category: 'Antidiarrheal', form: 'Capsule', defaultDosage: '1-0-1 SOS' },
-  { name: 'Racecadotril 100mg (Redotil)', code: 'RACEC', category: 'Antisecretory Antidiarrheal', form: 'Capsule', defaultDosage: '1-1-1 AF' },
-  { name: 'Sporlac / Darolac (Lactic Acid Bacillus)', code: 'SPORLAC', category: 'Probiotic / Gut Flora', form: 'Capsule', defaultDosage: '1-0-1 AF' },
-  { name: 'Econorm Sachet (Saccharomyces boulardii)', code: 'ECONORM', category: 'Probiotic Sachet', form: 'Sachet', defaultDosage: '1 Sachet BD' },
-  { name: 'Electral ORS Sachet (WHO Oral Rehydration Salt)', code: 'ORS', category: 'Electrolytes / Rehydration', form: 'Sachet', defaultDosage: '1 Sachet in 1L' },
-  { name: 'Dulcolax 5mg (Bisacodyl)', code: 'DULCOLAX', category: 'Laxative / Constipation', form: 'Tablet', defaultDosage: '0-0-2 HS' },
-  { name: 'Cremaffin / Cremaffin Plus Syrup', code: 'CREMAFFIN', category: 'Laxative / Stool Softener', form: 'Syrup', defaultDosage: '2 Tsp HS' },
-  { name: 'Isabgol Husk (Ispaghula 100g / 200g)', code: 'ISABGOL', category: 'Bulk Forming Laxative', form: 'Powder', defaultDosage: '1-2 Tsp HS' },
-  { name: 'Duphalac Syrup (Lactulose 100ml / 200ml)', code: 'DUPHALAC', category: 'Osmotic Laxative', form: 'Syrup', defaultDosage: '15ml HS' },
+  { name: 'Loperamide 2mg (Eldoper / Imodium)', category: 'Antidiarrheal', form: 'Capsule', defaultDosage: '1-0-1 SOS' },
+  { name: 'Racecadotril 100mg (Redotil)', category: 'Antisecretory Antidiarrheal', form: 'Capsule', defaultDosage: '1-1-1 AF' },
+  { name: 'Sporlac / Darolac (Lactic Acid Bacillus)', category: 'Probiotic / Gut Flora', form: 'Capsule', defaultDosage: '1-0-1 AF' },
+  { name: 'Econorm Sachet (Saccharomyces boulardii)', category: 'Probiotic Sachet', form: 'Sachet', defaultDosage: '1 Sachet BD' },
+  { name: 'Electral ORS Sachet (WHO Oral Rehydration Salt)', category: 'Electrolytes / Rehydration', form: 'Sachet', defaultDosage: '1 Sachet in 1L' },
+  { name: 'Dulcolax 5mg (Bisacodyl)', category: 'Laxative / Constipation', form: 'Tablet', defaultDosage: '0-0-2 HS' },
+  { name: 'Cremaffin / Cremaffin Plus Syrup', category: 'Laxative / Stool Softener', form: 'Syrup', defaultDosage: '2 Tsp HS' },
+  { name: 'Isabgol Husk (Ispaghula 100g / 200g)', category: 'Bulk Forming Laxative', form: 'Powder', defaultDosage: '1-2 Tsp HS' },
+  { name: 'Duphalac Syrup (Lactulose 100ml / 200ml)', category: 'Osmotic Laxative', form: 'Syrup', defaultDosage: '15ml HS' },
 
   // Vitamins, Minerals & Supplements
-  { name: 'Becosules (Vitamin B-Complex + Vitamin C)', code: 'BECO', category: 'Multivitamin / Mouth Ulcers', form: 'Capsule', defaultDosage: '1-0-0 AF' },
-  { name: 'Neurobion Forte (Vit B1, B6, B12)', code: 'NEURO', category: 'Neuropathy / Nerve Health', form: 'Tablet', defaultDosage: '1-0-0 AF' },
-  { name: 'Supradyn Daily Multivitamin + Minerals', code: 'SUPRADYN', category: 'General Multivitamin', form: 'Tablet', defaultDosage: '1-0-0 AF' },
-  { name: 'Zincovit (Multivitamin with Zinc)', code: 'ZINCOVIT', category: 'Immunity / Nutritional', form: 'Tablet', defaultDosage: '1-0-0 AF' },
-  { name: 'Shelcal 500 (Calcium 500mg + Vitamin D3 250IU)', code: 'SHELCAL', category: 'Calcium Supplement / Bone', form: 'Tablet', defaultDosage: '0-1-0 AF' },
-  { name: 'Calcirol Sachet 60,000 IU (Cholecalciferol D3)', code: 'D3', category: 'Vitamin D3 Deficiency', form: 'Sachet', defaultDosage: '1 Sachet Weekly' },
-  { name: 'Limcee 500mg / Celin 500mg (Vitamin C)', code: 'VITC', category: 'Vitamin C / Antioxidant', form: 'Chewable', defaultDosage: '1-0-0 OD' },
-  { name: 'Orofer-XT (Ferrous Ascorbate + Folic Acid)', code: 'OROFER', category: 'Hematinic / Iron Deficiency', form: 'Tablet', defaultDosage: '0-1-0 AF' },
-  { name: 'Folvite 5mg (Folic Acid)', code: 'FOLVITE', category: 'Folic Acid / Pregnancy', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Becosules (Vitamin B-Complex + Vitamin C)', category: 'Multivitamin / Mouth Ulcers', form: 'Capsule', defaultDosage: '1-0-0 AF' },
+  { name: 'Neurobion Forte (Vit B1, B6, B12)', category: 'Neuropathy / Nerve Health', form: 'Tablet', defaultDosage: '1-0-0 AF' },
+  { name: 'Supradyn Daily Multivitamin + Minerals', category: 'General Multivitamin', form: 'Tablet', defaultDosage: '1-0-0 AF' },
+  { name: 'Zincovit (Multivitamin with Zinc)', category: 'Immunity / Nutritional', form: 'Tablet', defaultDosage: '1-0-0 AF' },
+  { name: 'Shelcal 500 (Calcium 500mg + Vitamin D3 250IU)', category: 'Calcium Supplement / Bone', form: 'Tablet', defaultDosage: '0-1-0 AF' },
+  { name: 'Calcirol Sachet 60,000 IU (Cholecalciferol D3)', category: 'Vitamin D3 Deficiency', form: 'Sachet', defaultDosage: '1 Sachet Weekly' },
+  { name: 'Limcee 500mg / Celin 500mg (Vitamin C)', category: 'Vitamin C / Antioxidant', form: 'Chewable', defaultDosage: '1-0-0 OD' },
+  { name: 'Orofer-XT (Ferrous Ascorbate + Folic Acid)', category: 'Hematinic / Iron Deficiency', form: 'Tablet', defaultDosage: '0-1-0 AF' },
+  { name: 'Folvite 5mg (Folic Acid)', category: 'Folic Acid / Pregnancy', form: 'Tablet', defaultDosage: '1-0-0 OD' },
 
   // Cardiovascular & Hypertension
-  { name: 'Telmisartan 40mg (Telma 40 / Telpres 40)', code: 'TELMA', category: 'Antihypertensive (ARB)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Telma-AM (Telmisartan 40mg + Amlodipine 5mg)', code: 'TELMAAM', category: 'Antihypertensive Combination', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Telma-H (Telmisartan 40mg + Hydrochlorothiazide 12.5mg)', code: 'TELMAH', category: 'Antihypertensive + Diuretic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Amlodipine 5mg (Amlong 5 / Stamlo 5)', code: 'AMLO', category: 'Calcium Channel Blocker', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Atenolol 50mg (Aten 50 / Betacard 50)', code: 'ATEN', category: 'Beta Blocker', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Metoprolol Succinate 25mg / 50mg (Betaloc)', code: 'METOP', category: 'Beta Blocker / Angina', form: 'Tablet', defaultDosage: '1-0-0 OD' },
-  { name: 'Atorvastatin 10mg / 20mg (Atorva 10 / Storvas)', code: 'ATORVA', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS' },
-  { name: 'Rosuvastatin 10mg (Rosuvas 10 / Rozavel 10)', code: 'ROSUVAS', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS' },
-  { name: 'Ecosprin 75mg / 150mg (Aspirin)', code: 'ECOSPRIN', category: 'Antiplatelet / Blood Thinner', form: 'Tablet', defaultDosage: '0-1-0 AF' },
-  { name: 'Clopidogrel 75mg (Clopilet 75)', code: 'CLOP', category: 'Antiplatelet / CAD', form: 'Tablet', defaultDosage: '0-1-0 AF' },
+  { name: 'Telmisartan 40mg (Telma 40 / Telpres 40)', category: 'Antihypertensive (ARB)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Telma-AM (Telmisartan 40mg + Amlodipine 5mg)', category: 'Antihypertensive Combination', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Telma-H (Telmisartan 40mg + Hydrochlorothiazide 12.5mg)', category: 'Antihypertensive + Diuretic', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Amlodipine 5mg (Amlong 5 / Stamlo 5)', category: 'Calcium Channel Blocker', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Atenolol 50mg (Aten 50 / Betacard 50)', category: 'Beta Blocker', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Metoprolol Succinate 25mg / 50mg (Betaloc)', category: 'Beta Blocker / Angina', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Atorvastatin 10mg / 20mg (Atorva 10 / Storvas)', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS' },
+  { name: 'Rosuvastatin 10mg (Rosuvas 10 / Rozavel 10)', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS' },
+  { name: 'Ecosprin 75mg / 150mg (Aspirin)', category: 'Antiplatelet / Blood Thinner', form: 'Tablet', defaultDosage: '0-1-0 AF' },
+  { name: 'Clopidogrel 75mg (Clopilet 75)', category: 'Antiplatelet / CAD', form: 'Tablet', defaultDosage: '0-1-0 AF' },
 
   // Diabetes Mellitus
-  { name: 'Metformin 500mg (Glycomet 500)', code: 'MET500', category: 'Antidiabetic (Biguanide)', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Metformin 500mg SR (Glycomet SR 500)', code: 'METSR', category: 'Antidiabetic SR', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Glimepiride 1mg / 2mg (Amaryl 1/2 / Zoryl)', code: 'GLIME', category: 'Antidiabetic (Sulfonylurea)', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Glycomet-GP 1 (Glimepiride 1mg + Metformin 500mg SR)', code: 'GP1', category: 'Antidiabetic Combination', form: 'Tablet', defaultDosage: '1-0-1 BF' },
-  { name: 'Teneligliptin 20mg (Ziten 20 / Tenelimac)', code: 'TENEL', category: 'Antidiabetic (DPP-4 Inhibitor)', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Vildagliptin 50mg (Galvus 50 / Jalra 50)', code: 'GALVUS', category: 'Antidiabetic (DPP-4)', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Dapagliflozin 10mg (Forxiga 10 / Oxra 10)', code: 'DAPA', category: 'Antidiabetic (SGLT2 Inhibitor)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Metformin 500mg (Glycomet 500)', category: 'Antidiabetic (Biguanide)', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Metformin 500mg SR (Glycomet SR 500)', category: 'Antidiabetic SR', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Glimepiride 1mg / 2mg (Amaryl 1/2 / Zoryl)', category: 'Antidiabetic (Sulfonylurea)', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Glycomet-GP 1 (Glimepiride 1mg + Metformin 500mg SR)', category: 'Antidiabetic Combination', form: 'Tablet', defaultDosage: '1-0-1 BF' },
+  { name: 'Teneligliptin 20mg (Ziten 20 / Tenelimac)', category: 'Antidiabetic (DPP-4 Inhibitor)', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Vildagliptin 50mg (Galvus 50 / Jalra 50)', category: 'Antidiabetic (DPP-4)', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Dapagliflozin 10mg (Forxiga 10 / Oxra 10)', category: 'Antidiabetic (SGLT2 Inhibitor)', form: 'Tablet', defaultDosage: '1-0-0 OD' },
 
   // Corticosteroids, Thyroid & Others
-  { name: 'Thyronorm 25mcg / 50mcg / 100mcg (Levothyroxine)', code: 'THYRO', category: 'Hypothyroidism / Hormone', form: 'Tablet', defaultDosage: '1-0-0 BF' },
-  { name: 'Prednisolone 5mg / 10mg / 20mg (Wysolone)', code: 'PRED', category: 'Corticosteroid / Anti-inflammatory', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Deflazacort 6mg (Defcort 6)', code: 'DEFCORT', category: 'Corticosteroid', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Dexamethasone 0.5mg / 4mg (Dexona)', code: 'DEXA', category: 'Corticosteroid', form: 'Tablet', defaultDosage: '1-0-1 AF' },
-  { name: 'Febuxostat 40mg (Febutaz 40 / Feburic)', code: 'FEBU', category: 'Antigout / Uric Acid Lowering', form: 'Tablet', defaultDosage: '1-0-0 OD' },
+  { name: 'Thyronorm 25mcg / 50mcg / 100mcg (Levothyroxine)', category: 'Hypothyroidism / Hormone', form: 'Tablet', defaultDosage: '1-0-0 BF' },
+  { name: 'Prednisolone 5mg / 10mg / 20mg (Wysolone)', category: 'Corticosteroid / Anti-inflammatory', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Deflazacort 6mg (Defcort 6)', category: 'Corticosteroid', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Dexamethasone 0.5mg / 4mg (Dexona)', category: 'Corticosteroid', form: 'Tablet', defaultDosage: '1-0-1 AF' },
+  { name: 'Febuxostat 40mg (Febutaz 40 / Feburic)', category: 'Antigout / Uric Acid Lowering', form: 'Tablet', defaultDosage: '1-0-0 OD' },
 ];
 
 export const CLINICAL_TREATMENTS_CATALOG = CLINICAL_MEDICINES_CATALOG;
 
 function getMedicinesSuggestionsList(db) {
-  const masterList = (db.masterMedicines || []).map((m) => ({
-    name: m.name,
-    code: m.code || '',
-    category: m.category || 'Medicine',
-    form: m.form || 'Tablet',
-    defaultDosage: m.defaultDosage || '1-0-1 AF',
-    defaultQty: m.defaultQty || '1',
-  }));
-
+  const sharedMedicines = getSharedMasterCollection('medicines');
   const map = new Map();
-  // Standard catalog
-  CLINICAL_MEDICINES_CATALOG.forEach((item) => map.set(item.name.toLowerCase(), item));
-  // Custom masters override standard
-  masterList.forEach((item) => map.set(item.name.toLowerCase(), item));
+
+  // 1. Shared master catalogue provides universal medicine list for all clinics
+  sharedMedicines.forEach((item) => {
+    const clinicCode = (db?.clinicShortcuts?.medicines?.[item.name] || db?.clinicShortcuts?.medicines?.[item.id] || '').trim();
+    map.set(item.name.toLowerCase(), {
+      name: item.name,
+      code: clinicCode,
+      category: item.category || 'Clinical Pharmacy',
+      form: item.form || 'Tablet',
+      defaultDosage: item.defaultDosage || '1-0-1 AF',
+      defaultQty: item.defaultQty || '1',
+    });
+  });
+
+  // 2. Doctor/Clinic-specific custom medicines & overrides
+  (db?.masterMedicines || []).forEach((item) => {
+    const clinicCode = (db?.clinicShortcuts?.medicines?.[item.name] || db?.clinicShortcuts?.medicines?.[item.id] || '').trim();
+    map.set(item.name.toLowerCase(), {
+      name: item.name,
+      code: clinicCode,
+      category: item.category || 'Medicine',
+      form: item.form || 'Tablet',
+      defaultDosage: item.defaultDosage || '1-0-1 AF',
+      defaultQty: item.defaultQty || '1',
+    });
+  });
 
   return Array.from(map.values());
 }

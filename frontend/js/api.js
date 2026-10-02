@@ -129,98 +129,467 @@ export async function apiFetch(endpoint, options = {}) {
 }
 
 export const defaultMasterComplaints = [
-  { id: 'c1', code: 'FEV', name: 'Fever / High Temperature', category: 'General', description: 'Body temperature above 100°F with chills', createdAt: '2026-01-01' },
-  { id: 'c2', code: 'COUGH', name: 'Cough / Cold / Sore Throat', category: 'Respiratory', description: 'Dry or productive throat irritation and congestion', createdAt: '2026-01-01' },
-  { id: 'c3', code: 'HEAD', name: 'Headache / Migraine', category: 'Neurological', description: 'Frontal or throbbing head pain', createdAt: '2026-01-01' },
-  { id: 'c4', code: 'CHEST', name: 'Chest Pain / Discomfort', category: 'Cardiovascular', description: 'Substernal tightness or radiating pain', createdAt: '2026-01-01' },
-  { id: 'c5', code: 'ACID', name: 'Acidity / Heartburn / Gastric Pain', category: 'Gastrointestinal', description: 'Epigastric burning sensation after meals', createdAt: '2026-01-01' },
-  { id: 'c6', code: 'JOINT', name: 'Joint Pain / Knee Swelling', category: 'Orthopedic', description: 'Arthritic pain and stiffness', createdAt: '2026-01-01' },
-  { id: 'c7', code: 'WEAK', name: 'General Weakness / Fatigue', category: 'General', description: 'Lethargy and malaise', createdAt: '2026-01-01' },
-  { id: 'c8', code: 'BP', name: 'Hypertension Check / Giddiness', category: 'Cardiovascular', description: 'Dizziness and elevated blood pressure', createdAt: '2026-01-01' },
-  { id: 'c9', code: 'DIAB', name: 'High Blood Sugar / Polyuria', category: 'Endocrine', description: 'Excessive thirst and urination', createdAt: '2026-01-01' },
-  { id: 'c10', code: 'VOM', name: 'Nausea / Vomiting', category: 'Gastrointestinal', description: 'Stomach upset and regurgitation', createdAt: '2026-01-01' },
-  { id: 'c11', code: 'BREATH', name: 'Breathlessness / Dyspnea', category: 'Respiratory', description: 'Shortness of breath on exertion', createdAt: '2026-01-01' },
-  { id: 'c12', code: 'SKIN', name: 'Skin Rash / Itching', category: 'Dermatology', description: 'Allergic rashes or urticaria', createdAt: '2026-01-01' },
+  { id: 'c1', name: 'Fever / High Temperature', category: 'General', description: 'Body temperature above 100°F with chills', createdAt: '2026-01-01' },
+  { id: 'c2', name: 'Cough / Cold / Sore Throat', category: 'Respiratory', description: 'Dry or productive throat irritation and congestion', createdAt: '2026-01-01' },
+  { id: 'c3', name: 'Headache / Migraine', category: 'Neurological', description: 'Frontal or throbbing head pain', createdAt: '2026-01-01' },
+  { id: 'c4', name: 'Chest Pain / Discomfort', category: 'Cardiovascular', description: 'Substernal tightness or radiating pain', createdAt: '2026-01-01' },
+  { id: 'c5', name: 'Acidity / Heartburn / Gastric Pain', category: 'Gastrointestinal', description: 'Epigastric burning sensation after meals', createdAt: '2026-01-01' },
+  { id: 'c6', name: 'Joint Pain / Knee Swelling', category: 'Orthopedic', description: 'Arthritic pain and stiffness', createdAt: '2026-01-01' },
+  { id: 'c7', name: 'General Weakness / Fatigue', category: 'General', description: 'Lethargy and malaise', createdAt: '2026-01-01' },
+  { id: 'c8', name: 'Hypertension Check / Giddiness', category: 'Cardiovascular', description: 'Dizziness and elevated blood pressure', createdAt: '2026-01-01' },
+  { id: 'c9', name: 'High Blood Sugar / Polyuria', category: 'Endocrine', description: 'Excessive thirst and urination', createdAt: '2026-01-01' },
+  { id: 'c10', name: 'Nausea / Vomiting', category: 'Gastrointestinal', description: 'Stomach upset and regurgitation', createdAt: '2026-01-01' },
+  { id: 'c11', name: 'Breathlessness / Dyspnea', category: 'Respiratory', description: 'Shortness of breath on exertion', createdAt: '2026-01-01' },
+  { id: 'c12', name: 'Skin Rash / Itching', category: 'Dermatology', description: 'Allergic rashes or urticaria', createdAt: '2026-01-01' },
 ];
 
 export const defaultMasterInvestigations = [
-  { id: 'inv1', code: 'CBC', name: 'Complete Blood Count (CBC)', category: 'Blood / Hematology', sampleType: 'Whole Blood (EDTA)', description: 'Hb, TLC, DLC, Platelet count assessment', createdAt: '2026-01-01' },
-  { id: 'inv2', code: 'BSF', name: 'Blood Sugar Fasting & PP (FBS/PPBS)', category: 'Biochemistry', sampleType: 'Fluoride Plasma', description: 'Glycemic control and diabetes evaluation', createdAt: '2026-01-01' },
-  { id: 'inv3', code: 'HBA1C', name: 'HbA1c (Glycated Hemoglobin)', category: 'Biochemistry', sampleType: 'Whole Blood (EDTA)', description: '3-month average blood glucose level', createdAt: '2026-01-01' },
-  { id: 'inv4', code: 'LIPID', name: 'Lipid Profile Complete', category: 'Biochemistry', sampleType: 'Serum', description: 'Cholesterol, Triglycerides, HDL, LDL, VLDL', createdAt: '2026-01-01' },
-  { id: 'inv5', code: 'LFT', name: 'Liver Function Test (LFT)', category: 'Biochemistry', sampleType: 'Serum', description: 'SGPT, SGOT, Bilirubin, Alkaline Phosphatase', createdAt: '2026-01-01' },
-  { id: 'inv6', code: 'RFT', name: 'Renal / Kidney Function Test (KFT/RFT)', category: 'Biochemistry', sampleType: 'Serum', description: 'Serum Creatinine, Blood Urea, Uric Acid', createdAt: '2026-01-01' },
-  { id: 'inv7', code: 'URINE', name: 'Urine Routine & Microscopic (R/M)', category: 'Pathology', sampleType: 'Clean Catch Urine', description: 'Pus cells, Albumin, Sugar, RBCs in urine', createdAt: '2026-01-01' },
-  { id: 'inv8', code: 'THYROID', name: 'Thyroid Profile (T3, T4, TSH)', category: 'Immunoassay', sampleType: 'Serum', description: 'Total T3, Total T4, and Ultra TSH assessment', createdAt: '2026-01-01' },
-  { id: 'inv9', code: 'XRAY', name: 'Chest X-Ray PA View', category: 'Radiology', sampleType: 'Digital X-Ray', description: 'Lungs, heart size, and pleura imaging', createdAt: '2026-01-01' },
-  { id: 'inv10', code: 'ECG', name: '12-Lead ECG (Electrocardiogram)', category: 'Cardiology', sampleType: '12-Lead Tracing', description: 'Cardiac rhythm and ST-T segment evaluation', createdAt: '2026-01-01' },
-  { id: 'inv11', code: 'USG', name: 'USG Whole Abdomen & Pelvis', category: 'Radiology', sampleType: 'Sonography', description: 'Liver, gallbladder, kidneys, spleen, bladder ultrasound', createdAt: '2026-01-01' },
-  { id: 'inv12', code: 'WIDAL', name: 'Widal Test / Typhoid Serology', category: 'Serology', sampleType: 'Serum', description: 'Typhoid fever antibody slide agglutination', createdAt: '2026-01-01' },
-  { id: 'inv13', code: 'DENGUE', name: 'Dengue NS1 Antigen & IgM/IgG', category: 'Serology', sampleType: 'Serum', description: 'Rapid antigen/antibody test for Dengue fever', createdAt: '2026-01-01' },
-  { id: 'inv14', code: 'VITD', name: 'Vitamin D3 & B12 Levels', category: 'Immunoassay', sampleType: 'Serum', description: '25-OH Vitamin D and Cyanocobalamin evaluation', createdAt: '2026-01-01' },
+  { id: 'inv1', name: 'Complete Blood Count (CBC)', category: 'Blood / Hematology', sampleType: 'Whole Blood (EDTA)', description: 'Hb, TLC, DLC, Platelet count assessment', createdAt: '2026-01-01' },
+  { id: 'inv2', name: 'Blood Sugar Fasting & PP (FBS/PPBS)', category: 'Biochemistry', sampleType: 'Fluoride Plasma', description: 'Glycemic control and diabetes evaluation', createdAt: '2026-01-01' },
+  { id: 'inv3', name: 'HbA1c (Glycated Hemoglobin)', category: 'Biochemistry', sampleType: 'Whole Blood (EDTA)', description: '3-month average blood glucose level', createdAt: '2026-01-01' },
+  { id: 'inv4', name: 'Lipid Profile Complete', category: 'Biochemistry', sampleType: 'Serum', description: 'Cholesterol, Triglycerides, HDL, LDL, VLDL', createdAt: '2026-01-01' },
+  { id: 'inv5', name: 'Liver Function Test (LFT)', category: 'Biochemistry', sampleType: 'Serum', description: 'SGPT, SGOT, Bilirubin, Alkaline Phosphatase', createdAt: '2026-01-01' },
+  { id: 'inv6', name: 'Renal / Kidney Function Test (KFT/RFT)', category: 'Biochemistry', sampleType: 'Serum', description: 'Serum Creatinine, Blood Urea, Uric Acid', createdAt: '2026-01-01' },
+  { id: 'inv7', name: 'Urine Routine & Microscopic (R/M)', category: 'Pathology', sampleType: 'Clean Catch Urine', description: 'Pus cells, Albumin, Sugar, RBCs in urine', createdAt: '2026-01-01' },
+  { id: 'inv8', name: 'Thyroid Profile (T3, T4, TSH)', category: 'Immunoassay', sampleType: 'Serum', description: 'Total T3, Total T4, and Ultra TSH assessment', createdAt: '2026-01-01' },
+  { id: 'inv9', name: 'Chest X-Ray PA View', category: 'Radiology', sampleType: 'Digital X-Ray', description: 'Lungs, heart size, and pleura imaging', createdAt: '2026-01-01' },
+  { id: 'inv10', name: '12-Lead ECG (Electrocardiogram)', category: 'Cardiology', sampleType: '12-Lead Tracing', description: 'Cardiac rhythm and ST-T segment evaluation', createdAt: '2026-01-01' },
+  { id: 'inv11', name: 'USG Whole Abdomen & Pelvis', category: 'Radiology', sampleType: 'Sonography', description: 'Liver, gallbladder, kidneys, spleen, bladder ultrasound', createdAt: '2026-01-01' },
+  { id: 'inv12', name: 'Widal Test / Typhoid Serology', category: 'Serology', sampleType: 'Serum', description: 'Typhoid fever antibody slide agglutination', createdAt: '2026-01-01' },
+  { id: 'inv13', name: 'Dengue NS1 Antigen & IgM/IgG', category: 'Serology', sampleType: 'Serum', description: 'Rapid antigen/antibody test for Dengue fever', createdAt: '2026-01-01' },
+  { id: 'inv14', name: 'Vitamin D3 & B12 Levels', category: 'Immunoassay', sampleType: 'Serum', description: '25-OH Vitamin D and Cyanocobalamin evaluation', createdAt: '2026-01-01' },
+];
+
+export const defaultMasterMedicines = [
+  { id: 'm1', name: 'Paracetamol 650mg (Dolo 650 / Calpol)', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 5, createdAt: '2026-01-01' },
+  { id: 'm2', name: 'Paracetamol 500mg (Crocin)', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 4, createdAt: '2026-01-01' },
+  { id: 'm3', name: 'Ibuprofen 400mg (Brufen)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 6, createdAt: '2026-01-01' },
+  { id: 'm4', name: 'Combiflam (Ibuprofen + Paracetamol)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 7, createdAt: '2026-01-01' },
+  { id: 'm5', name: 'Zerodol-P (Aceclofenac 100mg + Paracetamol 325mg)', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 9, createdAt: '2026-01-01' },
+  { id: 'm6', name: 'Zerodol-SP (Aceclo + Paracetamol + Serratiopeptidase)', category: 'Anti-inflammatory / Pain', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 14, createdAt: '2026-01-01' },
+  { id: 'm7', name: 'Voveran 50mg (Diclofenac Sodium)', category: 'NSAID / Joint Pain', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 8, createdAt: '2026-01-01' },
+  { id: 'm8', name: 'Meftal-Spas (Mefenamic Acid + Dicyclomine)', category: 'Antispasmodic / Cramps', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 8, createdAt: '2026-01-01' },
+  { id: 'm9', name: 'Cyclopam (Dicyclomine + Paracetamol)', category: 'Antispasmodic / Abdominal Pain', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 7, createdAt: '2026-01-01' },
+  { id: 'm10', name: 'Drotin-M (Drotaverine 80mg + Mefenamic Acid 250mg)', category: 'Antispasmodic / Colic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 12, createdAt: '2026-01-01' },
+  { id: 'm11', name: 'Tramadol 50mg + Paracetamol (Ultracet)', category: 'Severe Pain / Opioid Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 18, createdAt: '2026-01-01' },
+  { id: 'm12', name: 'Amoxicillin 500mg (Novamox 500)', category: 'Antibiotic (Penicillin)', form: 'Capsule', defaultDosage: '1-0-1 AF', unitPrice: 12, createdAt: '2026-01-01' },
+  { id: 'm13', name: 'Augmentin 625 (Amoxyclav 625 Duo)', category: 'Broad Spectrum Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 22, createdAt: '2026-01-01' },
+  { id: 'm14', name: 'Azithromycin 500mg (Azithral 500)', category: 'Macrolide Antibiotic (RTI)', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 20, createdAt: '2026-01-01' },
+  { id: 'm15', name: 'Azithromycin 250mg (Azithral 250)', category: 'Macrolide Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 12, createdAt: '2026-01-01' },
+  { id: 'm16', name: 'Cefixime 200mg (Taxim-O 200 / Zifi 200)', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 16, createdAt: '2026-01-01' },
+  { id: 'm17', name: 'Cefuroxime Axetil 500mg (Ceftum 500)', category: 'Cephalosporin Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 38, createdAt: '2026-01-01' },
+  { id: 'm18', name: 'Ciprofloxacin 500mg (Ciplox 500)', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 10, createdAt: '2026-01-01' },
+  { id: 'm19', name: 'Ofloxacin 200mg (Oflox 200)', category: 'Fluoroquinolone Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 11, createdAt: '2026-01-01' },
+  { id: 'm20', name: 'Norfloxacin + Tinidazole (Norflox-TZ)', category: 'Gastrointestinal Antibiotic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 12, createdAt: '2026-01-01' },
+  { id: 'm21', name: 'Ofloxacin + Ornidazole (O2 / Zenflox-OZ)', category: 'GI Infection / Diarrhea', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 15, createdAt: '2026-01-01' },
+  { id: 'm22', name: 'Metronidazole 400mg (Metrogyl 400)', category: 'Antiprotozoal / Amoebiasis', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 6, createdAt: '2026-01-01' },
+  { id: 'm23', name: 'Levofloxacin 500mg (Levomac 500)', category: 'Respiratory Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 16, createdAt: '2026-01-01' },
+  { id: 'm24', name: 'Doxycycline 100mg (Doxicip 100)', category: 'Tetracycline Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF', unitPrice: 9, createdAt: '2026-01-01' },
+  { id: 'm25', name: 'Pantoprazole 40mg (Pan 40 / Pantocid)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF', unitPrice: 8, createdAt: '2026-01-01' },
+  { id: 'm26', name: 'Pantoprazole + Domperidone (Pan-D / Pantop-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF', unitPrice: 14, createdAt: '2026-01-01' },
+  { id: 'm27', name: 'Rabeprazole 20mg (Razo 20 / Happi 20)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF', unitPrice: 9, createdAt: '2026-01-01' },
+  { id: 'm28', name: 'Rabeprazole + Domperidone (Rablet-D / Rabekind-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF', unitPrice: 15, createdAt: '2026-01-01' },
+  { id: 'm29', name: 'Omeprazole 20mg (Ocid 20 / Omez)', category: 'Antacid / PPI', form: 'Capsule', defaultDosage: '1-0-0 BF', unitPrice: 7, createdAt: '2026-01-01' },
+  { id: 'm30', name: 'Omeprazole + Domperidone (Omez-D)', category: 'Antacid / PPI + Prokinetic', form: 'Capsule', defaultDosage: '1-0-0 BF', unitPrice: 12, createdAt: '2026-01-01' },
+  { id: 'm31', name: 'Esomeprazole 40mg (Nexpro 40)', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF', unitPrice: 11, createdAt: '2026-01-01' },
+  { id: 'm32', name: 'Ranitidine 150mg (Rantac 150 / Aciloc 150)', category: 'H2 Blocker / Acidity', form: 'Tablet', defaultDosage: '1-0-1 BF', unitPrice: 4, createdAt: '2026-01-01' },
+  { id: 'm33', name: 'Ondansetron 4mg (Ondem 4 / Emeset)', category: 'Antiemetic / Nausea & Vomiting', form: 'Tablet', defaultDosage: '1-0-1 BF', unitPrice: 7, createdAt: '2026-01-01' },
+  { id: 'm34', name: 'Domperidone 10mg (Domstal / Vomistop)', category: 'Antiemetic / Prokinetic', form: 'Tablet', defaultDosage: '1-0-1 BF', unitPrice: 5, createdAt: '2026-01-01' },
+  { id: 'm35', name: 'Cetirizine 10mg (Cetzine / Alerid)', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 4, createdAt: '2026-01-01' },
+  { id: 'm36', name: 'Levocetirizine 5mg (Levocet / 1-AL)', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 6, createdAt: '2026-01-01' },
+  { id: 'm37', name: 'Montair-LC (Levocetirizine 5mg + Montelukast 10mg)', category: 'Allergic Rhinitis / Asthma', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 16, createdAt: '2026-01-01' },
+  { id: 'm38', name: 'Allegra 120mg (Fexofenadine)', category: 'Non-sedating Antihistamine', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 18, createdAt: '2026-01-01' },
+  { id: 'm39', name: 'Sinarest (Paracetamol + Phenylephrine + CPM)', category: 'Cold, Sinus & Fever', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 6, createdAt: '2026-01-01' },
+  { id: 'm40', name: 'Ascoril-LS Syrup (Levosalbutamol + Ambroxol + Guaiphenesin)', category: 'Wet Cough / Expectorant', form: 'Syrup', defaultDosage: '2 Tsp TDS', unitPrice: 110, createdAt: '2026-01-01' },
+  { id: 'm41', name: 'Telmisartan 40mg (Telma 40 / Telpres 40)', category: 'Antihypertensive (ARB)', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 10, createdAt: '2026-01-01' },
+  { id: 'm42', name: 'Amlodipine 5mg (Amlong 5 / Stamlo 5)', category: 'Calcium Channel Blocker', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 5, createdAt: '2026-01-01' },
+  { id: 'm43', name: 'Atorvastatin 10mg / 20mg (Atorva 10 / Storvas)', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 14, createdAt: '2026-01-01' },
+  { id: 'm44', name: 'Metformin 500mg (Glycomet 500)', category: 'Antidiabetic (Biguanide)', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 4, createdAt: '2026-01-01' },
+  { id: 'm45', name: 'Becosules (Vitamin B-Complex + Vitamin C)', category: 'Multivitamin / Mouth Ulcers', form: 'Capsule', defaultDosage: '1-0-0 AF', unitPrice: 5, createdAt: '2026-01-01' },
+  { id: 'm46', name: 'Shelcal 500 (Calcium 500mg + Vitamin D3 250IU)', category: 'Calcium Supplement / Bone', form: 'Tablet', defaultDosage: '0-1-0 AF', unitPrice: 9, createdAt: '2026-01-01' },
+  { id: 'm47', name: 'Calcirol Sachet 60,000 IU (Cholecalciferol D3)', category: 'Vitamin D3 Deficiency', form: 'Sachet', defaultDosage: '1 Sachet Weekly', unitPrice: 40, createdAt: '2026-01-01' },
+];
+
+export const defaultMasterAllergies = [
+  { id: 'al1', name: 'None', category: 'General', severity: 'None', createdAt: '2026-01-01' },
+  { id: 'al2', name: 'Penicillin', category: 'Drug Allergy', severity: 'Severe', createdAt: '2026-01-01' },
+  { id: 'al3', name: 'Sulfa Drugs', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
+  { id: 'al4', name: 'Aspirin / NSAIDs', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
+  { id: 'al5', name: 'Dust / Pollen', category: 'Environmental', severity: 'Mild', createdAt: '2026-01-01' },
+  { id: 'al6', name: 'Peanuts / Nuts', category: 'Food Allergy', severity: 'Severe', createdAt: '2026-01-01' },
+  { id: 'al7', name: 'Latex', category: 'Contact Allergy', severity: 'Mild', createdAt: '2026-01-01' },
+  { id: 'al8', name: 'Ciprofloxacin', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
+  { id: 'al9', name: 'Amoxicillin', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
+];
+
+export const defaultMasterRelations = [
+  { id: 'r1', name: 'Head', category: 'Primary', description: 'Head of Family', createdAt: '2026-01-01' },
+  { id: 'r2', name: 'Wife', category: 'Spouse', description: 'Wife of Head', createdAt: '2026-01-01' },
+  { id: 'r3', name: 'Husband', category: 'Spouse', description: 'Husband of Head', createdAt: '2026-01-01' },
+  { id: 'r4', name: 'Son', category: 'Child', description: 'Son of Head', createdAt: '2026-01-01' },
+  { id: 'r5', name: 'Daughter', category: 'Child', description: 'Daughter of Head', createdAt: '2026-01-01' },
+  { id: 'r6', name: 'Father', category: 'Parent', description: 'Father of Head', createdAt: '2026-01-01' },
+  { id: 'r7', name: 'Mother', category: 'Parent', description: 'Mother of Head', createdAt: '2026-01-01' },
+  { id: 'r8', name: 'Brother', category: 'Sibling', description: 'Brother of Head', createdAt: '2026-01-01' },
+  { id: 'r9', name: 'Sister', category: 'Sibling', description: 'Sister of Head', createdAt: '2026-01-01' },
+  { id: 'r10', name: 'Grandfather', category: 'Grandparent', description: 'Grandfather of Head', createdAt: '2026-01-01' },
+  { id: 'r11', name: 'Grandmother', category: 'Grandparent', description: 'Grandmother of Head', createdAt: '2026-01-01' },
+  { id: 'r12', name: 'Daughter-in-Law', category: 'In-Law', description: 'Daughter-in-Law of Head', createdAt: '2026-01-01' },
+  { id: 'r13', name: 'Son-in-Law', category: 'In-Law', description: 'Son-in-Law of Head', createdAt: '2026-01-01' },
+  { id: 'r14', name: 'Other', category: 'Other', description: 'Other Relation', createdAt: '2026-01-01' },
+];
+
+export const defaultMasterAreas = [
+  { id: 'a1', name: 'Main Road', city: 'Ahmedabad', pincode: '380001', createdAt: '2026-01-01' },
+  { id: 'a2', name: 'Vastrapur', city: 'Ahmedabad', pincode: '380015', createdAt: '2026-01-01' },
+  { id: 'a3', name: 'Satellite', city: 'Ahmedabad', pincode: '380015', createdAt: '2026-01-01' },
+  { id: 'a4', name: 'Navrangpura', city: 'Ahmedabad', pincode: '380009', createdAt: '2026-01-01' },
+  { id: 'a5', name: 'Bopal', city: 'Ahmedabad', pincode: '380058', createdAt: '2026-01-01' },
+  { id: 'a6', name: 'Thaltej', city: 'Ahmedabad', pincode: '380059', createdAt: '2026-01-01' },
+  { id: 'a7', name: 'Gota', city: 'Ahmedabad', pincode: '382481', createdAt: '2026-01-01' },
+  { id: 'a8', name: 'Maninagar', city: 'Ahmedabad', pincode: '380008', createdAt: '2026-01-01' },
+  { id: 'a9', name: 'Paldi', city: 'Ahmedabad', pincode: '380007', createdAt: '2026-01-01' },
+  { id: 'a10', name: 'Science City', city: 'Ahmedabad', pincode: '380060', createdAt: '2026-01-01' },
+  { id: 'a11', name: 'Varachha', city: 'Surat', pincode: '395006', createdAt: '2026-01-01' },
+  { id: 'a12', name: 'Adajan', city: 'Surat', pincode: '395009', createdAt: '2026-01-01' },
+];
+
+export const defaultMasterSocieties = [
+  { id: 's1', name: 'Central Society', area: 'Main Road', createdAt: '2026-01-01' },
+  { id: 's2', name: 'Shanti Niketan Apt', area: 'Vastrapur', createdAt: '2026-01-01' },
+  { id: 's3', name: 'Gokuldham Society', area: 'Satellite', createdAt: '2026-01-01' },
+  { id: 's4', name: 'Surya Kiran Heights', area: 'Satellite', createdAt: '2026-01-01' },
+  { id: 's5', name: 'Radhe Krishna Bunglows', area: 'Bopal', createdAt: '2026-01-01' },
+  { id: 's6', name: 'Vrindavan Society', area: 'Thaltej', createdAt: '2026-01-01' },
+  { id: 's7', name: 'Royal Residency', area: 'Gota', createdAt: '2026-01-01' },
+  { id: 's8', name: 'Shivam Heights', area: 'Maninagar', createdAt: '2026-01-01' },
+  { id: 's9', name: 'Silver Crest', area: 'Science City', createdAt: '2026-01-01' },
+];
+
+/**
+ * Shared Master Data System:
+ * A single shared master collection for clinical entities across all clinics.
+ * Note: Shortcuts are strictly clinic-specific and are never stored in the shared master collection!
+ */
+function sanitizeSharedList(rawList) {
+  if (!Array.isArray(rawList)) return [];
+  return rawList.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    const { code, ...rest } = item;
+    return rest;
+  });
+}
+
+function sanitizeSharedItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  const { code, ...rest } = item;
+  return rest;
+}
+
+export function getSharedMasterCollection(type) {
+  try {
+    const raw = localStorage.getItem('dhyey-shared-master-data');
+    const store = raw ? JSON.parse(raw) : {};
+    if (type === 'medicines') return sanitizeSharedList(store.medicines && store.medicines.length > 0 ? store.medicines : defaultMasterMedicines);
+    if (type === 'complaints') return sanitizeSharedList(store.complaints && store.complaints.length > 0 ? store.complaints : defaultMasterComplaints);
+    if (type === 'investigations') return sanitizeSharedList(store.investigations && store.investigations.length > 0 ? store.investigations : defaultMasterInvestigations);
+    if (type === 'allergies') return sanitizeSharedList(store.allergies && store.allergies.length > 0 ? store.allergies : defaultMasterAllergies);
+    if (type === 'relations') return sanitizeSharedList(store.relations && store.relations.length > 0 ? store.relations : defaultMasterRelations);
+    if (type === 'areas') return sanitizeSharedList(store.areas && store.areas.length > 0 ? store.areas : defaultMasterAreas);
+    if (type === 'societies') return sanitizeSharedList(store.societies && store.societies.length > 0 ? store.societies : defaultMasterSocieties);
+    return sanitizeSharedList(store[type] || []);
+  } catch (e) {
+    if (type === 'medicines') return sanitizeSharedList(defaultMasterMedicines);
+    if (type === 'complaints') return sanitizeSharedList(defaultMasterComplaints);
+    if (type === 'investigations') return sanitizeSharedList(defaultMasterInvestigations);
+    if (type === 'allergies') return sanitizeSharedList(defaultMasterAllergies);
+    if (type === 'relations') return sanitizeSharedList(defaultMasterRelations);
+    if (type === 'areas') return sanitizeSharedList(defaultMasterAreas);
+    if (type === 'societies') return sanitizeSharedList(defaultMasterSocieties);
+    return [];
+  }
+}
+
+export function saveSharedMasterCollection(type, list) {
+  try {
+    const raw = localStorage.getItem('dhyey-shared-master-data');
+    const store = raw ? JSON.parse(raw) : {};
+    store[type] = sanitizeSharedList(list);
+    localStorage.setItem('dhyey-shared-master-data', JSON.stringify(store));
+  } catch (e) {
+    console.error('Failed to save shared master collection:', e);
+  }
+}
+
+export function addSharedMasterItem(type, item) {
+  const cleanItem = sanitizeSharedItem(item);
+  const list = getSharedMasterCollection(type);
+  const exists = list.some(existing => (existing.name && cleanItem.name && existing.name.toLowerCase() === cleanItem.name.toLowerCase()) || (existing.id && existing.id === cleanItem.id));
+  if (!exists) {
+    list.unshift(cleanItem);
+    saveSharedMasterCollection(type, list);
+  }
+  return list;
+}
+
+export function updateSharedMasterItem(type, updatedItem) {
+  const cleanItem = sanitizeSharedItem(updatedItem);
+  const list = getSharedMasterCollection(type);
+  const idx = list.findIndex(item => (cleanItem.id && item.id === cleanItem.id) || (cleanItem.name && item.name && item.name.toLowerCase() === cleanItem.name.toLowerCase()));
+  if (idx !== -1) {
+    list[idx] = { ...list[idx], ...cleanItem };
+    saveSharedMasterCollection(type, list);
+  } else {
+    list.unshift(cleanItem);
+    saveSharedMasterCollection(type, list);
+  }
+  return list;
+}
+
+export function deleteSharedMasterItem(type, filterFn) {
+  const list = getSharedMasterCollection(type);
+  const updated = list.filter(item => filterFn(item));
+  saveSharedMasterCollection(type, updated);
+  return updated;
+}
+
+
+export const defaultCertificateTemplates = [
+  {
+    id: 'tpl-1',
+    templateName: 'Medical Fitness Certificate',
+    title: 'MEDICAL FITNESS CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, has been examined by me. The patient has clinically recovered from {DIAGNOSIS} and is now found medically fit in all respects to resume normal daily duties.',
+    category: 'Fitness',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-2',
+    templateName: 'Medical Leave & Sickness Certificate',
+    title: 'MEDICAL SICKNESS & LEAVE CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, is suffering from {DIAGNOSIS} and has been under my medical care. The patient is advised complete bed rest and absence from work/studies from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days) for proper recovery.',
+    category: 'Leave',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-3',
+    templateName: 'Medical Examination & Treatment Certificate',
+    title: 'CERTIFICATE OF MEDICAL EXAMINATION',
+    body: 'This is to certify that {PATIENT_NAME} was medically examined and provided treatment for {DIAGNOSIS} on {TODAY_DATE} at this clinic. The patient has been given necessary medications and medical advice.',
+    category: 'General',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-4',
+    templateName: 'Light Duty / Work Exemption Certificate',
+    title: 'MEDICAL EXEMPTION / LIGHT WORK CERTIFICATE',
+    body: 'This is to certify that {PATIENT_NAME} is undergoing medical management for {DIAGNOSIS}. The patient is advised to avoid heavy physical exertion, lifting, or prolonged standing from {FROM_DATE} to {TO_DATE}, and is recommended only light duties.',
+    category: 'Exemption',
+    isDefault: true,
+  },
+];
+
+export const defaultFeedbacks = [
+  {
+    id: 'tkt-1',
+    ticketNo: 'TKT-2026-0001',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'clinic_request',
+    categoryLabel: 'New Clinic Registration Request',
+    priority: 'High',
+    subject: 'Request for New Branch Registration: Dhyey Wellness Centre - Satellite',
+    message: 'Respected Admin, We are inaugurating our new OPD branch in Satellite area from next Monday. Kindly register and enable this new branch under our doctor account so we can seamlessly switch between Vastrapur and Satellite clinics for consultations.',
+    metaDetails: {
+      requestedClinicName: 'Dhyey Wellness Centre - Satellite',
+      clinicCity: 'Ahmedabad',
+      clinicAddress: 'FF-204, Surya Kiran Complex, Near Iscon Cross Roads, Satellite',
+      clinicPhone: '+91 98765 43210',
+      speciality: 'Family Medicine, Diabetes & Lifestyle Care',
+      clinicApproved: true,
+    },
+    status: 'Resolved',
+    replies: [
+      {
+        senderRole: 'admin',
+        senderName: 'System Administrator (Admin)',
+        message: 'Dear Dr. Chirag, congratulations on your new branch! We have successfully approved and registered "Dhyey Wellness Centre - Satellite" to your account. You can now select it from the top profile dropdown.',
+        createdAt: '2026-09-30T11:45:00.000Z',
+      },
+    ],
+    createdAt: '2026-09-30T09:15:00.000Z',
+    lastReplyAt: '2026-09-30T11:45:00.000Z',
+  },
+  {
+    id: 'tkt-2',
+    ticketNo: 'TKT-2026-0002',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'feature_request',
+    categoryLabel: 'Feature Request / Enhancement',
+    priority: 'Normal',
+    subject: 'Feature Request: Direct WhatsApp Prescription Sharing with Patient',
+    message: 'It would be extremely helpful if we can have a 1-click WhatsApp share button on the prescription print screen to instantly send digital prescription summary to the patient’s registered mobile number.',
+    metaDetails: {
+      targetModule: 'Prescription & Billing',
+      expectedBenefit: 'Saves paper printing time and allows patients to store digital Rx on their smartphones.',
+    },
+    status: 'In Progress',
+    replies: [
+      {
+        senderRole: 'admin',
+        senderName: 'Technical Support Team',
+        message: 'Hello Doctor, thanks for this excellent suggestion! Our development team has queued the WhatsApp API gateway integration for the upcoming sprint update.',
+        createdAt: '2026-10-01T14:20:00.000Z',
+      },
+    ],
+    createdAt: '2026-10-01T10:00:00.000Z',
+    lastReplyAt: '2026-10-01T14:20:00.000Z',
+  },
+  {
+    id: 'tkt-3',
+    ticketNo: 'TKT-2026-0003',
+    doctorId: 'demo',
+    doctorName: 'Dr. Chirag Paghdal',
+    clinicId: 'demo',
+    clinicName: 'Dhyey Clinic & Hospital',
+    category: 'bug_report',
+    categoryLabel: 'Technical Issue / Bug Report',
+    priority: 'Low',
+    subject: 'Thermal printer 80mm margin alignment query',
+    message: 'When printing bills on 3-inch roll receipt printers, the rightmost rupees symbol sometimes clips slightly on edge browsers. Kindly check if print CSS padding can be fine-tuned.',
+    metaDetails: {
+      affectedModule: 'Billing & Receipt Print',
+      deviceInfo: 'Windows 11 / Chrome 120 / TVS RP-3200 Printer',
+    },
+    status: 'Pending',
+    replies: [],
+    createdAt: '2026-10-01T16:30:00.000Z',
+    lastReplyAt: null,
+  },
 ];
 
 /* ---- Offline/Local DB Fallback Engine ---- */
 export function getLocalDB(clinicId = 'demo') {
-  const key = `clinic-db-${clinicId}`;
+  const cleanId = String(clinicId || 'demo').trim();
+  const key = `clinic-db-${cleanId}`;
   let db = null;
   try {
     const stored = localStorage.getItem(key);
     if (stored) db = JSON.parse(stored);
   } catch (e) {}
 
-  // If DB is missing or has old minimal data, refresh/seed with rich dataset
-  const hasLegacyPatIds = db && db.families && Object.values(db.families).some(f => Object.keys(f.patients || {}).some(pk => pk.length > 8));
-  if (!db || !db.families || Object.keys(db.families).length < 4 || Object.keys(db.families).some(k => k.includes('-') || k.length < 12) || hasLegacyPatIds || !db.appointments || db.appointments.length === 0) {
-    db = seedLocalDatabase();
-    localStorage.setItem(key, JSON.stringify(db));
-  }
-
-  // Ensure all dietary entries have the 4 structured fields (shortcut, disease, what to eat, what not to eat)
-  if (db && db.dietary) {
-    for (const [k, d] of Object.entries(db.dietary)) {
-      if (!d.disease || !d.eat || !d.avoid) {
-        if (k === 'DB' || k === 'SUGAR') {
-          d.disease = d.disease || 'Diabetes Mellitus';
-          d.eat = d.eat || 'Green leafy vegetables, whole grains, pulses, salads, bitter gourd, fresh water';
-          d.avoid = d.avoid || 'Direct sugar, sweets, jaggery, potatoes, mangoes, bananas, bakery items, soft drinks';
-        } else if (k === 'BP') {
-          d.disease = d.disease || 'Hypertension (High BP)';
-          d.eat = d.eat || 'Fresh fruits, vegetables, oats, garlic, coconut water, low-sodium foods';
-          d.avoid = d.avoid || 'Extra salt, pickles, papad, processed cheese, namkeen, fried snacks';
-        } else if (k === 'ACID') {
-          d.disease = d.disease || 'Acidity / GERD / Gastritis';
-          d.eat = d.eat || 'Cold milk, coconut water, bananas, boiled vegetables, oatmeal, light meals';
-          d.avoid = d.avoid || 'Spicy food, oily/fried dishes, tea, coffee, citrus fruits, late dinner';
-        } else if (k === 'CV') {
-          d.disease = d.disease || 'Cardiovascular / Heart Disease';
-          d.eat = d.eat || 'Oats, flaxseeds, almonds, boiled vegetables, garlic, fresh salads';
-          d.avoid = d.avoid || 'Red meat, butter, ghee, deep-fried snacks, processed fast foods';
-        } else if (k === 'LQ') {
-          d.disease = d.disease || 'Viral Fever / Weakness / Dehydration';
-          d.eat = d.eat || 'Plenty of warm fluids, coconut water, soup, moong dal khichdi';
-          d.avoid = d.avoid || 'Cold drinks, heavy spicy food, street food, oily items';
-        } else {
-          d.disease = d.disease || 'General Clinical Condition';
-          d.eat = d.eat || 'Fresh home-cooked food, fruits, vegetables, water';
-          d.avoid = d.avoid || 'Oily, spicy, fried, and packaged food';
-        }
-        if (!d.text) {
-          d.text = `${d.disease}: Eat: ${d.eat} | Avoid: ${d.avoid}`;
-        }
+  if (cleanId === 'demo') {
+    // Only the default demo clinic gets seeded with demo patients and demo shortcuts
+    const hasLegacyPatIds = db && db.families && Object.values(db.families).some(f => Object.keys(f.patients || {}).some(pk => pk.length > 8));
+    if (!db || !db.families || Object.keys(db.families).length < 4 || Object.keys(db.families).some(k => k.includes('-') || k.length < 12) || hasLegacyPatIds || !db.appointments || db.appointments.length === 0) {
+      db = seedLocalDatabase();
+      localStorage.setItem(key, JSON.stringify(db));
+    }
+  } else {
+    // Custom clinics are strictly isolated and start clean with zero other clinic data or shortcuts!
+    if (!db) {
+      db = {
+        counters: { family: 0, patient: 0, visit: 0 },
+        families: {},
+        appointments: [],
+        certificates: [],
+        certificateTemplates: [...defaultCertificateTemplates],
+        bills: [],
+        feedbacks: [],
+        dietary: {}, // Completely clean and empty for new clinics
+        clinicShortcuts: {
+          medicines: {},
+          complaints: {},
+          investigations: {},
+          allergies: {},
+          relations: {},
+          areas: {},
+          societies: {},
+        },
+        _shortcutsCleanedV2: true,
+        masterMedicines: [],
+        masterComplaints: [],
+        masterInvestigations: [],
+        masterAreas: [],
+        masterSocieties: [],
+        masterAllergies: [],
+        masterRelations: [],
+        customShortcuts: [
+          { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
+          { id: 'sc2', key: 'F2', target: 'patient', title: 'Add Family Member', category: 'Navigation' },
+          { id: 'sc3', key: 'F3', target: 'case', title: 'Patient Record & Case', category: 'Navigation' },
+          { id: 'sc4', key: 'F4', target: 'dashboard', title: 'Clinical Dashboard', category: 'Navigation' },
+          { id: 'sc5', key: 'F5', target: 'reports', title: 'Clinical Reports', category: 'Navigation' },
+          { id: 'sc6', key: 'F6', target: 'certificates', title: 'Medical Certificate', category: 'Navigation' },
+          { id: 'sc7', key: 'F7', target: 'masters', title: 'Master Data Setup', category: 'Navigation' },
+          { id: 'sc8', key: 'F8', target: 'feedback', title: 'Send Complaint / Feedback', category: 'Support' },
+          { id: 'sc9', key: '/', target: 'quick_search', title: 'Quick Global Search', category: 'Action' },
+          { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' }
+        ]
+      };
+      localStorage.setItem(key, JSON.stringify(db));
+    } else if (db._shortcutsCleanedV2 !== true) {
+      // Clean legacy demo shortcuts from any previously seeded non-demo clinic
+      db.clinicShortcuts = {
+        medicines: {},
+        complaints: {},
+        investigations: {},
+        allergies: {},
+        relations: {},
+        areas: {},
+        societies: {},
+      };
+      if (db.counters && db.counters.family === 6 && db.counters.patient === 16) {
+        db.dietary = {};
       }
+      db._shortcutsCleanedV2 = true;
+      localStorage.setItem(key, JSON.stringify(db));
     }
   }
 
-  // Ensure masterComplaints and masterInvestigations exist
-  if (!db.masterComplaints || db.masterComplaints.length === 0) {
-    db.masterComplaints = defaultMasterComplaints;
+  // Ensure all collections exist
+  if (!db.families) db.families = {};
+  if (!db.appointments) db.appointments = [];
+  if (!db.certificates) db.certificates = [];
+  if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
+  if (!db.bills) db.bills = [];
+  if (!db.feedbacks) db.feedbacks = [];
+  if (!db.dietary) db.dietary = {};
+  if (!db.clinicShortcuts) {
+    db.clinicShortcuts = {
+      medicines: {},
+      complaints: {},
+      investigations: {},
+      allergies: {},
+      relations: {},
+      areas: {},
+      societies: {},
+    };
   }
-  if (!db.masterInvestigations || db.masterInvestigations.length === 0) {
-    db.masterInvestigations = defaultMasterInvestigations;
+  if (!db.customShortcuts) db.customShortcuts = [];
+  if (!db.masterMedicines) db.masterMedicines = [];
+  if (!db.masterComplaints) db.masterComplaints = [];
+  if (!db.masterInvestigations) db.masterInvestigations = [];
+  if (!db.masterAreas) db.masterAreas = [];
+  if (!db.masterSocieties) db.masterSocieties = [];
+  if (!db.masterAllergies) db.masterAllergies = [];
+  if (!db.masterRelations) db.masterRelations = [];
+
+  // Strip any legacy code fields from local master arrays
+  if (Array.isArray(db.masterMedicines)) {
+    db.masterMedicines = db.masterMedicines.map(m => {
+      if (m && m.code) {
+        const { code, ...rest } = m;
+        return rest;
+      }
+      return m;
+    });
   }
-  if (!db.customComplaints) db.customComplaints = [];
-  if (!db.customInvestigations) db.customInvestigations = [];
 
   return db;
 }
@@ -299,66 +668,109 @@ function seedLocalDatabase() {
         createdAt: '2026-01-10',
       },
     },
-    masterAreas: [
-      { id: 'a1', name: 'Vastrapur', city: 'Ahmedabad', pincode: '380015', createdAt: '2026-01-01' },
-      { id: 'a2', name: 'Satellite', city: 'Ahmedabad', pincode: '380015', createdAt: '2026-01-01' },
-      { id: 'a3', name: 'Navrangpura', city: 'Ahmedabad', pincode: '380009', createdAt: '2026-01-01' },
-      { id: 'a4', name: 'Bopal', city: 'Ahmedabad', pincode: '380058', createdAt: '2026-01-01' },
-      { id: 'a5', name: 'Thaltej', city: 'Ahmedabad', pincode: '380054', createdAt: '2026-01-01' },
-      { id: 'a6', name: 'Gota', city: 'Ahmedabad', pincode: '382481', createdAt: '2026-01-01' },
-      { id: 'a7', name: 'Maninagar', city: 'Ahmedabad', pincode: '380008', createdAt: '2026-01-01' },
-      { id: 'a8', name: 'Paldi', city: 'Ahmedabad', pincode: '380007', createdAt: '2026-01-01' },
-      { id: 'a9', name: 'Science City', city: 'Ahmedabad', pincode: '380060', createdAt: '2026-01-01' },
-      { id: 'a10', name: 'Bodakdev', city: 'Ahmedabad', pincode: '380054', createdAt: '2026-01-01' },
-    ],
-    masterMedicines: [
-      { id: 'm1', code: 'PCM', name: 'Paracetamol 650mg', category: 'Antipyretic / Analgesic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 5, createdAt: '2026-01-01' },
-      { id: 'm2', code: 'PANTO', name: 'Pantoprazole 40mg', category: 'Antacid / PPI', form: 'Tablet', defaultDosage: '1-0-0 BF', unitPrice: 8, createdAt: '2026-01-01' },
-      { id: 'm3', code: 'AMOX', name: 'Amoxicillin 500mg', category: 'Antibiotic', form: 'Capsule', defaultDosage: '1-0-1 AF', unitPrice: 12, createdAt: '2026-01-01' },
-      { id: 'm4', code: 'CET', name: 'Cetirizine 10mg', category: 'Antihistamine / Allergy', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 4, createdAt: '2026-01-01' },
-      { id: 'm5', code: 'AZITH', name: 'Azithromycin 500mg', category: 'Antibiotic', form: 'Tablet', defaultDosage: '1-0-0 OD', unitPrice: 22, createdAt: '2026-01-01' },
-      { id: 'm6', code: 'IBU', name: 'Ibuprofen 400mg', category: 'NSAID / Pain Relief', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 6, createdAt: '2026-01-01' },
-      { id: 'm7', code: 'COUGH', name: 'Cough Relief Syrup 100ml', category: 'Expectorant', form: 'Syrup', defaultDosage: '2 Tsp TDS', unitPrice: 85, createdAt: '2026-01-01' },
-      { id: 'm8', code: 'TELMI', name: 'Telmisartan 40mg', category: 'Antihypertensive', form: 'Tablet', defaultDosage: '1-0-0 BF', unitPrice: 14, createdAt: '2026-01-01' },
-      { id: 'm9', code: 'METFOR', name: 'Metformin 500mg', category: 'Antidiabetic', form: 'Tablet', defaultDosage: '1-0-1 AF', unitPrice: 7, createdAt: '2026-01-01' },
-      { id: 'm10', code: 'ATORVA', name: 'Atorvastatin 10mg', category: 'Statin / Cholesterol', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 16, createdAt: '2026-01-01' },
-      { id: 'm11', code: 'MONTE', name: 'Montelukast + Levocetirizine', category: 'Antiallergic', form: 'Tablet', defaultDosage: '0-0-1 HS', unitPrice: 15, createdAt: '2026-01-01' },
-      { id: 'm12', code: 'VITC', name: 'Vitamin C + Zinc Chewable', category: 'Immunity Booster', form: 'Chewable', defaultDosage: '1-0-0 OD', unitPrice: 5, createdAt: '2026-01-01' },
-    ],
-    masterAllergies: [
-      { id: 'al1', name: 'None', category: 'General', severity: 'None', createdAt: '2026-01-01' },
-      { id: 'al2', name: 'Penicillin', category: 'Drug Allergy', severity: 'Severe', createdAt: '2026-01-01' },
-      { id: 'al3', name: 'Sulfa Drugs', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
-      { id: 'al4', name: 'Aspirin / NSAIDs', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
-      { id: 'al5', name: 'Dust / Pollen', category: 'Environmental', severity: 'Mild', createdAt: '2026-01-01' },
-      { id: 'al6', name: 'Peanuts', category: 'Food Allergy', severity: 'Severe', createdAt: '2026-01-01' },
-      { id: 'al7', name: 'Latex', category: 'Contact', severity: 'Moderate', createdAt: '2026-01-01' },
-      { id: 'al8', name: 'Ciprofloxacin', category: 'Drug Allergy', severity: 'Moderate', createdAt: '2026-01-01' },
-      { id: 'al9', name: 'Amoxicillin', category: 'Drug Allergy', severity: 'Severe', createdAt: '2026-01-01' },
-    ],
-    masterRelations: [
-      { id: 'r1', name: 'Head', category: 'Primary', description: 'Head of Family', createdAt: '2026-01-01' },
-      { id: 'r2', name: 'Wife', category: 'Spouse', description: 'Wife of Head', createdAt: '2026-01-01' },
-      { id: 'r3', name: 'Husband', category: 'Spouse', description: 'Husband of Head', createdAt: '2026-01-01' },
-      { id: 'r4', name: 'Son', category: 'Child', description: 'Son of Head', createdAt: '2026-01-01' },
-      { id: 'r5', name: 'Daughter', category: 'Child', description: 'Daughter of Head', createdAt: '2026-01-01' },
-      { id: 'r6', name: 'Father', category: 'Parent', description: 'Father of Head', createdAt: '2026-01-01' },
-      { id: 'r7', name: 'Mother', category: 'Parent', description: 'Mother of Head', createdAt: '2026-01-01' },
-      { id: 'r8', name: 'Brother', category: 'Sibling', description: 'Brother of Head', createdAt: '2026-01-01' },
-      { id: 'r9', name: 'Sister', category: 'Sibling', description: 'Sister of Head', createdAt: '2026-01-01' },
-    ],
-    masterSocieties: [
-      { id: 's1', name: 'Shanti Niketan Apt', area: 'Vastrapur', createdAt: '2026-01-01' },
-      { id: 's2', name: 'Gokuldham Society', area: 'Navrangpura', createdAt: '2026-01-01' },
-      { id: 's3', name: 'Surya Kiran Heights', area: 'Satellite', createdAt: '2026-01-01' },
-      { id: 's4', name: 'Radhe Krishna Bunglows', area: 'Bopal', createdAt: '2026-01-01' },
-      { id: 's5', name: 'Vrindavan Society', area: 'Thaltej', createdAt: '2026-01-01' },
-      { id: 's6', name: 'Royal Residency', area: 'Gota', createdAt: '2026-01-01' },
-      { id: 's7', name: 'Shivam Heights', area: 'Maninagar', createdAt: '2026-01-01' },
-      { id: 's8', name: 'Silver Crest', area: 'Paldi', createdAt: '2026-01-01' },
-    ],
-    masterComplaints: defaultMasterComplaints,
-    masterInvestigations: defaultMasterInvestigations,
+    clinicShortcuts: {
+      medicines: {
+        'Paracetamol 650mg (Dolo 650 / Calpol)': 'PCM',
+        'Paracetamol 650mg': 'PCM',
+        'Paracetamol 500mg (Crocin)': 'PCM500',
+        'Ibuprofen 400mg (Brufen)': 'IBU',
+        'Combiflam (Ibuprofen + Paracetamol)': 'COMBI',
+        'Zerodol-P (Aceclofenac 100mg + Paracetamol 325mg)': 'ZP',
+        'Amoxicillin 500mg (Novamox 500)': 'AMOX',
+        'Amoxicillin 500mg': 'AMOX',
+        'Augmentin 625 (Amoxyclav 625 Duo)': 'AUG',
+        'Azithromycin 500mg (Azithral 500)': 'AZITH',
+        'Azithromycin 500mg': 'AZITH',
+        'Cefixime 200mg (Taxim-O 200 / Zifi 200)': 'CEF',
+        'Ciprofloxacin 500mg (Ciplox 500)': 'CIPRO',
+        'Pantoprazole 40mg (Pan 40 / Pantocid)': 'PANTO',
+        'Pantoprazole 40mg': 'PANTO',
+        'Pantoprazole + Domperidone (Pan-D / Pantop-D)': 'PAND',
+        'Rabeprazole 20mg (Razo 20 / Happi 20)': 'RAB',
+        'Omeprazole 20mg (Ocid 20 / Omez)': 'OMEZ',
+        'Cetirizine 10mg (Cetzine / Alerid)': 'CET',
+        'Cetirizine 10mg': 'CET',
+        'Levocetirizine 5mg (Levocet / 1-AL)': 'LEVOCET',
+        'Montair-LC (Levocetirizine 5mg + Montelukast 10mg)': 'MONTAIR',
+        'Telmisartan 40mg (Telma 40 / Telpres 40)': 'TELMA',
+        'Telmisartan 40mg': 'TELMI',
+        'Amlodipine 5mg (Amlong 5 / Stamlo 5)': 'AMLO',
+        'Atorvastatin 10mg / 20mg (Atorva 10 / Storvas)': 'ATORVA',
+        'Atorvastatin 10mg': 'ATORVA',
+        'Metformin 500mg (Glycomet 500)': 'MET500',
+        'Metformin 500mg': 'METFOR',
+        'Becosules (Vitamin B-Complex + Vitamin C)': 'BECO',
+        'Shelcal 500 (Calcium 500mg + Vitamin D3 250IU)': 'SHELCAL',
+        'Calcirol Sachet 60,000 IU (Cholecalciferol D3)': 'D3',
+        'Cough Relief Syrup 100ml': 'COUGH',
+      },
+      complaints: {
+        'Fever / High Temperature': 'FEV',
+        'Cough / Cold / Sore Throat': 'COUGH',
+        'Headache / Migraine': 'HEAD',
+        'Chest Pain / Discomfort': 'CHEST',
+        'Acidity / Heartburn / Gastric Pain': 'ACID',
+        'Joint Pain / Knee Swelling': 'JOINT',
+        'General Weakness / Fatigue': 'WEAK',
+        'Hypertension Check / Giddiness': 'BP',
+        'High Blood Sugar / Polyuria': 'DIAB',
+        'Nausea / Vomiting': 'VOM',
+        'Breathlessness / Dyspnea': 'BREATH',
+        'Skin Rash / Itching': 'SKIN',
+      },
+      investigations: {
+        'Complete Blood Count (CBC)': 'CBC',
+        'Blood Sugar Fasting & PP (FBS/PPBS)': 'BSF',
+        'HbA1c (Glycated Hemoglobin)': 'HBA1C',
+        'Lipid Profile Complete': 'LIPID',
+        'Liver Function Test (LFT)': 'LFT',
+        'Renal / Kidney Function Test (KFT/RFT)': 'RFT',
+        'Urine Routine & Microscopic (R/M)': 'URINE',
+        'Thyroid Profile (T3, T4, TSH)': 'THYROID',
+        'Chest X-Ray PA View': 'XRAY',
+        '12-Lead ECG (Electrocardiogram)': 'ECG',
+        'USG Whole Abdomen & Pelvis': 'USG',
+        'Widal Test / Typhoid Serology': 'WIDAL',
+        'Dengue NS1 Antigen & IgM/IgG': 'DENGUE',
+        'Vitamin D3 & B12 Levels': 'VITD',
+      },
+      allergies: {
+        'None': 'NONE',
+        'Penicillin': 'PEN',
+        'Sulfa Drugs': 'SULFA',
+        'Aspirin / NSAIDs': 'ASP',
+        'Dust / Pollen': 'DUST',
+        'Peanuts / Nuts': 'NUT',
+        'Latex': 'LATEX',
+        'Ciprofloxacin': 'CIPRO',
+        'Amoxicillin': 'AMOX',
+      },
+      relations: {
+        'Head': 'HEAD',
+        'Wife': 'WIFE',
+        'Husband': 'HUSB',
+        'Son': 'SON',
+        'Daughter': 'DAU',
+        'Father': 'FAT',
+        'Mother': 'MOT',
+        'Brother': 'BRO',
+        'Sister': 'SIS',
+        'Grandfather': 'GFAT',
+        'Grandmother': 'GMOT',
+        'Daughter-in-Law': 'DIL',
+        'Son-in-Law': 'SIL',
+        'Other': 'OTH',
+      },
+      areas: {},
+      societies: {},
+    },
+    masterAreas: [],
+    masterMedicines: [],
+    masterAllergies: [],
+    masterRelations: [],
+    masterSocieties: [],
+    masterComplaints: [],
+    masterInvestigations: [],
     customComplaints: [],
     customInvestigations: [],
     appointments: [
@@ -947,6 +1359,270 @@ function fallbackLocalHandler(endpoint, config) {
         areaCounts: {},
       },
     };
+  }
+
+  // Fallback for certificate templates
+  if (endpoint.startsWith('/certificates/templates')) {
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const newTpl = {
+        id: 'tpl-' + uid(),
+        templateName: body.templateName || 'Custom Template',
+        title: (body.title || 'MEDICAL CERTIFICATE').toUpperCase(),
+        body: body.body || '',
+        category: body.category || 'Custom',
+        isDefault: false,
+        createdAt: todayISO(),
+      };
+      if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
+      db.certificateTemplates.push(newTpl);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Template saved', data: newTpl };
+    }
+    if (config.method === 'DELETE') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.length - 1];
+      if (db.certificateTemplates) {
+        db.certificateTemplates = db.certificateTemplates.filter((t) => t.id !== id);
+        saveLocalDB(db, clinicId);
+      }
+      return { success: true, message: 'Template deleted' };
+    }
+    const tpls = db.certificateTemplates || defaultCertificateTemplates;
+    return { success: true, count: tpls.length, data: tpls };
+  }
+
+  // Fallback for certificate verification
+  if (endpoint.startsWith('/certificates/verify/')) {
+    const certNo = decodeURIComponent(endpoint.replace('/certificates/verify/', '')).trim();
+    const certs = db.certificates || [];
+    const found = certs.find((c) => (c.certNo || '').toLowerCase() === certNo.toLowerCase());
+    if (!found) {
+      return { success: false, valid: false, message: `No certificate found for ID: ${certNo}` };
+    }
+    return { success: true, valid: true, data: found, message: 'Certificate successfully verified' };
+  }
+
+  // Fallback for certificates CRUD
+  if (endpoint.startsWith('/certificates')) {
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      if (!db.certificates) db.certificates = [];
+      const year = new Date().getFullYear();
+      const count = db.certificates.length + 1;
+      const certNo = body.certNo || `CERT-${year}-${pad(count, 4)}`;
+
+      const newCert = {
+        id: 'cert-' + uid(),
+        certNo,
+        patientId: body.patientId || '',
+        patientName: (body.patientName || '').trim(),
+        patientAge: body.patientAge || '',
+        patientGender: body.patientGender || '',
+        diagnosis: (body.diagnosis || '').trim(),
+        fromDate: body.fromDate || todayISO(),
+        toDate: body.toDate || todayISO(),
+        restDays: Number(body.restDays) || 0,
+        templateId: body.templateId || '',
+        templateName: body.templateName || 'Medical Fitness / Leave',
+        title: body.title || 'MEDICAL CERTIFICATE',
+        customBody: body.customBody || '',
+        reason: body.reason || 'Medical Rest & Treatment',
+        place: body.place || 'Surat',
+        doctorName: body.doctorName || 'Dr. Chirag Paghdal',
+        issuedDate: todayISO(),
+        status: 'Issued',
+      };
+
+      db.certificates.unshift(newCert);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Certificate issued', data: newCert };
+    }
+
+    if (config.method === 'DELETE') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.length - 1];
+      if (db.certificates) {
+        db.certificates = db.certificates.filter((c) => c.id !== id && c.certNo !== id);
+        saveLocalDB(db, clinicId);
+      }
+      return { success: true, message: 'Certificate deleted' };
+    }
+
+    const certList = db.certificates || [];
+    return { success: true, count: certList.length, data: certList };
+  }
+
+  // Fallback for appointments
+  if (endpoint.startsWith('/appointments') || endpoint.startsWith('/appointment')) {
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : (config.body || {});
+      const newApt = {
+        id: 'apt-' + uid(),
+        patientId: body.patientId || '',
+        patientName: body.patientName || 'Patient',
+        familyId: body.familyId || '',
+        clinicId,
+        appointmentDate: body.appointmentDate || todayISO(),
+        appointmentTime: body.appointmentTime || '10:00',
+        reason: body.reason || 'Consultation',
+        status: 'scheduled',
+      };
+      if (!db.appointments) db.appointments = [];
+      db.appointments.push(newApt);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Appointment booked', data: newApt };
+    }
+    const list = db.appointments || [];
+    return { success: true, count: list.length, data: list };
+  }
+
+  // Fallback for billing & bills
+  if (endpoint.startsWith('/billing') || endpoint.startsWith('/bills')) {
+    const list = db.bills || [];
+    return { success: true, count: list.length, data: list };
+  }
+
+  // Fallback for followups
+  if (endpoint.startsWith('/followups') || endpoint.startsWith('/followup')) {
+    const list = db.followups || [];
+    return { success: true, count: list.length, data: list };
+  }
+
+  // Fallback for patients list
+  if (endpoint.startsWith('/patients') || endpoint.startsWith('/patient')) {
+    const allPats = [];
+    Object.values(db.families || {}).forEach((f) => {
+      Object.values(f.patients || {}).forEach((p) => {
+        allPats.push({ ...p, family: f });
+      });
+    });
+    return { success: true, count: allPats.length, data: allPats };
+  }
+
+  // Fallback for feedback, complaints, support & clinic requests
+  if (endpoint.startsWith('/feedback') || endpoint.startsWith('/support')) {
+    if (!db.feedbacks) db.feedbacks = [...defaultFeedbacks];
+
+    // POST /feedback/:id/approve-clinic
+    if (endpoint.includes('/approve-clinic') && config.method === 'POST') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket) {
+        if (!ticket.metaDetails) ticket.metaDetails = {};
+        ticket.metaDetails.clinicApproved = true;
+        ticket.status = 'Resolved';
+        const clinicName = ticket.metaDetails.requestedClinicName || ticket.subject;
+        ticket.replies.push({
+          senderRole: 'admin',
+          senderName: 'System Administrator (Admin)',
+          message: `Official Approval: Your request for registering "${clinicName}" has been APPROVED. The clinic is now active in your clinics list!`,
+          createdAt: new Date().toISOString(),
+        });
+        ticket.lastReplyAt = new Date().toISOString();
+
+        // Also add new clinic to current session clinics list
+        const curSession = getAuthSession();
+        if (curSession && curSession.profile) {
+          if (!curSession.profile.clinics) curSession.profile.clinics = [];
+          const newClinicId = 'clinic-' + Date.now();
+          if (!curSession.profile.clinics.some((c) => c.name.toLowerCase() === clinicName.toLowerCase())) {
+            curSession.profile.clinics.push({ id: newClinicId, name: clinicName });
+            setAuthSession(curSession);
+          }
+        }
+
+        saveLocalDB(db, clinicId);
+        return { success: true, message: `Clinic "${clinicName}" approved and registered!`, data: ticket };
+      }
+      return { success: false, message: 'Ticket not found' };
+    }
+
+    // POST /feedback/:id/reply
+    if (endpoint.includes('/reply') && config.method === 'POST') {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket) {
+        const senderRole = body.senderRole || (session?.role === 'admin' ? 'admin' : 'doctor');
+        const senderName = body.senderName || (senderRole === 'admin' ? 'System Administrator' : (session?.profile?.name || 'Dr. Chirag Paghdal'));
+        const replyObj = {
+          senderRole,
+          senderName,
+          message: (body.message || '').trim(),
+          createdAt: new Date().toISOString(),
+        };
+        ticket.replies.push(replyObj);
+        ticket.lastReplyAt = new Date().toISOString();
+        if (body.status) {
+          ticket.status = body.status;
+        } else if (senderRole === 'admin') {
+          ticket.status = 'Resolved';
+        } else {
+          ticket.status = 'Pending';
+        }
+        saveLocalDB(db, clinicId);
+        return { success: true, message: 'Reply sent', data: ticket };
+      }
+      return { success: false, message: 'Ticket not found' };
+    }
+
+    // PATCH /feedback/:id/status
+    if (config.method === 'PATCH' && endpoint.includes('/status')) {
+      const parts = endpoint.split('/');
+      const id = parts[parts.indexOf('feedback') + 1] || parts[parts.indexOf('support') + 1];
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const ticket = db.feedbacks.find((t) => t.id === id || t.ticketNo === id);
+      if (ticket && body.status) {
+        ticket.status = body.status;
+        saveLocalDB(db, clinicId);
+        return { success: true, message: 'Status updated', data: ticket };
+      }
+      return { success: false, message: 'Ticket not found or invalid status' };
+    }
+
+    // POST /feedback (Create new ticket)
+    if (config.method === 'POST') {
+      const body = typeof config.body === 'string' ? JSON.parse(config.body) : config.body;
+      const year = new Date().getFullYear();
+      const count = db.feedbacks.length + 1;
+      const ticketNo = `TKT-${year}-${pad(count, 4)}`;
+
+      const categoryLabels = {
+        clinic_request: 'New Clinic Registration Request',
+        feature_request: 'Feature Request / Enhancement',
+        bug_report: 'Technical Issue / Bug Report',
+        general_feedback: 'General Feedback / Support',
+      };
+
+      const newTicket = {
+        id: 'tkt-' + uid(),
+        ticketNo,
+        doctorId: session?.profile?.id || 'demo',
+        doctorName: body.doctorName || session?.profile?.name || 'Dr. Chirag Paghdal',
+        clinicId: clinicId || 'demo',
+        clinicName: body.clinicName || 'Dhyey Clinic & Hospital',
+        category: body.category || 'general_feedback',
+        categoryLabel: body.categoryLabel || categoryLabels[body.category] || 'General Feedback',
+        priority: body.priority || 'Normal',
+        subject: (body.subject || '').trim(),
+        message: (body.message || '').trim(),
+        metaDetails: body.metaDetails || {},
+        status: 'Pending',
+        replies: [],
+        createdAt: new Date().toISOString(),
+        lastReplyAt: null,
+      };
+
+      db.feedbacks.unshift(newTicket);
+      saveLocalDB(db, clinicId);
+      return { success: true, message: 'Support ticket submitted successfully', data: newTicket };
+    }
+
+    // GET /feedback / /feedback/admin/all
+    return { success: true, count: db.feedbacks.length, data: db.feedbacks };
   }
 
   return { success: true, data: [] };

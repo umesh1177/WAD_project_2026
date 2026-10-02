@@ -71,6 +71,88 @@ function fallbackLocalLogin(username, password) {
     return doctorSession;
   }
 
+  // Receptionist Default Demo Login (Verified with Clinic Receptionist Service)
+  if ((u === 'reception' || u === 'receptionist') && (p === '123' || p === 'reception' || p === '123456')) {
+    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+    const demoClinic = adminClinics.find(c => c.id === 'demo' || c.id === 'CLN-001') || {
+      id: 'demo',
+      name: 'Dhyey Clinic & Nursing Home',
+      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+    };
+
+    const hasReceptionistService = Array.isArray(demoClinic.services) ? demoClinic.services.includes('receptionist') : true;
+    if (!hasReceptionistService) {
+      throw new Error('This clinic has disabled the Receptionist Service. Receptionist portal access is blocked.');
+    }
+
+    const receptionistSession = {
+      role: 'receptionist',
+      profile: {
+        id: 'rec-001',
+        username: 'reception',
+        name: 'Front Desk Receptionist',
+        role: 'receptionist',
+        clinicName: demoClinic.name || 'Dhyey Clinic & Nursing Home',
+        activeClinicId: demoClinic.id || 'demo',
+        services: demoClinic.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+      },
+      token: 'mock-receptionist-token'
+    };
+    setAuthSession(receptionistSession);
+    showToast('Signed in as Front Desk Receptionist');
+    return receptionistSession;
+  }
+
+  // Check doctors registered in Admin Portal
+  try {
+    const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
+    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+
+    const doc = adminDocs.find((d) => {
+      const emailMatch = (d.email || '').trim().toLowerCase() === u;
+      const usernameMatch = (d.username || '').trim().toLowerCase() === u;
+      const nameMatch = (d.name || '').trim().toLowerCase() === u;
+      const pwdMatch = !d.password || d.password === p;
+      return (emailMatch || usernameMatch || nameMatch) && pwdMatch;
+    });
+
+    if (doc) {
+      if (doc.status === 'Suspended') {
+        throw new Error('This doctor account has been suspended by the administrator.');
+      }
+      const matchedClinic = adminClinics.find((c) => c.name === doc.clinic || c.id === doc.clinicId) || {
+        id: doc.clinicId || ('CLN-' + (doc.clinic || 'custom').replace(/\s+/g, '_')),
+        name: doc.clinic || 'Clinic',
+        services: Array.isArray(doc.services) ? doc.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
+      };
+      const clinicServices = Array.isArray(matchedClinic.services)
+        ? matchedClinic.services
+        : (Array.isArray(doc.services) ? doc.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']);
+      const clinicId = matchedClinic.id || doc.clinicId || 'CLN-001';
+
+      const doctorSession = {
+        role: 'doctor',
+        profile: {
+          id: doc.id || doc.email || 'doc_' + Math.random().toString(36).slice(2, 7),
+          username: doc.email || doc.name,
+          name: doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`,
+          degree: doc.specialty || 'General Practitioner',
+          regNo: doc.registration || 'REG-2026',
+          clinics: [{ id: clinicId, name: matchedClinic.name || doc.clinic, services: clinicServices }],
+          activeClinicId: clinicId,
+          role: 'doctor',
+          services: clinicServices,
+        },
+        token: 'mock-doctor-token-' + (doc.email || 'admin-doc'),
+      };
+      setAuthSession(doctorSession);
+      showToast(`Signed in as ${doctorSession.profile.name}`);
+      return doctorSession;
+    }
+  } catch (e) {
+    if (e.message && e.message.includes('suspended')) throw e;
+  }
+
   // Check custom local doctors master db
   try {
     const stored = localStorage.getItem('clinic-master-db');
@@ -94,9 +176,14 @@ function fallbackLocalLogin(username, password) {
 }
 
 export function logoutUser() {
+  localStorage.removeItem('clinic-auth-session');
   setAuthSession(null);
+  sessionStorage.clear();
   showToast('Signed out successfully');
-  window.location.reload();
+  const isInsidePages = window.location.pathname.includes('/pages/');
+  setTimeout(() => {
+    window.location.href = isInsidePages ? 'login.html?logout=true' : 'pages/login.html?logout=true';
+  }, 150);
 }
 
 export async function switchDoctorClinic(newClinicId) {

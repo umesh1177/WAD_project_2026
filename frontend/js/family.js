@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, todayISO, showToast, getClinicPrefix, generateFamilyId, getSharedMasterCollection } from './api.js';
 
 export function renderFamilyRegistration(container, onSelectPatient, onAddedFamily) {
   const session = getAuthSession();
@@ -439,8 +439,25 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     const phone = phoneInput.value.trim();
 
     if (!headName) {
-      showToast('Please enter family head name', 'error');
+      showToast('Please enter the family head name.', 'error');
+      headNameInput.focus();
       return;
+    }
+    if (headName.length < 3) {
+      showToast('Family head name must be at least 3 characters.', 'error');
+      headNameInput.focus();
+      return;
+    }
+    if (age && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 130)) {
+      showToast('Please enter a valid age between 0 and 130.', 'error');
+      return;
+    }
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        showToast('Please enter a valid 10-digit Indian mobile number.', 'error');
+        return;
+      }
     }
 
     // Auto-learn new values entered for society, area, and allergy
@@ -838,7 +855,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
   }
 
   function getKnownSocieties(db) {
-    const societies = new Set(['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest']);
+    const sharedSocs = getSharedMasterCollection('societies').map(s => s.name.trim());
+    const societies = new Set(sharedSocs);
     (db.masterSocieties || []).forEach(s => societies.add(s.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       if (f.society) societies.add(f.society.trim());
@@ -850,7 +868,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
   }
 
   function getKnownAreas(db) {
-    const areas = new Set(['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Amroli', 'Varachha', 'Gota', 'Maninagar', 'Paldi']);
+    const sharedAreas = getSharedMasterCollection('areas').map(a => a.name.trim());
+    const areas = new Set(sharedAreas);
     (db.masterAreas || []).forEach(a => areas.add(a.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       if (f.area) areas.add(f.area.trim());
@@ -862,7 +881,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
   }
 
   function getKnownAllergies(db) {
-    const allergies = new Set(['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', 'Ibuprofen']);
+    const sharedAllergies = getSharedMasterCollection('allergies').map(a => a.name.trim());
+    const allergies = new Set(sharedAllergies);
     (db.masterAllergies || []).forEach(al => allergies.add(al.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       Object.values(f.patients || {}).forEach(p => {
@@ -881,7 +901,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     if (dlArea) dlArea.remove();
     dlArea = document.createElement('datalist');
     dlArea.id = 'dl-area-list';
-    const areas = new Set(['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Amroli', 'Varachha', 'Gota', 'Maninagar', 'Paldi']);
+    const sharedAreas = getSharedMasterCollection('areas').map(a => a.name.trim());
+    const areas = new Set(sharedAreas);
     (db.masterAreas || []).forEach(a => areas.add(a.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       if (f.area) areas.add(f.area.trim());
@@ -899,7 +920,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     if (dlSociety) dlSociety.remove();
     dlSociety = document.createElement('datalist');
     dlSociety.id = 'dl-society-list';
-    const societies = new Set(['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest']);
+    const sharedSocs = getSharedMasterCollection('societies').map(s => s.name.trim());
+    const societies = new Set(sharedSocs);
     (db.masterSocieties || []).forEach(s => societies.add(s.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       if (f.society) societies.add(f.society.trim());
@@ -917,7 +939,8 @@ export function renderFamilyRegistration(container, onSelectPatient, onAddedFami
     if (dlAllergy) dlAllergy.remove();
     dlAllergy = document.createElement('datalist');
     dlAllergy.id = 'dl-allergy-list';
-    const allergies = new Set(['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', 'Ibuprofen']);
+    const sharedAllergies = getSharedMasterCollection('allergies').map(a => a.name.trim());
+    const allergies = new Set(sharedAllergies);
     (db.masterAllergies || []).forEach(al => allergies.add(al.name.trim()));
     Object.values(db.families || {}).forEach((f) => {
       Object.values(f.patients || {}).forEach(p => {

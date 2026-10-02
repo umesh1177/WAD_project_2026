@@ -1,7 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
 
 const connectDB = require('./config/db');
 const errorMiddleware = require('./middleware/errorMiddleware');
@@ -23,6 +23,7 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const billingRoutes = require('./routes/billingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const followUpRoutes = require('./routes/followUpRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 const app = express();
 
@@ -306,7 +307,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
-    service: 'Clinic Management System API',
+    service: 'Clinic Management System & Admin API',
   });
 });
 
@@ -348,6 +349,17 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/followups', followUpRoutes);
 app.use('/api/followup', followUpRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/support', feedbackRoutes);
+
+// Direct routes for admin and login
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/pages/admin/dashboard.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
+});
 
 // SPA / direct route fallback for frontend pages
 app.get('*', (req, res, next) => {
@@ -357,13 +369,28 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+// 404 handler for unknown API routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      success: false,
+      error: 'NOT_FOUND',
+      message: `The API endpoint "${req.method} ${req.path}" does not exist. Please check the URL and try again.`,
+    });
+  }
+  next();
+});
+
 // Error handling middleware
 app.use(errorMiddleware);
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`=========================================`);
   console.log(` Clinic API Server running on port ${PORT}`);
-  console.log(` Local URL: http://localhost:${PORT}`);
+  console.log(` Admin Portal:   http://localhost:${PORT}/pages/admin/dashboard.html`);
+  console.log(` Doctor Portal:  http://localhost:${PORT}/pages/dashboard.html`);
+  console.log(` Login Page:     http://localhost:${PORT}/pages/login.html`);
   console.log(`=========================================`);
 });
