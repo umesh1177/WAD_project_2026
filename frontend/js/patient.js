@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection, addSharedMasterItem, todayISO } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, generatePatientId, getSharedMasterCollection, addSharedMasterItem, todayISO } from './api.js';
 
 export async function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   let selectedFamId = presetFamId || null;
@@ -18,16 +18,41 @@ export async function renderPatientRegistration(container, presetFamId = null, o
     const res = await apiFetch('/families');
     if (res.success && res.data) {
       allFamiliesCache = res.data;
-      if (selectedFamId) {
-        targetFamily = allFamiliesCache.find(f => f.famId === selectedFamId || f._id === selectedFamId || f.id === selectedFamId);
-      }
     }
   } catch (e) { }
 
-  if (editPatientId && targetFamily) {
+  if (editPatientId) {
     try {
       const pRes = await apiFetch('/patients/' + editPatientId);
-      if (pRes.success && pRes.data) editingPatient = pRes.data;
+      if (pRes.success && pRes.data) {
+        editingPatient = pRes.data;
+        if (editingPatient.familyId) {
+          const fid = typeof editingPatient.familyId === 'object'
+            ? (editingPatient.familyId.famId || editingPatient.familyId._id || editingPatient.familyId.id)
+            : editingPatient.familyId;
+          if (fid) selectedFamId = fid;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch patient for editing:', e);
+    }
+  }
+
+  if (selectedFamId) {
+    targetFamily = allFamiliesCache.find(f => f.famId === selectedFamId || f._id === selectedFamId || f.id === selectedFamId);
+  }
+  if (!targetFamily && editingPatient?.family) {
+    targetFamily = editingPatient.family;
+    if (!selectedFamId) {
+      selectedFamId = targetFamily.famId || targetFamily._id || targetFamily.id;
+    }
+  }
+  if (!targetFamily && selectedFamId) {
+    try {
+      const fRes = await apiFetch('/families/' + selectedFamId);
+      if (fRes.success && fRes.data) {
+        targetFamily = fRes.data;
+      }
     } catch (e) { }
   }
 

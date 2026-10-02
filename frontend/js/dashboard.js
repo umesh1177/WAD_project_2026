@@ -8,7 +8,7 @@
 
 import { apiFetch, todayISO, fmtDate, fmtMoney, getLocalDB, getAuthSession } from './api.js';
 
-export async function renderDashboard(container, onSelectPatient) {
+export async function renderDashboard(container, onSelectPatient, onNavigate) {
   let dateFilter = todayISO();
   let datePreset = 'today'; // 'today' | 'yesterday' | 'week' | 'month' | 'custom'
   let activeTab = 'visits'; // 'visits' | 'appointments' | 'followups' | 'billing' | 'patients' | 'dues'
@@ -92,18 +92,6 @@ export async function renderDashboard(container, onSelectPatient) {
       }
     } catch (e) {
       followUps = db.followups || [];
-    }
-
-    // Real-time Database: Fetch Invoices & Bills
-    try {
-      const billRes = await apiFetch('/billing');
-      if (billRes && billRes.data && Array.isArray(billRes.data) && billRes.data.length > 0) {
-        bills = billRes.data;
-      } else {
-        bills = db.bills || [];
-      }
-    } catch (e) {
-      bills = db.bills || [];
     }
 
     const families = Object.values(familiesMap);
@@ -270,24 +258,7 @@ export async function renderDashboard(container, onSelectPatient) {
             </div>
           </div>
 
-          <!-- KPI 2: Cashflow & Collection -->
-          <div class="cms-kpi-card tone-revenue ${activeTab === 'billing' ? 'active' : ''}" data-tab="billing">
-            <div class="cms-kpi-top">
-              <div class="cms-kpi-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-              <span class="cms-kpi-badge" style="background: #d1fae5; color: #047857;">Received</span>
-            </div>
-            <div class="cms-kpi-value-group">
-              <div class="cms-kpi-val" style="color: #059669;">${fmtMoney(dateReceived)}</div>
-              <div class="cms-kpi-title">Revenue Collected</div>
-            </div>
-            <div class="cms-kpi-meta">
-              <span>Billed: <b>${fmtMoney(dateBilled)}</b></span>
-              <span>&bull;</span>
-              <span style="color: #dc2626;">Due: <b>${fmtMoney(dateDue)}</b></span>
-            </div>
-          </div>
-
-          <!-- KPI 3: Appointments & Queue -->
+          <!-- KPI 2: Appointments & Queue -->
           <div class="cms-kpi-card tone-apts ${activeTab === 'appointments' ? 'active' : ''}" data-tab="appointments">
             <div class="cms-kpi-top">
               <div class="cms-kpi-icon"><i class="fa-solid fa-calendar-check"></i></div>
@@ -304,6 +275,21 @@ export async function renderDashboard(container, onSelectPatient) {
             </div>
           </div>
 
+          <!-- KPI 3: Follow-ups -->
+          <div class="cms-kpi-card tone-apts ${activeTab === 'followups' ? 'active' : ''}" data-tab="followups">
+            <div class="cms-kpi-top">
+              <div class="cms-kpi-icon"><i class="fa-solid fa-bell"></i></div>
+              <span class="cms-kpi-badge" style="background: #fef3c7; color: #92400e;">Follow-ups</span>
+            </div>
+            <div class="cms-kpi-value-group">
+              <div class="cms-kpi-val">${targetFollowUps.length} <span style="font-size: 13.5px; font-weight: 600; color: var(--text-muted);">Due</span></div>
+              <div class="cms-kpi-title">Pending Follow-ups</div>
+            </div>
+            <div class="cms-kpi-meta">
+              <span>Patients awaiting review</span>
+            </div>
+          </div>
+
           <!-- KPI 4: Patient Community -->
           <div class="cms-kpi-card tone-patients ${activeTab === 'patients' ? 'active' : ''}" data-tab="patients">
             <div class="cms-kpi-top">
@@ -316,23 +302,6 @@ export async function renderDashboard(container, onSelectPatient) {
             </div>
             <div class="cms-kpi-meta">
               <span><b>${families.length}</b> Families Registered</span>
-            </div>
-          </div>
-
-          <!-- KPI 5: Outstanding Dues -->
-          <div class="cms-kpi-card tone-dues ${activeTab === 'dues' ? 'active' : ''}" data-tab="dues">
-            <div class="cms-kpi-top">
-              <div class="cms-kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
-              <span class="cms-kpi-badge" style="background: #fee2e2; color: #b91c1c;">Critical</span>
-            </div>
-            <div class="cms-kpi-value-group">
-              <div class="cms-kpi-val" style="color: #dc2626;">${fmtMoney(totalClinicDue)}</div>
-              <div class="cms-kpi-title">Outstanding Dues</div>
-            </div>
-            <div class="cms-kpi-meta">
-              <span style="color: #dc2626;"><b>${defaultersCount}</b> Defaulters</span>
-              <span>&bull;</span>
-              <span>Recovery Pending</span>
             </div>
           </div>
 
@@ -359,20 +328,10 @@ export async function renderDashboard(container, onSelectPatient) {
                 <span>Follow-ups</span>
                 <span class="cms-dash-tab-count">${targetFollowUps.length}</span>
               </button>
-              <button type="button" class="cms-dash-tab-btn ${activeTab === 'billing' ? 'active' : ''}" data-tab="billing">
-                <i class="fa-solid fa-file-invoice-dollar"></i>
-                <span>Invoices &amp; Receipts</span>
-                <span class="cms-dash-tab-count">${bills.length}</span>
-              </button>
               <button type="button" class="cms-dash-tab-btn ${activeTab === 'patients' ? 'active' : ''}" data-tab="patients">
                 <i class="fa-solid fa-user-group"></i>
                 <span>Patient Directory</span>
                 <span class="cms-dash-tab-count">${flatPatients.length}</span>
-              </button>
-              <button type="button" class="cms-dash-tab-btn ${activeTab === 'dues' ? 'active' : ''}" data-tab="dues">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <span>Dues Recovery</span>
-                <span class="cms-dash-tab-count" style="color: #dc2626;">${defaultersCount}</span>
               </button>
             </div>
 
@@ -382,9 +341,7 @@ export async function renderDashboard(container, onSelectPatient) {
                   activeTab === 'visits' ? `OPD Consultations on ${fmtDate(dateFilter)}` :
                   activeTab === 'appointments' ? `Appointments Scheduled on ${fmtDate(dateFilter)}` :
                   activeTab === 'followups' ? `Pending Follow-up Consultations` :
-                  activeTab === 'billing' ? `Recent Patient Invoices &amp; Cashflow` :
-                  activeTab === 'patients' ? `Registered Patient Population` :
-                  `Outstanding Patient Balance &amp; Defaulters`
+                  `Registered Patient Population`
                 }
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -581,55 +538,6 @@ export async function renderDashboard(container, onSelectPatient) {
       `;
     }
 
-    if (activeTab === 'billing') {
-      let list = bills;
-      if (q) {
-        list = list.filter(
-          (b) =>
-            (b.billNo || '').toLowerCase().includes(q) ||
-            (b.patientName || '').toLowerCase().includes(q) ||
-            (b.caseId || '').toLowerCase().includes(q)
-        );
-      }
-
-      if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-file-invoice" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No invoices recorded.</div>`;
-      }
-
-      return `
-        <table class="cms-table">
-          <thead>
-            <tr>
-              <th style="width: 130px;">Bill No.</th>
-              <th style="width: 110px;">Date</th>
-              <th>Patient Name</th>
-              <th style="text-align: right; width: 100px;">Total Charge</th>
-              <th style="text-align: right; width: 100px;">Paid Amount</th>
-              <th style="text-align: right; width: 100px;">Due Amount</th>
-              <th style="width: 90px; text-align: center;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${list
-              .map(
-                (b) => `
-              <tr>
-                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">${b.billNo}</td>
-                <td class="font-mono" style="white-space: nowrap;">${fmtDate(b.billDate || b.createdAt)}</td>
-                <td><b>${b.patientName}</b></td>
-                <td class="font-mono" style="text-align: right; white-space: nowrap;">${fmtMoney(b.totalCharge)}</td>
-                <td class="font-mono" style="text-align: right; color: #059669; font-weight: 800; white-space: nowrap;">${fmtMoney(b.paidAmount)}</td>
-                <td class="font-mono" style="text-align: right; color: ${Number(b.dueAmount) > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: ${Number(b.dueAmount) > 0 ? '800' : '500'}; white-space: nowrap;">${fmtMoney(b.dueAmount)}</td>
-                <td style="text-align: center;"><span class="cms-pill ${b.status === 'Paid' ? 'cms-badge-paid' : 'cms-badge-due'}">${b.status}</span></td>
-              </tr>
-            `
-              )
-              .join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
     if (activeTab === 'patients') {
       let list = flatPatients;
       if (q) {
@@ -674,59 +582,6 @@ export async function renderDashboard(container, onSelectPatient) {
                 <td style="text-align: right; white-space: nowrap;">
                   <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: var(--primary); font-weight: 700;">
                     Case <i class="fa-solid fa-arrow-right"></i>
-                  </button>
-                </td>
-              </tr>
-            `
-              )
-              .join('')}
-          </tbody>
-        </table>
-      `;
-    }
-
-    if (activeTab === 'dues') {
-      let list = flatPatients.filter((p) => p.totalDue > 0).sort((a, b) => b.totalDue - a.totalDue);
-      if (q) {
-        list = list.filter(
-          ({ fam, pat }) =>
-            pat.name.toLowerCase().includes(q) ||
-            pat.id.toLowerCase().includes(q) ||
-            fam.headName.toLowerCase().includes(q)
-        );
-      }
-
-      if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--success); font-weight: 700;"><i class="fa-solid fa-circle-check" style="font-size: 28px; margin-bottom: 8px; display: block;"></i>All patient accounts are fully settled. No pending dues!</div>`;
-      }
-
-      return `
-        <table class="cms-table">
-          <thead>
-            <tr>
-              <th style="width: 100px;">Patient ID</th>
-              <th>Patient Name</th>
-              <th>Family Head</th>
-              <th>Area / Locality</th>
-              <th style="width: 120px;">Last Visit Date</th>
-              <th style="text-align: right; width: 110px;">Total Due</th>
-              <th style="text-align: right; width: 110px;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${list
-              .map(
-                ({ fam, pat, totalDue, lastVisit }) => `
-              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.id}">
-                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.id}</td>
-                <td><b>${pat.name}</b></td>
-                <td>${fam.headName}</td>
-                <td>${fam.area || '—'}</td>
-                <td class="font-mono" style="white-space: nowrap;">${lastVisit ? fmtDate(lastVisit.date) : '—'}</td>
-                <td class="font-mono" style="text-align: right; color: #dc2626; font-weight: 800; font-size: 13px; white-space: nowrap;">${fmtMoney(totalDue)}</td>
-                <td style="text-align: right; white-space: nowrap;">
-                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: #dc2626; font-weight: 700;">
-                    Settle <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </td>
               </tr>
@@ -794,29 +649,39 @@ export async function renderDashboard(container, onSelectPatient) {
       });
     }
 
+    const handleNav = (viewName, sel = null) => {
+      if (onNavigate) {
+        onNavigate(viewName, sel);
+      } else {
+        const navItem = document.querySelector(`.cms-nav-item[data-view="${viewName}"]`);
+        if (navItem) navItem.click();
+      }
+    };
+
     container.querySelector('#btn-quick-new-visit')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="case"]')?.click();
+      handleNav('case');
     });
 
     container.querySelector('#btn-quick-add-patient')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="patient"]')?.click();
+      handleNav('patient');
     });
 
     container.querySelector('#btn-quick-add-family')?.addEventListener('click', () => {
-      document.querySelector('.cms-nav-item[data-view="family"]')?.click();
+      handleNav('family');
     });
 
-    attachTableInteractions();
+    attachTableInteractions(handleNav);
   }
 
-  function attachTableInteractions() {
+  function attachTableInteractions(handleNav) {
     container.querySelectorAll('.cms-clickable-row').forEach((row) => {
       row.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         const famId = row.getAttribute('data-famid');
         const patId = row.getAttribute('data-patid');
-        if (famId && patId && onSelectPatient) {
-          onSelectPatient(famId, patId);
+        if (famId && patId) {
+          if (onSelectPatient) onSelectPatient(famId, patId);
+          else if (handleNav) handleNav('case', { familyId: famId, patientId: patId });
         }
       });
     });
@@ -825,8 +690,9 @@ export async function renderDashboard(container, onSelectPatient) {
       btn.addEventListener('click', () => {
         const famId = btn.getAttribute('data-famid');
         const patId = btn.getAttribute('data-patid');
-        if (famId && patId && onSelectPatient) {
-          onSelectPatient(famId, patId);
+        if (famId && patId) {
+          if (onSelectPatient) onSelectPatient(famId, patId);
+          else if (handleNav) handleNav('case', { familyId: famId, patientId: patId });
         }
       });
     });
@@ -835,10 +701,11 @@ export async function renderDashboard(container, onSelectPatient) {
       btn.addEventListener('click', () => {
         const famId = btn.getAttribute('data-famid');
         const patId = btn.getAttribute('data-patid');
-        if (famId && patId && onSelectPatient) {
-          onSelectPatient(famId, patId);
-        } else {
-          document.querySelector('.cms-nav-item[data-view="case"]')?.click();
+        if (famId && patId) {
+          if (onSelectPatient) onSelectPatient(famId, patId);
+          else if (handleNav) handleNav('case', { familyId: famId, patientId: patId });
+        } else if (handleNav) {
+          handleNav('case');
         }
       });
     });
