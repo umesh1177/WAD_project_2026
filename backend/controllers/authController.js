@@ -39,10 +39,11 @@ const login = async (req, res) => {
     }
 
     // Receptionist Demo Check Fallback
-    if (username.trim().toLowerCase() === 'receptionist' && password === 'password123') {
+    const uLower = username.trim().toLowerCase();
+    if ((uLower === 'reception' || uLower === 'receptionist') && (password === '123' || password === 'reception' || password === '123456' || password === 'password123')) {
       const receptionistPayload = {
         id: 'receptionist-demo',
-        username: 'receptionist',
+        username: uLower,
         role: 'receptionist',
         name: 'Front Desk Receptionist',
         clinics: [{ id: 'demo', name: 'Dhyey Clinic & Nursing Home' }],

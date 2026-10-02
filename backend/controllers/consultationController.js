@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Consultation = require('../models/Consultation');
 const Patient = require('../models/Patient');
 const Family = require('../models/Family');
@@ -5,6 +6,12 @@ const Prescription = require('../models/Prescription');
 const Bill = require('../models/Bill');
 const Payment = require('../models/Payment');
 const { makeCaseId, todayISO, nowTime } = require('../utils/generateId');
+
+// Helper to safely trim any value
+const safeTrim = (val, defaultVal = '') => {
+  if (val === undefined || val === null) return defaultVal;
+  return String(val).trim();
+};
 
 // Get consultations / visits
 const getConsultations = async (req, res) => {
@@ -77,15 +84,15 @@ const createConsultation = async (req, res) => {
       clinicId,
       date: date || todayISO(),
       time: time || nowTime(),
-      weight: (weight || '').trim(),
-      bp: (bp || '').trim(),
-      sugar: (sugar || '').trim(),
-      pulse: (pulse || '').trim(),
-      other: (other || '').trim(),
-      reference: (reference || 'Self').trim(),
-      investigation: (investigation || '').trim(),
-      complaint: (complaint || '').trim(),
-      diagnosis: (diagnosis || '').trim(),
+      weight: safeTrim(weight),
+      bp: safeTrim(bp),
+      sugar: safeTrim(sugar),
+      pulse: safeTrim(pulse),
+      other: safeTrim(other),
+      reference: safeTrim(reference, 'Self'),
+      investigation: safeTrim(investigation),
+      complaint: safeTrim(complaint),
+      diagnosis: safeTrim(diagnosis),
       treatment: treatment || [],
       prescription: prescription || [],
       labReports: labReports || {},
@@ -178,11 +185,10 @@ const updateConsultation = async (req, res) => {
       due: dueNum,
     };
 
-    const updated = await Consultation.findOneAndUpdate(
-      { $or: [{ _id: id }, { caseId: id }], clinicId },
-      updateData,
-      { new: true }
-    );
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const filter = isObjectId ? { $or: [{ _id: id }, { caseId: id }], clinicId } : { caseId: id, clinicId };
+
+    const updated = await Consultation.findOneAndUpdate(filter, updateData, { new: true });
 
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Consultation not found' });
@@ -200,7 +206,10 @@ const deleteConsultation = async (req, res) => {
     const { id } = req.params;
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
 
-    const deleted = await Consultation.findOneAndDelete({ $or: [{ _id: id }, { caseId: id }], clinicId });
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const filter = isObjectId ? { $or: [{ _id: id }, { caseId: id }], clinicId } : { caseId: id, clinicId };
+
+    const deleted = await Consultation.findOneAndDelete(filter);
     if (deleted && deleted.caseId) {
       await Prescription.deleteMany({ caseId: deleted.caseId, clinicId });
       await Bill.deleteMany({ caseId: deleted.caseId, clinicId });

@@ -137,7 +137,14 @@ const verifyCertificate = async (req, res) => {
 const deleteCertificate = async (req, res) => {
   try {
     const { id } = req.params;
-    await Certificate.findByIdAndDelete(id);
+    const mongoose = require('mongoose');
+    let deleted = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      deleted = await Certificate.findByIdAndDelete(id);
+    }
+    if (!deleted) {
+      deleted = await Certificate.findOneAndDelete({ certNo: id });
+    }
     res.json({ success: true, message: 'Certificate deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -188,7 +195,12 @@ const createTemplate = async (req, res) => {
 const deleteTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    await CertificateTemplate.findByIdAndDelete(id);
+    const mongoose = require('mongoose');
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      await CertificateTemplate.findByIdAndDelete(id);
+    } else {
+      await CertificateTemplate.findOneAndDelete({ templateName: id });
+    }
     res.json({ success: true, message: 'Certificate template deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
