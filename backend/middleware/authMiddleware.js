@@ -30,9 +30,25 @@ const authMiddleware = (req, res, next) => {
       });
     }
 
-    // Special admin mock token (for backward compat with the admin dashboard)
-    if (token === 'mock-admin-token') {
+    // Special mock tokens support (for development, demo, and admin dashboard)
+    if (token === 'mock-admin-token' || token.startsWith('mock-admin')) {
       req.user = { id: 'admin', username: 'admin', role: 'admin', name: 'System Administrator' };
+      if (req.headers['x-clinic-id']) req.user.activeClinicId = req.headers['x-clinic-id'];
+      return next();
+    }
+    if (token === 'mock-doctor-token' || token.startsWith('mock-doc') || token.startsWith('mock-token-doc')) {
+      req.user = { id: 'demo-doc', username: 'dhyey', role: 'doctor', name: 'Dr. Chirag Paghdal' };
+      if (req.headers['x-clinic-id']) req.user.activeClinicId = req.headers['x-clinic-id'];
+      return next();
+    }
+    if (token === 'mock-receptionist-token' || token.startsWith('mock-rec') || token.startsWith('mock-token-rec')) {
+      req.user = { id: 'demo-rec', username: 'reception', role: 'receptionist', name: 'Front Desk Receptionist' };
+      if (req.headers['x-clinic-id']) req.user.activeClinicId = req.headers['x-clinic-id'];
+      return next();
+    }
+    if (token.startsWith('mock-')) {
+      req.user = { id: 'demo-user', username: 'user', role: 'doctor', name: 'Doctor / User' };
+      if (req.headers['x-clinic-id']) req.user.activeClinicId = req.headers['x-clinic-id'];
       return next();
     }
 

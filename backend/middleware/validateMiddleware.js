@@ -124,16 +124,12 @@ const validateMedicine = (req, res, next) => {
 
 // ---- Feedback / Support ----
 const validateFeedback = (req, res, next) => {
-  const { subject, message, category } = req.body;
+  const { subject, message } = req.body;
 
   if (!isNonEmpty(subject))
     return validationError(res, 'Feedback subject is required.', 'subject');
-  if (String(subject).trim().length < 5)
-    return validationError(res, 'Subject must be at least 5 characters.', 'subject');
   if (!isNonEmpty(message))
     return validationError(res, 'Feedback message is required.', 'message');
-  if (String(message).trim().length < 10)
-    return validationError(res, 'Please provide a more detailed message (at least 10 characters).', 'message');
 
   next();
 };

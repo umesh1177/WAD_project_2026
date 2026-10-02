@@ -16,6 +16,12 @@
   }
 })();
 
+const API_BASE_URL = window.location.origin.includes('5000')
+  ? ''
+  : window.location.port === '' || window.location.port === '80'
+  ? ''
+  : 'http://localhost:5000';
+
 const STORAGE_KEY = 'dhyey-admin-clinics';
 
 const PLATFORM_SERVICES = [
@@ -284,7 +290,7 @@ function logActivity(action, entity, entityId, result = 'Success', details = '')
 
 async function syncClinicRequestsFromAPI() {
   try {
-    const res = await fetch('/api/clinics/requests');
+    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`);
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
@@ -850,7 +856,7 @@ async function approveClinicRequest(reqId) {
 
   // Update backend API
   try {
-    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'Approved' })
@@ -875,7 +881,7 @@ async function rejectClinicRequest(reqId) {
 
   // Update backend API
   try {
-    await fetch(`/api/clinics/requests/${encodeURIComponent(reqId)}`, {
+    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'Rejected' })
@@ -1065,7 +1071,7 @@ function renderAdmins() {
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     try {
-      const response = await fetch('/api/auth/register-admin', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
         body: JSON.stringify({ name: data.get('name'), email: data.get('email'), username: data.get('username'), employeeId: data.get('employeeId'), password })
@@ -1171,7 +1177,7 @@ async function renderFeedbackInbox() {
   let serverTickets = [];
 
   try {
-    const response = await fetch('/api/feedback/admin/all', {
+    const response = await fetch(`${API_BASE_URL}/api/feedback/admin/all`, {
       headers: { Authorization: `Bearer ${session?.token || 'mock-admin-token'}` },
     });
     const result = await response.json().catch(() => ({}));
@@ -1179,16 +1185,20 @@ async function renderFeedbackInbox() {
       serverTickets = result.data;
     }
   } catch (error) {
-    console.warn('[Admin Feedback Notice]: Fetching local fallback tickets');
+    console.warn('[Admin Feedback Notice]: Fetching local fallback tickets', error);
   }
 
   // Collect and merge ALL local clinic storage tickets (both clinic_db_*, clinic-db-*, and public storage)
   const localTickets = [];
-  const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
-  if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
+  try {
+    const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
+    if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
+  } catch (e) {}
 
-  const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-  if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
+  try {
+    const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+    if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
+  } catch (e) {}
 
   Object.keys(localStorage).forEach((key) => {
     if (key.startsWith('clinic_db_') || key.startsWith('clinic-db-') || key.startsWith('clinic_db')) {
@@ -1204,13 +1214,33 @@ async function renderFeedbackInbox() {
   // Deduplicate and merge tickets
   const ticketMap = new Map();
   serverTickets.forEach((t) => {
-    const k = t.ticketNo || t.id || t._id;
-    if (k) ticketMap.set(k, t);
+    const k = t.ticketNo || t._id || t.id;
+    if (k) {
+      ticketMap.set(k, {
+        ...t,
+        id: t._id || t.id || t.ticketNo,
+        replies: Array.isArray(t.replies) ? t.replies : [],
+      });
+    }
   });
+
   localTickets.forEach((t) => {
-    const k = t.ticketNo || t.id || t._id;
-    if (k && !ticketMap.has(k)) {
-      ticketMap.set(k, t);
+    const k = t.ticketNo || t._id || t.id;
+    if (k) {
+      if (!ticketMap.has(k)) {
+        ticketMap.set(k, {
+          ...t,
+          id: t._id || t.id || t.ticketNo,
+          replies: Array.isArray(t.replies) ? t.replies : [],
+        });
+      } else {
+        const existing = ticketMap.get(k);
+        const localReplies = Array.isArray(t.replies) ? t.replies : [];
+        if (localReplies.length > (existing.replies || []).length) {
+          existing.replies = localReplies;
+        }
+        if (t.status && !existing.status) existing.status = t.status;
+      }
     }
   });
 
@@ -1247,7 +1277,7 @@ async function renderFeedbackInbox() {
 
       const matchStatus = !status || ticket.status === status;
       const matchSource = !category || source === category;
-      const matchText = `${ticket.ticketNo || ''} ${ticket.doctorName || ''} ${ticket.clinicName || ''} ${ticket.subject || ''} ${ticket.message || ''} ${ticket.metaDetails?.email || ''} ${ticket.metaDetails?.phone || ''}`
+      const matchText = `${ticket.ticketNo || ''} ${ticket.doctorName || ''} ${ticket.clinicName || ''} ${ticket.subject || ''} ${ticket.message || ''} ${ticket.categoryLabel || ''} ${ticket.category || ''} ${ticket.metaDetails?.email || ''} ${ticket.metaDetails?.phone || ''} ${ticket.metaDetails?.requestedClinicName || ''}`
         .toLowerCase()
         .includes(term);
 
@@ -1589,8 +1619,8 @@ async function updateFeedbackTicket(id, payload) {
   const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
   try {
     const endpoint = payload.message
-      ? `/api/feedback/${encodeURIComponent(id)}/reply`
-      : `/api/feedback/${encodeURIComponent(id)}/status`;
+      ? `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/reply`
+      : `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/status`;
     const response = await fetch(endpoint, {
       method: payload.message ? 'POST' : 'PATCH',
       headers: {
@@ -1640,6 +1670,10 @@ async function updateFeedbackTicket(id, payload) {
       updated = true;
     } catch (e) {}
   });
+
+  try {
+    localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
+  } catch (e) {}
 
   return updated;
 }
@@ -3192,4 +3226,30 @@ setInterval(updateDoctorClock, 1000);
 
 window.addEventListener('hashchange', () => navigate());
 document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
+
+// Live Cross-Tab Synchronization for Feedback & Support Tickets
+window.addEventListener('storage', (event) => {
+  if (
+    event.key === 'dhyey-feedback-tickets' ||
+    event.key === 'dhyey-feedback-last-updated' ||
+    event.key === 'dhyey-public-feedback' ||
+    (event.key && (event.key.startsWith('clinic-db-') || event.key.startsWith('clinic_db_')))
+  ) {
+    if (location.hash === '#feedback') {
+      renderFeedbackInbox();
+    }
+  }
+});
+
+// Periodic auto-refresh when on feedback screen (every 5 seconds)
+setInterval(() => {
+  if (location.hash === '#feedback' && !document.querySelector('#feedbackModalMount > div')) {
+    const searchInput = document.getElementById('feedbackSearch');
+    // Only background refresh if the search input is not actively focused/being typed into
+    if (searchInput !== document.activeElement && (!searchInput || !searchInput.value.trim())) {
+      renderFeedbackInbox();
+    }
+  }
+}, 5000);
+
 navigate();

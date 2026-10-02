@@ -1,10 +1,11 @@
 const roleMiddleware = (...allowedRoles) => {
+  const roles = allowedRoles.flat();
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
       return res.status(401).json({ success: false, message: 'Unauthorized: User not authenticated' });
     }
 
-    if (req.user.role === 'admin' || allowedRoles.includes(req.user.role)) {
+    if (req.user.role === 'admin' || roles.includes(req.user.role)) {
       return next();
     }
 

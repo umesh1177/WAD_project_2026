@@ -724,12 +724,22 @@ export async function renderFeedbackView(container) {
           activeFollowupTicketId = null;
 
           // Update local state
-          const ticketIndex = tickets.findIndex((t) => t.id === id || t.ticketNo === id);
+          const ticketIndex = tickets.findIndex((t) => t.id === id || t.ticketNo === id || t._id === id);
           if (ticketIndex !== -1 && res?.data) {
-            tickets[ticketIndex] = res.data;
+            tickets[ticketIndex] = { ...tickets[ticketIndex], ...res.data, id: res.data._id || res.data.id || id };
           }
           db.feedbacks = tickets;
           saveLocalDB(db, clinicId);
+
+          try {
+            const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+            const gIdx = globalTickets.findIndex((t) => (t.id || t._id || t.ticketNo) === id);
+            if (gIdx !== -1 && res?.data) {
+              globalTickets[gIdx] = { ...globalTickets[gIdx], ...res.data, id: res.data._id || res.data.id || id };
+              localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
+            }
+            localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
+          } catch (e) {}
 
           render();
         } catch (err) {
@@ -786,12 +796,44 @@ export async function renderFeedbackView(container) {
           });
 
           showToast('Request submitted successfully! Admin will review and reply.');
-          
-          if (res?.data) {
-            tickets.unshift(res.data);
-            db.feedbacks = tickets;
-            saveLocalDB(db, clinicId);
-          }
+
+          const fallbackTicketNo = `TKT-${new Date().getFullYear()}-${String((tickets.length || 0) + 1).padStart(4, '0')}`;
+          const fallbackId = 'tkt-' + Math.random().toString(36).slice(2, 10);
+          const rawTicket = res?.data || {};
+
+          const createdTicket = {
+            id: rawTicket._id || rawTicket.id || fallbackId,
+            _id: rawTicket._id,
+            ticketNo: rawTicket.ticketNo || fallbackTicketNo,
+            doctorId: rawTicket.doctorId || session?.profile?.id || 'demo',
+            doctorName: rawTicket.doctorName || doctorName,
+            clinicId: rawTicket.clinicId || activeClinic.id || clinicId,
+            clinicName: rawTicket.clinicName || activeClinic.name,
+            category: rawTicket.category || selectedCategory,
+            categoryLabel: rawTicket.categoryLabel || categoryConfigs[selectedCategory].label,
+            priority: rawTicket.priority || priority,
+            subject: rawTicket.subject || subject,
+            message: rawTicket.message || message,
+            metaDetails: rawTicket.metaDetails || metaDetails,
+            status: rawTicket.status || 'Pending',
+            replies: rawTicket.replies || [],
+            createdAt: rawTicket.createdAt || new Date().toISOString(),
+          };
+
+          tickets.unshift(createdTicket);
+          db.feedbacks = tickets;
+          saveLocalDB(db, clinicId);
+
+          // Save to global shared tickets store for immediate cross-tab Admin visibility
+          try {
+            const globalTickets = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
+            const tKey = createdTicket.ticketNo || createdTicket.id || createdTicket._id;
+            if (!globalTickets.some((t) => (t.ticketNo || t.id || t._id) === tKey)) {
+              globalTickets.unshift(createdTicket);
+              localStorage.setItem('dhyey-feedback-tickets', JSON.stringify(globalTickets));
+            }
+            localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
+          } catch (e) {}
 
           submitForm.reset();
           render();
