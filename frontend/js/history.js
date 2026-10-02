@@ -9,7 +9,7 @@
  * =========================================================
  */
 
-import { fmtDate, todayISO, showToast, uid } from './api.js';
+import { fmtDate, todayISO, showToast, uid, getAuthSession } from './api.js';
 
 // Normal Range Definitions for Automatic Out-of-Range Validation
 export const LAB_NORMAL_RANGES = {
@@ -95,17 +95,20 @@ export function openLabReportModal(patient, family, visit, initialData = {}, onS
     document.body.appendChild(modalOverlay);
   }
 
+  const session = getAuthSession();
+  const defaultDocName = session?.profile?.name ? (session.profile.name.startsWith('Dr.') ? session.profile.name : `Dr. ${session.profile.name}`) : '';
+
   // Active Sub-Tab: 'hemetology' | 'urine' | 'other'
   let activeTab = 'hemetology';
 
-  // State
+  // State: Clean and empty defaults so newly opened reports do not pre-fill dummy/fake values
   let formData = {
     familyName: family?.headName || patient?.familyHead || '',
     patientName: patient?.name || '',
-    caseNo: visit?.caseId || visit?.id || '841',
-    entryNo: initialData.entryNo || String(Math.floor(10 + Math.random() * 90)),
-    labName: initialData.labName || 'Surat Diagnostic & Clinical Pathology Laboratory',
-    drName: initialData.drName || 'Dr. Sandeep Shah',
+    caseNo: visit?.caseId || visit?.id || '',
+    entryNo: initialData.entryNo || '',
+    labName: initialData.labName || '',
+    drName: initialData.drName || defaultDocName,
     entryDate: initialData.entryDate || visit?.date || todayISO(),
     
     // Tab 1: Routine Hemetology
@@ -125,44 +128,44 @@ export function openLabReportModal(patient, family, visit, initialData = {}, onS
     eosinophils: '',
     monocytes: '',
     basophils: '',
-    parasites: 'NOT SEEN',
+    parasites: '',
     t3: '',
     t4: '',
     tsh: '',
 
     // Tab 2: Routine Urine
-    urineQty: '40 ml',
-    urineColor: 'Pale Yellow',
-    urineAppearance: 'Clear',
-    urineSpGravity: '1.015',
-    urinePh: '6.0',
-    urineAlbumin: 'Nil',
-    urineSugar: 'Nil',
-    urineBileSalts: 'Negative',
-    urineBilePigments: 'Negative',
-    urineKetones: 'Negative',
-    urineBlood: 'Negative',
-    urineUrobilinogen: 'Normal',
-    urinePus: '1-2',
-    urineEpithelial: '2-3',
-    urineRbc: 'Nil',
-    urineCrystals: 'Nil',
-    urineCasts: 'Nil',
-    urineBacteria: 'Nil',
-    urineOther: 'Nil',
+    urineQty: '',
+    urineColor: '',
+    urineAppearance: '',
+    urineSpGravity: '',
+    urinePh: '',
+    urineAlbumin: '',
+    urineSugar: '',
+    urineBileSalts: '',
+    urineBilePigments: '',
+    urineKetones: '',
+    urineBlood: '',
+    urineUrobilinogen: '',
+    urinePus: '',
+    urineEpithelial: '',
+    urineRbc: '',
+    urineCrystals: '',
+    urineCasts: '',
+    urineBacteria: '',
+    urineOther: '',
 
     // Tab 3: Other Reports (Photo 2)
     biliTotal: '',
     biliDirect: '',
     biliIndirect: '',
     sgpt: '',
-    g6pd: 'NORMAL',
-    hivTest: 'NON REACTIVE',
-    widalTyphiO: '1:20',
-    widalTyphiH: '1:20',
-    widalParatyphiAH: '1:20',
-    widalParatyphiBH: '1:20',
-    widalResult: 'NEGATIVE',
+    g6pd: '',
+    hivTest: '',
+    widalTyphiO: '',
+    widalTyphiH: '',
+    widalParatyphiAH: '',
+    widalParatyphiBH: '',
+    widalResult: '',
     
     // 4 Writable Multiline Free-Text Boxes
     xrayNotes: '',

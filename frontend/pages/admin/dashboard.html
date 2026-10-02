@@ -41,7 +41,7 @@
         </nav>
       </div>
       <div class="sidebar-footer-guide">
-        <button class="sidebar-logout" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+        <button class="sidebar-logout" data-action="logout" onclick="handleAdminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
       </div>
     </aside>
 
@@ -60,7 +60,7 @@
             <div class="account-menu" id="accountMenu" hidden>
               <div class="account-menu-heading"><strong>Administrator</strong><small>System administrator</small></div>
               <button type="button" data-action="account-info"><i class="fa-regular fa-id-card"></i> Account information</button>
-              <button type="button" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+              <button type="button" data-action="logout" onclick="handleAdminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
             </div>
           </div>
           <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>

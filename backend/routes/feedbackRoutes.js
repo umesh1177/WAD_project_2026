@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
+const { validateFeedback } = require('../middleware/validateMiddleware');
 const {
   createFeedback,
   getDoctorFeedback,
@@ -16,7 +17,7 @@ const {
 router.use(authMiddleware);
 
 // Doctor & General User Routes
-router.post('/', createFeedback);
+router.post('/', validateFeedback, createFeedback);
 router.get('/', getDoctorFeedback);
 router.get('/my-tickets', getDoctorFeedback);
 

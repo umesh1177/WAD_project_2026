@@ -16,15 +16,15 @@ const PLATFORM_SERVICES = [
   },
   {
     id: 'appointment',
-    name: 'Appointment & Consultation Queue Service',
-    icon: 'fa-solid fa-calendar-check',
+    name: 'Patient Consultation Queue Service',
+    icon: 'fa-solid fa-users-line',
     badge: 'Queue Dispatch',
-    desc: 'Live consultation queue and token dispatch. Requires Receptionist Service: Receptionist pushes patients to queue, so the doctor can directly initiate consultations without patient search.',
+    desc: 'Live patient consultation queue and token dispatch. Receptionist pushes patients to queue, so the doctor can directly initiate consultations without patient search.',
     features: [
       'Live Doctor Consultation Queue',
       'Direct Pick for New Visit Consultation',
-      'No Doctor-side Patient Search Needed',
-      'Requires Active Receptionist Service'
+      'Instant Patient Token Dispatch',
+      'Receptionist-Driven Patient Flow'
     ]
   },
   {
@@ -615,6 +615,27 @@ function openClinicDetails(clinicId) {
   const services = clinic.services || ['digitalPrescription', 'billing'];
   const hasReception = services.includes('receptionist');
 
+  // Service toggle rows for the detail view
+  const allServiceDefs = [
+    { id: 'receptionist', label: 'Receptionist Service', icon: 'fa-user-nurse' },
+    { id: 'appointment', label: 'Patient Queue Service', icon: 'fa-users-line' },
+    { id: 'digitalPrescription', label: 'Digital Prescription', icon: 'fa-file-prescription' },
+    { id: 'certificates', label: 'Medical Certificates', icon: 'fa-certificate' },
+    { id: 'billing', label: 'Billing & Invoicing', icon: 'fa-file-invoice-dollar' },
+  ];
+
+  const serviceToggleRows = allServiceDefs.map(svc => {
+    const isOn = services.includes(svc.id);
+    const isAutoManaged = svc.id === 'appointment'; // appointment auto-follows receptionist
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px"><i class="fa-solid ${svc.icon}" style="width:16px;opacity:.7"></i> ${svc.label}${isAutoManaged ? ' <small style="opacity:.6">(follows Receptionist)</small>' : ''}</span>
+      <button class="btn-secondary" style="padding:4px 10px;font-size:11px;min-width:72px" 
+        data-action="toggle-service" data-clinic="${clinic.id}" data-service="${svc.id}">
+        ${isOn ? '<i class="fa-solid fa-toggle-on" style="color:#16a34a"></i> ON' : '<i class="fa-solid fa-toggle-off" style="color:#94a3b8"></i> OFF'}
+      </button>
+    </div>`;
+  }).join('');
+
   modal.innerHTML = `
     <div class="detail-modal-card">
       <div class="modal-header">
@@ -626,14 +647,9 @@ function openClinicDetails(clinicId) {
       </div>
 
       <div class="detail-section">
-        <h3><i class="fa-solid fa-cubes"></i> Subscribed Services & Role Permissions</h3>
-        <div style="margin-bottom:12px">${renderServiceTagsMini(services)}</div>
-        <div class="detail-grid">
-          <div class="detail-item"><small>Login Access Mode</small><strong>${hasReception ? '<span class="role-badge role-badge-receptionist"><i class="fa-solid fa-user-nurse"></i> Receptionist + Doctor Logins</span>' : '<span class="role-badge role-badge-doctor"><i class="fa-solid fa-user-doctor"></i> Doctor Only (Direct Access)</span>'}</strong></div>
-          <div class="detail-item"><small>Queue Dispatch</small><strong>${hasReception ? 'Active (Receptionist pushes cases)' : 'Deactivated (Doctor handles visits directly)'}</strong></div>
-          <div class="detail-item"><small>Digital Prescription</small><strong>${services.includes('digitalPrescription') ? 'Enabled (Custom Multi-Language)' : 'Disabled'}</strong></div>
-          <div class="detail-item"><small>Medical Certificates</small><strong>${services.includes('certificates') ? 'Enabled (Unique IDs)' : 'Disabled'}</strong></div>
-        </div>
+        <h3><i class="fa-solid fa-cubes"></i> Services — Toggle On / Off</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Changes apply immediately and are reflected in the doctor's dashboard on next login.</p>
+        ${serviceToggleRows}
       </div>
 
       ${hasReception && clinic.receptionist ? `
@@ -641,72 +657,56 @@ function openClinicDetails(clinicId) {
           <h3><i class="fa-solid fa-user-nurse"></i> Receptionist Staff Account</h3>
           <div class="receptionist-notice-box">
             <i class="fa-solid fa-shield-check"></i>
-            <div>
-              <strong>Front-Desk Operations Active:</strong> Receptionist logs in, registers Family Heads, adds members, or finds patients, and pushes them straight into the doctor's appointment queue. Doctor does not need to search for patients.
-            </div>
+            <div><strong>Front-Desk Operations Active:</strong> Receptionist registers Family Heads and pushes patients to the doctor queue.</div>
           </div>
           <div class="detail-grid">
-            <div class="detail-item"><small>Receptionist Name</small><strong>${clinic.receptionist.name}</strong></div>
-            <div class="detail-item"><small>Email / Username</small><strong>${clinic.receptionist.email}</strong></div>
-            <div class="detail-item"><small>Contact Phone</small><strong>${clinic.receptionist.phone || 'Not provided'}</strong></div>
-            <div class="detail-item"><small>Assigned Shift</small><strong>${clinic.receptionist.shift || 'General Shift'}</strong></div>
-            <div class="detail-item"><small>Account Status</small><strong><span class="status-pill">${clinic.receptionist.status || 'Active'}</span></strong></div>
+            <div class="detail-item"><small>Name</small><strong>${clinic.receptionist.name}</strong></div>
+            <div class="detail-item"><small>Email</small><strong>${clinic.receptionist.email}</strong></div>
+            <div class="detail-item"><small>Phone</small><strong>${clinic.receptionist.phone || 'N/A'}</strong></div>
+            <div class="detail-item"><small>Shift</small><strong>${clinic.receptionist.shift || 'General Shift'}</strong></div>
+            <div class="detail-item"><small>Status</small><strong><span class="status-pill">${clinic.receptionist.status || 'Active'}</span></strong></div>
           </div>
         </div>
-      ` : `
-        <div class="detail-section">
-          <h3><i class="fa-solid fa-user-doctor"></i> Doctor Direct Workflow Mode</h3>
-          <div class="receptionist-notice-box" style="background:#f8fafc; border-color:#e2e8f0; color:#475569;">
-            <i class="fa-solid fa-circle-info"></i>
-            <div>
-              <strong>Doctor-Only Mode (No Receptionist):</strong> Receptionist service and appointment queue are turned OFF for this clinic. The doctor directly searches/registers family heads, adds members, and fills the new visit form.
-            </div>
-          </div>
-        </div>
-      `}
+      ` : ''}
 
       <div class="detail-section">
         <h3><i class="fa-solid fa-hospital"></i> Clinic Information</h3>
         <div class="detail-grid">
           <div class="detail-item"><small>Clinic ID</small><strong>${clinic.id}</strong></div>
-          <div class="detail-item"><small>Registration number</small><strong>${clinic.registration || 'Not provided'}</strong></div>
+          <div class="detail-item"><small>Registration</small><strong>${clinic.registration || 'N/A'}</strong></div>
           <div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.status}</span></strong></div>
-          <div class="detail-item"><small>Last updated</small><strong>${clinic.updated}</strong></div>
           <div class="detail-item"><small>City</small><strong>${clinic.city}</strong></div>
-          <div class="detail-item"><small>Phone</small><strong>${clinic.phone || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Email</small><strong>${clinic.email || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Operating days</small><strong>${clinic.days || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Working hours</small><strong>${clinic.hours || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Registered doctors</small><strong>${clinic.doctors}</strong></div>
-          <div class="detail-item"><small>Specialties</small><strong>${clinic.specialties || 'Not specified'}</strong></div>
-          <div class="detail-item"><small>Facilities</small><strong>${clinic.facilities || 'Not specified'}</strong></div>
+          <div class="detail-item"><small>Phone</small><strong>${clinic.phone || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Email</small><strong>${clinic.email || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Operating days</small><strong>${clinic.days || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Working hours</small><strong>${clinic.hours || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Specialties</small><strong>${clinic.specialties || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Facilities</small><strong>${clinic.facilities || 'N/A'}</strong></div>
         </div>
-      </div>
-
-      <div class="detail-section">
-        <h3><i class="fa-solid fa-location-dot"></i> Address</h3>
-        <div class="detail-item"><strong>${clinic.address || 'Not provided'}</strong></div>
+        <div style="margin-top:8px"><small style="color:var(--text-muted)">Address:</small><br><strong>${clinic.address || 'N/A'}</strong></div>
       </div>
 
       <div class="detail-section">
         <h3><i class="fa-solid fa-user-doctor"></i> Doctors mapped to this clinic</h3>
         ${assignedDoctors.length ? table(
-          ['Doctor', 'Email', 'Specialty', 'Status', 'Action'],
+          ['Doctor', 'Specialty', 'Status', 'Suspend', 'Remove'],
           assignedDoctors.map(doctor => `
             <tr data-doctor-name="${doctor.name}">
-              <td>${doctor.name}</td>
-              <td>${doctor.email || 'Not provided'}</td>
+              <td><strong>${doctor.name}</strong><br><small>${doctor.email || ''}</small></td>
               <td>${doctor.specialty}</td>
               <td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td>
-              <td><button class="btn-secondary suspend-button" data-action="toggle-doctor" data-doctor="${doctor.name}">${doctor.status === 'Suspended' ? 'Restore' : 'Suspend'}</button></td>
+              <td><button class="btn-secondary suspend-button" style="font-size:11px;padding:4px 8px" data-action="toggle-doctor" data-doctor="${doctor.name}">${doctor.status === 'Suspended' ? 'Restore' : 'Suspend'}</button></td>
+              <td><button class="btn-secondary" style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#dc2626" data-action="remove-doctor-from-clinic" data-doctor="${doctor.name}" data-clinic="${clinic.id}"><i class="fa-solid fa-user-minus"></i> Remove</button></td>
             </tr>
           `).join('')
         ) : '<div class="empty-results">No doctor accounts are mapped yet.</div>'}
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
         <button class="btn-secondary" data-action="close-details">Close</button>
-        <button class="btn-secondary suspend-button" data-action="toggle-clinic" data-clinic="${clinic.id}">${clinic.status === 'Suspended' ? 'Restore membership' : 'Suspend membership'}</button>
+        <button class="btn-secondary" data-action="edit-clinic" data-clinic="${clinic.id}" style="color:#2563eb;border-color:#2563eb"><i class="fa-solid fa-pen"></i> Edit Details</button>
+        <button class="btn-secondary suspend-button" data-action="toggle-clinic" data-clinic="${clinic.id}">${clinic.status === 'Suspended' ? '<i class="fa-solid fa-check-circle"></i> Restore' : '<i class="fa-solid fa-ban"></i> Suspend'}</button>
+        <button class="btn-secondary" data-action="delete-clinic" data-clinic="${clinic.id}" style="color:#dc2626;border-color:#dc2626"><i class="fa-solid fa-trash"></i> Delete Clinic</button>
       </div>
     </div>
   `;
@@ -837,7 +837,7 @@ function openClinicModal() {
           <!-- Services Selection -->
           <div class="clinic-form-section">
             <h3><i class="fa-solid fa-cubes"></i> Clinic Services & Feature Modules</h3>
-            <p class="clinic-form-help" style="margin-bottom:10px">Select which services this clinic provides. If Receptionist Service is OFF, Appointment Queue is automatically disabled (Doctor-Only direct mode).</p>
+            <p class="clinic-form-help" style="margin-bottom:10px">Select which services this clinic provides. If Receptionist Service is OFF, Patient Queue is automatically disabled (Doctor-Only direct mode).</p>
             
             <div class="services-selection-grid">
               <!-- Receptionist Service Toggle -->
@@ -849,11 +849,11 @@ function openClinicModal() {
                 </div>
               </label>
 
-              <!-- Appointment Queue Service (Dependent on Receptionist) -->
+              <!-- Patient Queue Service (Dependent on Receptionist) -->
               <label class="service-select-item is-selected" id="item_appointment">
                 <input type="checkbox" name="services" value="appointment" id="svc_appointment" checked>
                 <div class="service-select-info">
-                  <strong><i class="fa-solid fa-calendar-check" style="color:#0284c7"></i> Appointment & Consultation Queue</strong>
+                  <strong><i class="fa-solid fa-users-line" style="color:#0284c7"></i> Patient Consultation Queue</strong>
                   <small id="apptHelpText">Queue dispatch: Doctor takes arriving patients from queue directly without searching.</small>
                 </div>
               </label>
@@ -1108,13 +1108,17 @@ function openClinicModal() {
     }
 
     const doctorCount = entries.children.length;
+    const newClinicId = `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
+
     newDoctors.forEach(doctor => {
       doctor.clinic = clinicName;
+      doctor.clinicId = newClinicId;
+      doctor.services = finalServices;
       clinicDoctors.unshift(doctor);
     });
 
     clinics.unshift({
-      id: `CLN-${String(clinics.length + 1).padStart(3, '0')}`,
+      id: newClinicId,
       name: clinicName,
       city: address.split(',').pop().trim() || 'Not specified',
       doctors: doctorCount,
@@ -1135,6 +1139,37 @@ function openClinicModal() {
       verifiedDocuments: doctorCount + 1
     });
 
+    // Strictly initialize isolated clean database for new clinic
+    const cleanClinicKey = `clinic-db-${newClinicId}`;
+    const cleanDB = {
+      counters: { family: 0, patient: 0, visit: 0 },
+      families: {},
+      appointments: [],
+      certificates: [],
+      bills: [],
+      feedbacks: [],
+      dietary: {},
+      clinicShortcuts: {
+        medicines: {},
+        complaints: {},
+        investigations: {},
+        allergies: {},
+        relations: {},
+        areas: {},
+        societies: {},
+      },
+      _shortcutsCleanedV2: true,
+      customShortcuts: [],
+      masterMedicines: [],
+      masterComplaints: [],
+      masterInvestigations: [],
+      masterAreas: [],
+      masterSocieties: [],
+      masterAllergies: [],
+      masterRelations: []
+    };
+    localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
+
     saveClinics();
     saveDoctors();
     closeModal();
@@ -1153,12 +1188,253 @@ function closeModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
-function showToast(message) {
+function showToast(message, type = 'success') {
   const toast = document.createElement('div');
-  toast.className = 'toast success';
-  toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+  toast.className = `toast ${type === 'error' ? 'error' : 'success'}`;
+  const icon = type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check';
+  toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
   document.getElementById('toastContainer').appendChild(toast);
-  setTimeout(() => toast.remove(), 2800);
+  setTimeout(() => toast.remove(), 3200);
+}
+
+/* ---- Confirm Dialog ---- */
+function confirmAction(message, onConfirm) {
+  const existing = document.getElementById('adminConfirmDialog');
+  if (existing) existing.remove();
+  const dlg = document.createElement('div');
+  dlg.id = 'adminConfirmDialog';
+  dlg.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);';
+  dlg.innerHTML = `
+    <div style="background:var(--surface,#fff);border-radius:14px;padding:28px 30px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <h3 style="margin:0 0 12px;font-size:16px"><i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;margin-right:8px"></i>Confirm Action</h3>
+      <p style="margin:0 0 20px;font-size:14px;color:var(--text-muted,#64748b);line-height:1.5">${message}</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="adminConfirmNo" style="padding:8px 18px;border-radius:8px;border:1px solid var(--border,#e2e8f0);background:transparent;cursor:pointer;font-size:13px">Cancel</button>
+        <button id="adminConfirmYes" style="padding:8px 18px;border-radius:8px;background:#dc2626;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600">Confirm</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dlg);
+  dlg.querySelector('#adminConfirmYes').addEventListener('click', () => { dlg.remove(); onConfirm(); });
+  dlg.querySelector('#adminConfirmNo').addEventListener('click', () => dlg.remove());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.remove(); });
+}
+
+/* ---- Delete Clinic ---- */
+function deleteClinic(clinicId) {
+  const clinic = clinics.find(c => c.id === clinicId);
+  if (!clinic) return;
+  confirmAction(
+    `Are you sure you want to permanently delete <strong>${clinic.name}</strong>?<br>All associated doctor mappings will also be removed. This action cannot be undone.`,
+    () => {
+      // Remove clinic doctors
+      clinicDoctors = clinicDoctors.filter(d => d.clinic !== clinic.name);
+      // Remove clinic
+      clinics = clinics.filter(c => c.id !== clinicId);
+      // Clear local db for that clinic
+      localStorage.removeItem(`clinic-db-${clinicId}`);
+      saveClinics();
+      saveDoctors();
+      closeDetails();
+      showToast(`Clinic "${clinic.name}" has been deleted.`, 'error');
+      if (location.hash === '#services') renderServices();
+      else renderClinics();
+    }
+  );
+}
+
+/* ---- Toggle individual service on/off ---- */
+function toggleClinicService(clinicId, serviceId) {
+  const clinic = clinics.find(c => c.id === clinicId);
+  if (!clinic) return;
+  const services = clinic.services || [];
+  const isOn = services.includes(serviceId);
+
+  if (isOn) {
+    // Turn off
+    let newServices = services.filter(s => s !== serviceId);
+    // If receptionist turned off, also auto-remove appointment
+    if (serviceId === 'receptionist') {
+      newServices = newServices.filter(s => s !== 'appointment');
+    }
+    clinic.services = newServices;
+  } else {
+    // Turn on
+    // appointment can only be enabled when receptionist is on
+    if (serviceId === 'appointment' && !services.includes('receptionist')) {
+      showToast('Appointment Queue requires Receptionist Service to be enabled first.', 'error');
+      return;
+    }
+    clinic.services = [...services, serviceId];
+  }
+
+  clinic.updated = 'Just now';
+
+  // Propagate to doctor localStorage so doctor dashboard reads it immediately
+  propagateServicesToClinicDB(clinicId, clinic.services);
+
+  saveClinics();
+  showToast(`${isOn ? 'Disabled' : 'Enabled'} "${serviceId}" for ${clinic.name}.`);
+  // Re-open the details with updated data
+  openClinicDetails(clinicId);
+}
+
+/* ---- Write services into the clinic's localStorage DB so doctor reads it ---- */
+function propagateServicesToClinicDB(clinicId, services) {
+  try {
+    const key = `clinic-db-${clinicId}`;
+    const raw = localStorage.getItem(key);
+    const db = raw ? JSON.parse(raw) : {};
+    db.activeServices = services;
+    localStorage.setItem(key, JSON.stringify(db));
+  } catch (e) {}
+}
+
+/* ---- Remove Doctor from Clinic ---- */
+function removeDoctorFromClinic(doctorName, clinicId) {
+  const doctor = clinicDoctors.find(d => d.name === doctorName);
+  const clinic = clinics.find(c => c.id === clinicId);
+  if (!doctor || !clinic) return;
+  confirmAction(
+    `Remove <strong>${doctorName}</strong> from <strong>${clinic.name}</strong>?<br>The doctor account will be unlinked but not permanently deleted.`,
+    () => {
+      doctor.clinic = 'Unassigned';
+      doctor.clinicId = null;
+      if (clinic.doctors > 0) clinic.doctors--;
+      saveClinics();
+      saveDoctors();
+      openClinicDetails(clinicId); // refresh modal
+      showToast(`${doctorName} has been removed from ${clinic.name}.`);
+    }
+  );
+}
+
+/* ---- Open Edit Clinic Modal ---- */
+function openEditClinicModal(clinicId) {
+  const clinic = clinics.find(c => c.id === clinicId);
+  if (!clinic) return;
+  closeDetails();
+  const modal = document.getElementById('clinicModal');
+  modal.innerHTML = `
+    <div class="clinic-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title"><i class="fa-solid fa-pen"></i> Edit Clinic Details</h2>
+        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+      </div>
+      <form id="editClinicForm">
+        <div class="modal-body">
+          <div class="clinic-form-section">
+            <h3><i class="fa-solid fa-hospital"></i> Clinic Identity & Contact</h3>
+            <div class="clinic-form-grid">
+              <div class="form-group">
+                <label class="form-label">Legal clinic name <span class="req">*</span></label>
+                <input class="form-input" name="name" required value="${clinic.name || ''}" placeholder="Clinic name">
+                <small class="clinic-form-help" id="editNameError" style="color:#dc2626;display:none"></small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Registration number <span class="req">*</span></label>
+                <input class="form-input" name="registration" required value="${clinic.registration || ''}" placeholder="REG-XXXX">
+                <small class="clinic-form-help" id="editRegError" style="color:#dc2626;display:none"></small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone number <span class="req">*</span></label>
+                <input class="form-input" name="phone" type="tel" required value="${clinic.phone || ''}" placeholder="10-digit number">
+                <small class="clinic-form-help" id="editPhoneError" style="color:#dc2626;display:none"></small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email address <span class="req">*</span></label>
+                <input class="form-input" name="email" type="email" required value="${clinic.email || ''}" placeholder="clinic@example.com">
+                <small class="clinic-form-help" id="editEmailError" style="color:#dc2626;display:none"></small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operating days <span class="req">*</span></label>
+                <input class="form-input" name="days" required value="${clinic.days || ''}" placeholder="Mon - Sat">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Working hours <span class="req">*</span></label>
+                <input class="form-input" name="hours" required value="${clinic.hours || ''}" placeholder="09:00 - 20:00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Specialties</label>
+                <input class="form-input" name="specialties" value="${clinic.specialties || ''}" placeholder="General Medicine, Cardiology">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Facilities</label>
+                <input class="form-input" name="facilities" value="${clinic.facilities || ''}" placeholder="Pharmacy, Lab">
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label">Complete address <span class="req">*</span></label>
+                <textarea class="form-textarea" name="address" required rows="2" placeholder="Full address">${clinic.address || ''}</textarea>
+                <small class="clinic-form-help" id="editAddrError" style="color:#dc2626;display:none"></small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Clinic Status</label>
+                <select class="form-select" name="status">
+                  <option value="Active" ${clinic.status === 'Active' ? 'selected' : ''}>Active</option>
+                  <option value="Paused" ${clinic.status === 'Paused' ? 'selected' : ''}>Paused</option>
+                  <option value="Suspended" ${clinic.status === 'Suspended' ? 'selected' : ''}>Suspended</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+
+  document.getElementById('editClinicForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const name = data.get('name').trim();
+    const phone = String(data.get('phone')).replace(/\D/g, '');
+    const email = data.get('email').trim();
+    const registration = data.get('registration').trim();
+    const address = data.get('address').trim();
+
+    // Frontend validation
+    let valid = true;
+    const showFieldError = (id, msg) => { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = 'block'; } valid = false; };
+    const clearFieldError = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+
+    clearFieldError('editNameError'); clearFieldError('editPhoneError'); clearFieldError('editEmailError'); clearFieldError('editRegError'); clearFieldError('editAddrError');
+
+    if (name.length < 3) showFieldError('editNameError', 'Clinic name must be at least 3 characters.');
+    if (!/^[6-9]\d{9}$/.test(phone)) showFieldError('editPhoneError', 'Enter a valid 10-digit Indian phone number.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) showFieldError('editEmailError', 'Enter a valid email address.');
+    if (registration.length < 4) showFieldError('editRegError', 'Registration number is too short.');
+    if (address.length < 10) showFieldError('editAddrError', 'Please enter a more detailed address.');
+    if (!valid) return;
+
+    // Update clinic object
+    clinic.name = name;
+    clinic.phone = phone;
+    clinic.email = email;
+    clinic.registration = registration;
+    clinic.address = address;
+    clinic.days = data.get('days');
+    clinic.hours = data.get('hours');
+    clinic.specialties = data.get('specialties');
+    clinic.facilities = data.get('facilities');
+    clinic.status = data.get('status');
+    clinic.city = address.split(',').pop().trim() || clinic.city;
+    clinic.updated = 'Just now';
+
+    // Update clinic name in all mapped doctors
+    clinicDoctors.forEach(d => { if (d.clinicId === clinicId) d.clinic = name; });
+
+    saveClinics();
+    saveDoctors();
+    closeModal();
+    showToast(`Clinic "${name}" details updated successfully.`);
+    if (location.hash === '#services') renderServices();
+    else renderClinics();
+  });
 }
 
 function exportVisibleTable() {
@@ -1199,12 +1475,14 @@ document.addEventListener('click', event => {
   if (action === 'export') exportVisibleTable();
   
   if (action === 'toggle-clinic') {
-    const clinic = clinics.find(item => item.id === event.target.closest('[data-clinic]')?.dataset.clinic);
+    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
+    const clinic = clinics.find(item => item.id === clinicId);
     if (clinic) {
       clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended';
+      clinic.updated = 'Just now';
       saveClinics();
       closeDetails();
-      showToast(`Clinic membership ${clinic.status === 'Suspended' ? 'suspended' : 'restored'}.`);
+      showToast(`Clinic "${clinic.name}" ${clinic.status === 'Active' ? 'restored' : 'suspended'}.`);
       if (location.hash === '#services') renderServices();
       else renderClinics();
     }
@@ -1216,16 +1494,59 @@ document.addEventListener('click', event => {
     if (doctor) {
       doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended';
       saveDoctors();
-      closeDetails();
-      showToast(`Doctor account ${doctor.status === 'Suspended' ? 'suspended' : 'restored'}.`);
-      renderClinics();
+      const clinicId2 = event.target.closest('[data-clinic]')?.dataset.clinic;
+      showToast(`Doctor account ${doctor.status === 'Active' ? 'restored' : 'suspended'}.`);
+      // If inside clinic details modal, refresh it
+      const detailsModal = document.getElementById('detailsModal');
+      if (detailsModal.classList.contains('active') && clinicId2) {
+        openClinicDetails(clinicId2);
+      } else {
+        closeDetails();
+        renderClinics();
+      }
     }
   }
 
+  if (action === 'toggle-service') {
+    const clinicId3 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    const serviceId = event.target.closest('[data-service]')?.dataset.service;
+    if (clinicId3 && serviceId) toggleClinicService(clinicId3, serviceId);
+  }
+
+  if (action === 'remove-doctor-from-clinic') {
+    const doctorName = event.target.closest('[data-doctor]')?.dataset.doctor;
+    const clinicId4 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (doctorName && clinicId4) removeDoctorFromClinic(doctorName, clinicId4);
+  }
+
+  if (action === 'edit-clinic') {
+    const clinicId5 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId5) openEditClinicModal(clinicId5);
+  }
+
+  if (action === 'delete-clinic') {
+    const clinicId6 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId6) deleteClinic(clinicId6);
+  }
+
   if (action === 'account-info') showToast('Administrator account · Full system access');
-  if (action === 'logout') { sessionStorage.clear(); window.location.href = '../login.html'; }
+  if (action === 'logout') {
+    localStorage.removeItem('clinic-auth-session');
+    sessionStorage.clear();
+    showToast('Signed out from Admin Workspace');
+    setTimeout(() => {
+      window.location.href = '../login.html';
+    }, 200);
+  }
   if (!event.target.closest('.admin-account')) closeAccountMenu();
 });
+
+function handleAdminLogout() {
+  localStorage.removeItem('clinic-auth-session');
+  sessionStorage.clear();
+  window.location.href = '../login.html';
+}
+window.handleAdminLogout = handleAdminLogout;
 
 function closeAccountMenu() {
   const menu = document.getElementById('accountMenu');

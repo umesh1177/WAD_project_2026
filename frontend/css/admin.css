@@ -365,4 +365,49 @@
   background: #fef2f2;
   color: #b91c1c;
 }
+/* ---- Form Select (Edit modal) ---- */
+.form-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+.form-select:focus {
+  border-color: var(--primary-teal);
+  box-shadow: 0 0 0 2px var(--primary-teal-light);
+}
 
+/* ---- Toast Error Variant ---- */
+.toast.error {
+  border-left: 3px solid #ef4444;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+.toast.error i { color: #ef4444; }
+
+/* ---- Modal close button ---- */
+.modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.modal-close-btn:hover { background: var(--border-color); color: var(--text-main); }
+
+/* ---- Confirm dialog ---- */
+#adminConfirmDialog * { box-sizing: border-box; }

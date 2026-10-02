@@ -15,7 +15,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, showToast } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, todayISO, fmtDate, showToast, getSharedMasterCollection, saveSharedMasterCollection, addSharedMasterItem, updateSharedMasterItem, deleteSharedMasterItem } from './api.js';
 
 export const AVAILABLE_SHORTCUT_TARGETS = [
   // --- Navigation Tabs ---
@@ -73,15 +73,19 @@ export function renderMastersView(container) {
   const clinicId = session?.profile?.activeClinicId || 'demo';
   const db = getLocalDB(clinicId);
 
-  // Ensure all master structures exist in db
+  // Ensure clinic-specific structures exist in db
   if (!db.dietary) db.dietary = {};
-  if (!db.masterComplaints) db.masterComplaints = [];
-  if (!db.masterInvestigations) db.masterInvestigations = [];
-  if (!db.masterAreas) db.masterAreas = [];
-  if (!db.masterMedicines) db.masterMedicines = [];
-  if (!db.masterAllergies) db.masterAllergies = [];
-  if (!db.masterRelations) db.masterRelations = [];
-  if (!db.masterSocieties) db.masterSocieties = [];
+  if (!db.clinicShortcuts) {
+    db.clinicShortcuts = {
+      medicines: {},
+      complaints: {},
+      investigations: {},
+      allergies: {},
+      relations: {},
+      areas: {},
+      societies: {},
+    };
+  }
   if (!db.customShortcuts || db.customShortcuts.length === 0) {
     db.customShortcuts = [
       { id: 'sc1', key: 'F1', target: 'family', title: 'Family Head Registration', category: 'Navigation' },
@@ -97,32 +101,7 @@ export function renderMastersView(container) {
     ];
   }
 
-  // Ensure persistent IDs on all master records
-  Object.entries(db.dietary || {}).forEach(([code, item]) => {
-    if (!item.id) item.id = `d_${code.toLowerCase()}`;
-    if (!item.code) item.code = code;
-  });
-  (db.masterComplaints || []).forEach((c, idx) => {
-    if (!c.id) c.id = `c_${idx + 1}_${(c.code || '').toLowerCase()}`;
-  });
-  (db.masterInvestigations || []).forEach((inv, idx) => {
-    if (!inv.id) inv.id = `inv_${idx + 1}_${(inv.code || '').toLowerCase()}`;
-  });
-  (db.masterAreas || []).forEach((a, idx) => {
-    if (!a.id) a.id = `a_${idx + 1}_${(a.name || '').toLowerCase().replace(/\s+/g, '_')}`;
-  });
-  (db.masterMedicines || []).forEach((m, idx) => {
-    if (!m.id) m.id = `m_${idx + 1}_${(m.code || '').toLowerCase()}`;
-  });
-  (db.masterAllergies || []).forEach((al, idx) => {
-    if (!al.id) al.id = `al_${idx + 1}_${(al.code || '').toLowerCase()}`;
-  });
-  (db.masterRelations || []).forEach((r, idx) => {
-    if (!r.id) r.id = `r_${idx + 1}_${(r.code || '').toLowerCase()}`;
-  });
-  (db.masterSocieties || []).forEach((s, idx) => {
-    if (!s.id) s.id = `s_${idx + 1}_${(s.name || '').toLowerCase().replace(/\s+/g, '_')}`;
-  });
+  // Ensure persistent IDs on custom shortcuts
   (db.customShortcuts || []).forEach((sc, idx) => {
     if (!sc.id) sc.id = `sc_${idx + 1}_${(sc.key || '').toLowerCase()}`;
   });
@@ -146,11 +125,11 @@ export function renderMastersView(container) {
             </div>
             <div>
               <h1 class="font-display" style="font-size: 17px; font-weight: 800; margin: 0; color: var(--text);">Clinical Master Data &amp; Shortcuts</h1>
-              <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0 0;">Manage dietary templates, complaints, investigations, area masters, medicine catalogue, allergies, and navigation shortcuts.</p>
+              <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0 0;">Manage shared clinical master catalogues, clinic-specific shortcuts, and navigation hotkeys.</p>
             </div>
           </div>
           <span class="cms-pill cms-badge-paid font-mono" style="font-size: 11px; background: rgba(15, 81, 50, 0.1); color: #0f5132;">
-            <i class="fa-solid fa-database"></i> Auto-Synced
+            <i class="fa-solid fa-database"></i> Auto-Synced Master
           </span>
         </div>
 
@@ -165,43 +144,43 @@ export function renderMastersView(container) {
           <button type="button" class="cms-master-tab-btn ${activeTab === 'complaints' ? 'active' : ''}" data-tab="complaints">
             <i class="fa-solid fa-notes-medical"></i>
             <span>Complaints</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterComplaints || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('complaints').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'investigations' ? 'active' : ''}" data-tab="investigations">
             <i class="fa-solid fa-flask-vial"></i>
             <span>Investigations (Reports)</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterInvestigations || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('investigations').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'areas' ? 'active' : ''}" data-tab="areas">
             <i class="fa-solid fa-map-location-dot"></i>
             <span>Area / Location</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterAreas || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('areas').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'medicines' ? 'active' : ''}" data-tab="medicines">
             <i class="fa-solid fa-pills"></i>
             <span>Medicine Catalogue</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterMedicines || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('medicines').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'allergies' ? 'active' : ''}" data-tab="allergies">
             <i class="fa-solid fa-shield-virus"></i>
             <span>Known Allergies</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterAllergies || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('allergies').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'relations' ? 'active' : ''}" data-tab="relations">
             <i class="fa-solid fa-people-arrows"></i>
             <span>Relation to Head</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterRelations || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('relations').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'societies' ? 'active' : ''}" data-tab="societies">
             <i class="fa-solid fa-building"></i>
             <span>Society / Flat</span>
-            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${(db.masterSocieties || []).length}</span>
+            <span class="cms-pill" style="font-size: 10.5px; padding: 2px 7px; background: rgba(0,0,0,0.08);">${getSharedMasterCollection('societies').length}</span>
           </button>
 
           <button type="button" class="cms-master-tab-btn ${activeTab === 'shortcuts' ? 'active' : ''}" data-tab="shortcuts">
@@ -412,13 +391,17 @@ export function renderMastersView(container) {
   // TAB 2: CLINICAL COMPLAINTS / SYMPTOMS
   // ==========================================
   function renderComplaintsTab() {
-    const list = (db.masterComplaints || []).map((item, idx) => ({
-      seq: idx + 1,
-      id: item.id || `c_${idx + 1}`,
-      code: item.code || `C${idx + 1}`,
-      name: item.name,
-      createdAt: item.createdAt || todayISO(),
-    }));
+    const shared = getSharedMasterCollection('complaints');
+    const list = shared.map((item, idx) => {
+      const code = db.clinicShortcuts?.complaints?.[item.name] || db.clinicShortcuts?.complaints?.[item.id] || '';
+      return {
+        seq: idx + 1,
+        id: item.id || `c_${idx + 1}`,
+        code,
+        name: item.name,
+        createdAt: item.createdAt || todayISO(),
+      };
+    });
 
     const filtered = list.filter((c) => {
       if (!searchQuery) return true;
@@ -470,7 +453,7 @@ export function renderMastersView(container) {
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
                         <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
-                          ${c.code}
+                          ${c.code || '-'}
                         </span>
                       </td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">${c.name}</td>
@@ -503,13 +486,17 @@ export function renderMastersView(container) {
   // TAB 3: LAB INVESTIGATIONS (REPORTS)
   // ==========================================
   function renderInvestigationsTab() {
-    const list = (db.masterInvestigations || []).map((item, idx) => ({
-      seq: idx + 1,
-      id: item.id || `inv_${idx + 1}`,
-      code: item.code || `I${idx + 1}`,
-      name: item.name,
-      createdAt: item.createdAt || todayISO(),
-    }));
+    const shared = getSharedMasterCollection('investigations');
+    const list = shared.map((item, idx) => {
+      const code = db.clinicShortcuts?.investigations?.[item.name] || db.clinicShortcuts?.investigations?.[item.id] || '';
+      return {
+        seq: idx + 1,
+        id: item.id || `inv_${idx + 1}`,
+        code,
+        name: item.name,
+        createdAt: item.createdAt || todayISO(),
+      };
+    });
 
     const filtered = list.filter((inv) => {
       if (!searchQuery) return true;
@@ -561,7 +548,7 @@ export function renderMastersView(container) {
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
                         <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">
-                          ${inv.code}
+                          ${inv.code || '-'}
                         </span>
                       </td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">${inv.name}</td>
@@ -594,7 +581,8 @@ export function renderMastersView(container) {
   // TAB 4: AREA / LOCATIONS
   // ==========================================
   function renderAreasTab() {
-    const list = (db.masterAreas || []).map((item, idx) => ({
+    const shared = getSharedMasterCollection('areas');
+    const list = shared.map((item, idx) => ({
       seq: idx + 1,
       id: item.id || `a_${idx + 1}`,
       name: item.name,
@@ -684,13 +672,17 @@ export function renderMastersView(container) {
   // TAB 5: MEDICINE CATALOGUE
   // ==========================================
   function renderMedicinesTab() {
-    const list = (db.masterMedicines || []).map((item, idx) => ({
-      seq: idx + 1,
-      id: item.id || `m_${idx + 1}`,
-      code: item.code || `M${idx + 1}`,
-      name: item.name,
-      createdAt: item.createdAt || todayISO(),
-    }));
+    const shared = getSharedMasterCollection('medicines');
+    const list = shared.map((item, idx) => {
+      const code = db.clinicShortcuts?.medicines?.[item.name] || db.clinicShortcuts?.medicines?.[item.id] || '';
+      return {
+        seq: idx + 1,
+        id: item.id || `m_${idx + 1}`,
+        code,
+        name: item.name,
+        createdAt: item.createdAt || todayISO(),
+      };
+    });
 
     const filtered = list.filter((m) => {
       if (!searchQuery) return true;
@@ -742,7 +734,7 @@ export function renderMastersView(container) {
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
                         <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #e6fffa; color: #0f766e; border: 1px solid #99f6e4;">
-                          ${m.code}
+                          ${m.code || '-'}
                         </span>
                       </td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
@@ -778,13 +770,17 @@ export function renderMastersView(container) {
   // TAB 6: KNOWN ALLERGIES
   // ==========================================
   function renderAllergiesTab() {
-    const list = (db.masterAllergies || []).map((item, idx) => ({
-      seq: idx + 1,
-      id: item.id || `al_${idx + 1}`,
-      code: item.code || `AL${idx + 1}`,
-      name: item.name,
-      createdAt: item.createdAt || todayISO(),
-    }));
+    const shared = getSharedMasterCollection('allergies');
+    const list = shared.map((item, idx) => {
+      const code = db.clinicShortcuts?.allergies?.[item.name] || db.clinicShortcuts?.allergies?.[item.id] || '';
+      return {
+        seq: idx + 1,
+        id: item.id || `al_${idx + 1}`,
+        code,
+        name: item.name,
+        createdAt: item.createdAt || todayISO(),
+      };
+    });
 
     const filtered = list.filter((al) => {
       if (!searchQuery) return true;
@@ -836,7 +832,7 @@ export function renderMastersView(container) {
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
                         <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3;">
-                          ${al.code}
+                          ${al.code || '-'}
                         </span>
                       </td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
@@ -872,13 +868,17 @@ export function renderMastersView(container) {
   // TAB 7: RELATION TO HEAD
   // ==========================================
   function renderRelationsTab() {
-    const list = (db.masterRelations || []).map((item, idx) => ({
-      seq: idx + 1,
-      id: item.id || `r_${idx + 1}`,
-      code: item.code || `R${idx + 1}`,
-      name: item.name,
-      createdAt: item.createdAt || todayISO(),
-    }));
+    const shared = getSharedMasterCollection('relations');
+    const list = shared.map((item, idx) => {
+      const code = db.clinicShortcuts?.relations?.[item.name] || db.clinicShortcuts?.relations?.[item.id] || '';
+      return {
+        seq: idx + 1,
+        id: item.id || `r_${idx + 1}`,
+        code,
+        name: item.name,
+        createdAt: item.createdAt || todayISO(),
+      };
+    });
 
     const filtered = list.filter((r) => {
       if (!searchQuery) return true;
@@ -930,7 +930,7 @@ export function renderMastersView(container) {
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
                         <span class="cms-kbd font-mono" style="font-size: 11px; font-weight: 800; padding: 2px 7px; background: #fdf4ff; color: #86198f; border: 1px solid #f5d0fe;">
-                          ${r.code}
+                          ${r.code || '-'}
                         </span>
                       </td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
@@ -966,7 +966,8 @@ export function renderMastersView(container) {
   // TAB 8: SOCIETY / FLAT
   // ==========================================
   function renderSocietiesTab() {
-    const list = (db.masterSocieties || []).map((item, idx) => ({
+    const shared = getSharedMasterCollection('societies');
+    const list = shared.map((item, idx) => ({
       seq: idx + 1,
       id: item.id || `s_${idx + 1}`,
       name: item.name,
@@ -1192,10 +1193,10 @@ export function renderMastersView(container) {
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
-            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+            <i class="fa-solid fa-barcode"></i> Clinic Shortcut Code (Optional)
           </label>
-          <input type="text" id="modal-complaint-code" class="cms-input" required placeholder="e.g. FEV, COUGH, HEAD" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
-          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this shortcut in case entry to auto-fill</span>
+          <input type="text" id="modal-complaint-code" class="cms-input" placeholder="e.g. FEV, COUGH, HEAD (Clinic-specific)" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Shortcut key saved only for your active clinic</span>
         </div>
 
         <div class="cms-master-field-group">
@@ -1211,10 +1212,10 @@ export function renderMastersView(container) {
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
-            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+            <i class="fa-solid fa-barcode"></i> Clinic Shortcut Code (Optional)
           </label>
-          <input type="text" id="modal-inv-code" class="cms-input" required placeholder="e.g. CBC, LFT, RFT, URINE" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
-          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this shortcut to auto-fill report</span>
+          <input type="text" id="modal-inv-code" class="cms-input" placeholder="e.g. CBC, LFT, RFT, URINE (Clinic-specific)" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Shortcut key saved only for your active clinic</span>
         </div>
 
         <div class="cms-master-field-group">
@@ -1246,10 +1247,10 @@ export function renderMastersView(container) {
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
-            <i class="fa-solid fa-barcode"></i> Shortcut Code *
+            <i class="fa-solid fa-barcode"></i> Clinic Shortcut Code (Optional)
           </label>
-          <input type="text" id="modal-med-code" class="cms-input" required placeholder="e.g. PCM, PANTO, AMOX, CET" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
-          <span style="font-size: 11px; color: var(--text-muted);">Doctor writes this code to directly fill medicine</span>
+          <input type="text" id="modal-med-code" class="cms-input" placeholder="e.g. PCM, PANTO, AMOX, CET (Clinic-specific)" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Shortcut key saved only for your active clinic</span>
         </div>
 
         <div class="cms-master-field-group">
@@ -1264,9 +1265,10 @@ export function renderMastersView(container) {
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
-            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+            <i class="fa-solid fa-barcode"></i> Clinic Shortcut Code (Optional)
           </label>
-          <input type="text" id="modal-allergy-code" class="cms-input" required placeholder="e.g. PEN, SULFA, DUST" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <input type="text" id="modal-allergy-code" class="cms-input" placeholder="e.g. PEN, SULFA, DUST (Clinic-specific)" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Shortcut key saved only for your active clinic</span>
         </div>
 
         <div class="cms-master-field-group">
@@ -1281,9 +1283,10 @@ export function renderMastersView(container) {
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
-            <i class="fa-solid fa-barcode"></i> Shortcut / Code *
+            <i class="fa-solid fa-barcode"></i> Clinic Shortcut Code (Optional)
           </label>
-          <input type="text" id="modal-rel-code" class="cms-input" required placeholder="e.g. HEAD, WIFE, SON, DAU" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <input type="text" id="modal-rel-code" class="cms-input" placeholder="e.g. HEAD, WIFE, SON, DAU (Clinic-specific)" value="${itemData?.code || ''}" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700; height: 38px;" />
+          <span style="font-size: 11px; color: var(--text-muted);">Shortcut key saved only for your active clinic</span>
         </div>
 
         <div class="cms-master-field-group">
@@ -1295,7 +1298,7 @@ export function renderMastersView(container) {
       `;
     } else if (type === 'societies') {
       titleText = isEdit ? `Edit Society (${itemData?.name})` : 'Add Society / Apartment';
-      const areasList = (db.masterAreas || []).map((a) => a.name);
+      const areasList = getSharedMasterCollection('areas').map((a) => a.name);
       formFieldsHTML = `
         <div class="cms-master-field-group">
           <label style="font-weight: 800; color: var(--text);">
@@ -1460,16 +1463,23 @@ export function renderMastersView(container) {
       } else if (type === 'complaints') {
         const code = backdrop.querySelector('#modal-complaint-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-complaint-name').value.trim();
-        if (!code || !name) return;
+        if (!name) return;
 
-        if (!db.masterComplaints) db.masterComplaints = [];
-        if (isEdit) {
-          const idx = db.masterComplaints.findIndex((c) => c.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterComplaints[idx] = { ...db.masterComplaints[idx], code, name, updatedAt: todayISO() };
-          }
+        if (!db.clinicShortcuts) db.clinicShortcuts = {};
+        if (!db.clinicShortcuts.complaints) db.clinicShortcuts.complaints = {};
+        if (code) {
+          db.clinicShortcuts.complaints[name] = code;
+          if (itemData?.id) db.clinicShortcuts.complaints[itemData.id] = code;
         } else {
-          db.masterComplaints.unshift({ id: `c_${Date.now()}`, code, name, createdAt: todayISO() });
+          delete db.clinicShortcuts.complaints[name];
+          if (itemData?.name) delete db.clinicShortcuts.complaints[itemData.name];
+          if (itemData?.id) delete db.clinicShortcuts.complaints[itemData.id];
+        }
+
+        if (isEdit) {
+          updateSharedMasterItem('complaints', { id: itemData?.id, name, updatedAt: todayISO() });
+        } else {
+          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() });
         }
         if (!db.customComplaints) db.customComplaints = [];
         if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
@@ -1479,16 +1489,23 @@ export function renderMastersView(container) {
       } else if (type === 'investigations') {
         const code = backdrop.querySelector('#modal-inv-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-inv-name').value.trim();
-        if (!code || !name) return;
+        if (!name) return;
 
-        if (!db.masterInvestigations) db.masterInvestigations = [];
-        if (isEdit) {
-          const idx = db.masterInvestigations.findIndex((inv) => inv.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterInvestigations[idx] = { ...db.masterInvestigations[idx], code, name, updatedAt: todayISO() };
-          }
+        if (!db.clinicShortcuts) db.clinicShortcuts = {};
+        if (!db.clinicShortcuts.investigations) db.clinicShortcuts.investigations = {};
+        if (code) {
+          db.clinicShortcuts.investigations[name] = code;
+          if (itemData?.id) db.clinicShortcuts.investigations[itemData.id] = code;
         } else {
-          db.masterInvestigations.unshift({ id: `inv_${Date.now()}`, code, name, createdAt: todayISO() });
+          delete db.clinicShortcuts.investigations[name];
+          if (itemData?.name) delete db.clinicShortcuts.investigations[itemData.name];
+          if (itemData?.id) delete db.clinicShortcuts.investigations[itemData.id];
+        }
+
+        if (isEdit) {
+          updateSharedMasterItem('investigations', { id: itemData?.id, name, updatedAt: todayISO() });
+        } else {
+          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() });
         }
         if (!db.customInvestigations) db.customInvestigations = [];
         if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
@@ -1500,14 +1517,10 @@ export function renderMastersView(container) {
         const city = backdrop.querySelector('#modal-area-city').value.trim();
         if (!name || !city) return;
 
-        if (!db.masterAreas) db.masterAreas = [];
         if (isEdit) {
-          const idx = db.masterAreas.findIndex((a) => a.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterAreas[idx] = { ...db.masterAreas[idx], name, city, updatedAt: todayISO() };
-          }
+          updateSharedMasterItem('areas', { id: itemData?.id, name, city, updatedAt: todayISO() });
         } else {
-          db.masterAreas.unshift({ id: `a_${Date.now()}`, name, city, createdAt: todayISO() });
+          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
@@ -1515,16 +1528,23 @@ export function renderMastersView(container) {
       } else if (type === 'medicines') {
         const code = backdrop.querySelector('#modal-med-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-med-name').value.trim();
-        if (!code || !name) return;
+        if (!name) return;
 
-        if (!db.masterMedicines) db.masterMedicines = [];
-        if (isEdit) {
-          const idx = db.masterMedicines.findIndex((m) => m.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterMedicines[idx] = { ...db.masterMedicines[idx], code, name, updatedAt: todayISO() };
-          }
+        if (!db.clinicShortcuts) db.clinicShortcuts = {};
+        if (!db.clinicShortcuts.medicines) db.clinicShortcuts.medicines = {};
+        if (code) {
+          db.clinicShortcuts.medicines[name] = code;
+          if (itemData?.id) db.clinicShortcuts.medicines[itemData.id] = code;
         } else {
-          db.masterMedicines.unshift({ id: `m_${Date.now()}`, code, name, createdAt: todayISO() });
+          delete db.clinicShortcuts.medicines[name];
+          if (itemData?.name) delete db.clinicShortcuts.medicines[itemData.name];
+          if (itemData?.id) delete db.clinicShortcuts.medicines[itemData.id];
+        }
+
+        if (isEdit) {
+          updateSharedMasterItem('medicines', { id: itemData?.id, name, updatedAt: todayISO() });
+        } else {
+          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
@@ -1532,16 +1552,23 @@ export function renderMastersView(container) {
       } else if (type === 'allergies') {
         const code = backdrop.querySelector('#modal-allergy-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-allergy-name').value.trim();
-        if (!code || !name) return;
+        if (!name) return;
 
-        if (!db.masterAllergies) db.masterAllergies = [];
-        if (isEdit) {
-          const idx = db.masterAllergies.findIndex((al) => al.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterAllergies[idx] = { ...db.masterAllergies[idx], code, name, updatedAt: todayISO() };
-          }
+        if (!db.clinicShortcuts) db.clinicShortcuts = {};
+        if (!db.clinicShortcuts.allergies) db.clinicShortcuts.allergies = {};
+        if (code) {
+          db.clinicShortcuts.allergies[name] = code;
+          if (itemData?.id) db.clinicShortcuts.allergies[itemData.id] = code;
         } else {
-          db.masterAllergies.unshift({ id: `al_${Date.now()}`, code, name, createdAt: todayISO() });
+          delete db.clinicShortcuts.allergies[name];
+          if (itemData?.name) delete db.clinicShortcuts.allergies[itemData.name];
+          if (itemData?.id) delete db.clinicShortcuts.allergies[itemData.id];
+        }
+
+        if (isEdit) {
+          updateSharedMasterItem('allergies', { id: itemData?.id, name, updatedAt: todayISO() });
+        } else {
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
@@ -1549,16 +1576,23 @@ export function renderMastersView(container) {
       } else if (type === 'relations') {
         const code = backdrop.querySelector('#modal-rel-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-rel-name').value.trim();
-        if (!code || !name) return;
+        if (!name) return;
 
-        if (!db.masterRelations) db.masterRelations = [];
-        if (isEdit) {
-          const idx = db.masterRelations.findIndex((r) => r.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterRelations[idx] = { ...db.masterRelations[idx], code, name, updatedAt: todayISO() };
-          }
+        if (!db.clinicShortcuts) db.clinicShortcuts = {};
+        if (!db.clinicShortcuts.relations) db.clinicShortcuts.relations = {};
+        if (code) {
+          db.clinicShortcuts.relations[name] = code;
+          if (itemData?.id) db.clinicShortcuts.relations[itemData.id] = code;
         } else {
-          db.masterRelations.unshift({ id: `r_${Date.now()}`, code, name, createdAt: todayISO() });
+          delete db.clinicShortcuts.relations[name];
+          if (itemData?.name) delete db.clinicShortcuts.relations[itemData.name];
+          if (itemData?.id) delete db.clinicShortcuts.relations[itemData.id];
+        }
+
+        if (isEdit) {
+          updateSharedMasterItem('relations', { id: itemData?.id, name, updatedAt: todayISO() });
+        } else {
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
@@ -1568,14 +1602,10 @@ export function renderMastersView(container) {
         const area = backdrop.querySelector('#modal-soc-area').value.trim();
         if (!name || !area) return;
 
-        if (!db.masterSocieties) db.masterSocieties = [];
         if (isEdit) {
-          const idx = db.masterSocieties.findIndex((s) => s.id === itemData?.id);
-          if (idx !== -1) {
-            db.masterSocieties[idx] = { ...db.masterSocieties[idx], name, area, updatedAt: todayISO() };
-          }
+          updateSharedMasterItem('societies', { id: itemData?.id, name, area, updatedAt: todayISO() });
         } else {
-          db.masterSocieties.unshift({ id: `s_${Date.now()}`, name, area, createdAt: todayISO() });
+          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() });
         }
 
         saveLocalDB(db, clinicId);
@@ -1660,9 +1690,6 @@ export function renderMastersView(container) {
   }
 
   // ==========================================
-  // ATTACH EVENT LISTENERS
-  // ==========================================
-  // ==========================================
   // ATTACH EVENT LISTENERS (Container-Level Delegation)
   // ==========================================
   function attachTabEventListeners() {
@@ -1702,19 +1729,46 @@ export function renderMastersView(container) {
         if (type === 'dietary') {
           itemData = db.dietary?.[code] || Object.values(db.dietary || {}).find((d) => d.id === id || d.code === code);
         } else if (type === 'complaints') {
-          itemData = (db.masterComplaints || []).find((c) => (id && c.id === id) || (code && c.code === code) || (name && c.name === name));
+          const list = getSharedMasterCollection('complaints');
+          const found = list.find((c) => (id && c.id === id) || (name && c.name === name));
+          if (found) {
+            const clinicCode = db.clinicShortcuts?.complaints?.[found.name] || db.clinicShortcuts?.complaints?.[found.id] || '';
+            itemData = { ...found, code: clinicCode };
+          }
         } else if (type === 'investigations') {
-          itemData = (db.masterInvestigations || []).find((inv) => (id && inv.id === id) || (code && inv.code === code) || (name && inv.name === name));
+          const list = getSharedMasterCollection('investigations');
+          const found = list.find((inv) => (id && inv.id === id) || (name && inv.name === name));
+          if (found) {
+            const clinicCode = db.clinicShortcuts?.investigations?.[found.name] || db.clinicShortcuts?.investigations?.[found.id] || '';
+            itemData = { ...found, code: clinicCode };
+          }
         } else if (type === 'areas') {
-          itemData = (db.masterAreas || []).find((a) => (id && a.id === id) || (name && a.name === name));
+          const list = getSharedMasterCollection('areas');
+          itemData = list.find((a) => (id && a.id === id) || (name && a.name === name));
         } else if (type === 'medicines') {
-          itemData = (db.masterMedicines || []).find((m) => (id && m.id === id) || (code && m.code === code) || (name && m.name === name));
+          const list = getSharedMasterCollection('medicines');
+          const found = list.find((m) => (id && m.id === id) || (name && m.name === name));
+          if (found) {
+            const clinicCode = db.clinicShortcuts?.medicines?.[found.name] || db.clinicShortcuts?.medicines?.[found.id] || '';
+            itemData = { ...found, code: clinicCode };
+          }
         } else if (type === 'allergies') {
-          itemData = (db.masterAllergies || []).find((al) => (id && al.id === id) || (code && al.code === code) || (name && al.name === name));
+          const list = getSharedMasterCollection('allergies');
+          const found = list.find((al) => (id && al.id === id) || (name && al.name === name));
+          if (found) {
+            const clinicCode = db.clinicShortcuts?.allergies?.[found.name] || db.clinicShortcuts?.allergies?.[found.id] || '';
+            itemData = { ...found, code: clinicCode };
+          }
         } else if (type === 'relations') {
-          itemData = (db.masterRelations || []).find((r) => (id && r.id === id) || (code && r.code === code) || (name && r.name === name));
+          const list = getSharedMasterCollection('relations');
+          const found = list.find((r) => (id && r.id === id) || (name && r.name === name));
+          if (found) {
+            const clinicCode = db.clinicShortcuts?.relations?.[found.name] || db.clinicShortcuts?.relations?.[found.id] || '';
+            itemData = { ...found, code: clinicCode };
+          }
         } else if (type === 'societies') {
-          itemData = (db.masterSocieties || []).find((s) => (id && s.id === id) || (name && s.name === name));
+          const list = getSharedMasterCollection('societies');
+          itemData = list.find((s) => (id && s.id === id) || (name && s.name === name));
         } else if (type === 'shortcuts') {
           itemData = (db.customShortcuts || []).find((sc) => (id && sc.id === id) || (code && sc.key === code));
         }
@@ -1747,54 +1801,69 @@ export function renderMastersView(container) {
           }
           showToast(`🗑️ Dietary template "${recordTitle}" deleted.`);
         } else if (type === 'complaints') {
-          db.masterComplaints = (db.masterComplaints || []).filter((c) => {
+          if (db.clinicShortcuts?.complaints) {
+            delete db.clinicShortcuts.complaints[name];
+            if (id) delete db.clinicShortcuts.complaints[id];
+          }
+          deleteSharedMasterItem('complaints', (c) => {
             if (id && c.id === id) return false;
-            if (code && c.code && c.code.toLowerCase() === code.toLowerCase()) return false;
             if (name && c.name && c.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Complaint "${recordTitle}" deleted.`);
         } else if (type === 'investigations') {
-          db.masterInvestigations = (db.masterInvestigations || []).filter((inv) => {
+          if (db.clinicShortcuts?.investigations) {
+            delete db.clinicShortcuts.investigations[name];
+            if (id) delete db.clinicShortcuts.investigations[id];
+          }
+          deleteSharedMasterItem('investigations', (inv) => {
             if (id && inv.id === id) return false;
-            if (code && inv.code && inv.code.toLowerCase() === code.toLowerCase()) return false;
             if (name && inv.name && inv.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Investigation "${recordTitle}" deleted.`);
         } else if (type === 'areas') {
-          db.masterAreas = (db.masterAreas || []).filter((a) => {
+          deleteSharedMasterItem('areas', (a) => {
             if (id && a.id === id) return false;
             if (name && a.name && a.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Area "${recordTitle}" deleted.`);
         } else if (type === 'medicines') {
-          db.masterMedicines = (db.masterMedicines || []).filter((m) => {
+          if (db.clinicShortcuts?.medicines) {
+            delete db.clinicShortcuts.medicines[name];
+            if (id) delete db.clinicShortcuts.medicines[id];
+          }
+          deleteSharedMasterItem('medicines', (m) => {
             if (id && m.id === id) return false;
-            if (code && m.code && m.code.toLowerCase() === code.toLowerCase()) return false;
             if (name && m.name && m.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Medicine "${recordTitle}" deleted.`);
         } else if (type === 'allergies') {
-          db.masterAllergies = (db.masterAllergies || []).filter((al) => {
+          if (db.clinicShortcuts?.allergies) {
+            delete db.clinicShortcuts.allergies[name];
+            if (id) delete db.clinicShortcuts.allergies[id];
+          }
+          deleteSharedMasterItem('allergies', (al) => {
             if (id && al.id === id) return false;
-            if (code && al.code && al.code.toLowerCase() === code.toLowerCase()) return false;
             if (name && al.name && al.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Allergy "${recordTitle}" deleted.`);
         } else if (type === 'relations') {
-          db.masterRelations = (db.masterRelations || []).filter((r) => {
+          if (db.clinicShortcuts?.relations) {
+            delete db.clinicShortcuts.relations[name];
+            if (id) delete db.clinicShortcuts.relations[id];
+          }
+          deleteSharedMasterItem('relations', (r) => {
             if (id && r.id === id) return false;
-            if (code && r.code && r.code.toLowerCase() === code.toLowerCase()) return false;
             if (name && r.name && r.name.toLowerCase() === name.toLowerCase()) return false;
             return true;
           });
           showToast(`🗑️ Relation "${recordTitle}" deleted.`);
         } else if (type === 'societies') {
-          db.masterSocieties = (db.masterSocieties || []).filter((s) => {
+          deleteSharedMasterItem('societies', (s) => {
             if (id && s.id === id) return false;
             if (name && s.name && s.name.toLowerCase() === name.toLowerCase()) return false;
             return true;

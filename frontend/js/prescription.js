@@ -1112,17 +1112,13 @@ export function openPrescriptionModal(patient, visit, onClose) {
 
             <!-- Quick Shortcut Chips -->
             <div style="display: flex; gap: 4px; flex-wrap: wrap;" id="modal-dietary-chips">
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="DB" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 800;" title="Diabetes Mellitus">+ DB</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="BP" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #fce7f3; color: #be185d; font-weight: 800;" title="High BP / Hypertension">+ BP</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="ACID" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #fef9c3; color: #a16207; font-weight: 800;" title="Acidity & GERD">+ ACID</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="THYROID" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #f3e8ff; color: #7e22ce; font-weight: 800;" title="Hypothyroidism">+ THYROID</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="URIC" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #dcfce7; color: #15803d; font-weight: 800;" title="High Uric Acid / Gout">+ URIC</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="STONE" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #fee2e2; color: #b91c1c; font-weight: 800;" title="Kidney Stone">+ STONE</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="CONST" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #f1f5f9; color: #334155; font-weight: 800;" title="Constipation">+ CONST</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="FEV" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #fef3c7; color: #b45309; font-weight: 800;" title="Fever">+ FEV</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="LIPID" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #ede9fe; color: #6d28d9; font-weight: 800;" title="High Cholesterol">+ LIPID</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="LIVER" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #ecfdf5; color: #047857; font-weight: 800;" title="Liver / Jaundice">+ LIVER</span>
-              <span class="cms-pill cms-clickable quick-diet-chip" data-code="WEIGHT" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #f0fdf4; color: #166534; font-weight: 800;" title="Weight Control">+ WEIGHT</span>
+              ${
+                Object.values(db?.dietary || {}).length > 0
+                  ? Object.values(db.dietary).map(tpl => `
+                      <span class="cms-pill cms-clickable quick-diet-chip" data-code="${tpl.code}" style="font-size: 9.5px; padding: 1px 6px; cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 800;" title="${tpl.disease || tpl.code}">+ ${tpl.code}</span>
+                    `).join('')
+                  : '<span style="font-size: 10px; color: var(--text-muted); font-style: italic;">No dietary shortcuts for this clinic.</span>'
+              }
             </div>
           </div>
 
@@ -1298,8 +1294,11 @@ export function openPrescriptionModal(patient, visit, onClose) {
       chip.addEventListener('click', () => {
         const code = chip.getAttribute('data-code');
         if (!code) return;
+        const entry = db?.dietary?.[code] || Object.values(db?.dietary || {}).find(d => (d.code || '').toUpperCase() === code.toUpperCase());
         const dict = DIETARY_TRANSLATIONS[code];
-        const formatted = dict ? `${code}: Eat: ${dict.eat.EN} | Avoid: ${dict.avoid.EN}` : code;
+        const formatted = entry 
+          ? `${entry.code}: Eat: ${entry.eat} | Avoid: ${entry.avoid}` 
+          : (dict ? `${code}: Eat: ${dict.eat.EN} | Avoid: ${dict.avoid.EN}` : code);
 
         const currentVal = dietaryInput.trim();
         dietaryInput = currentVal ? `${currentVal}, ${formatted}` : formatted;

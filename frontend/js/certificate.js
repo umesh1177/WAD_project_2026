@@ -21,7 +21,26 @@ import {
 export async function renderCertificateView(container) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-  const doctorName = session?.profile?.name || session?.user?.name || 'Dr. Chirag Paghdal';
+
+  // Dynamic clinic details resolution
+  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+  const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
+  const activeClinicObj = (session?.profile?.clinics || []).find(c => c.id === clinicId) || session?.profile?.clinics?.[0];
+  const matchedAdminClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinicObj?.name || c.id === activeClinicObj?.id);
+  const matchedAdminDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
+
+  const clinicName = matchedAdminClinic?.name || activeClinicObj?.name || session?.profile?.clinicName || 'Dhyey Clinic & Nursing Home';
+  const clinicAddress = matchedAdminClinic?.address || matchedAdminClinic?.location || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat';
+  const clinicPhone = matchedAdminClinic?.phone || '9876543210';
+  const clinicEmail = matchedAdminClinic?.email || '';
+
+  const doctorName = session?.profile?.name || session?.user?.name || matchedAdminDoc?.name || 'Dr. Chirag Paghdal';
+  const doctorDegree = session?.profile?.degree || matchedAdminDoc?.specialty || 'B.H.M.S.';
+  const doctorRegNo = session?.profile?.regNo || matchedAdminDoc?.registration || 'G-9035';
+
+  // Signature stored per clinic or doctor
+  let docSignature = localStorage.getItem(`clinic_doc_signature_${clinicId}`) || localStorage.getItem(`clinic_doc_signature_${doctorName}`) || session?.profile?.signature || '';
+
   const db = getLocalDB(clinicId);
 
   // Initialize DB collections if needed
@@ -66,10 +85,11 @@ export async function renderCertificateView(container) {
   let certFromDate = todayISO();
   let certToDate = todayISO();
   let certRestDays = 1;
-  let certPlace = 'Surat';
+  let certPlace = matchedAdminClinic?.city || 'Surat';
   let certReason = 'Medical Rest & Treatment';
   let customBodyText = '';
   let historySearchQuery = '';
+  let includeSignature = true;
 
   function generateNextCertId(certList = []) {
     const year = new Date().getFullYear();
@@ -107,7 +127,7 @@ export async function renderCertificateView(container) {
       .replace(/{CERT_ID}/g, currentCertNo)
       .replace(/{TODAY_DATE}/g, todayDisplay)
       .replace(/{DOCTOR_NAME}/g, doctorName)
-      .replace(/{CLINIC_NAME}/g, 'Dhyey Clinic & Hospital')
+      .replace(/{CLINIC_NAME}/g, clinicName)
       .replace(/{PLACE}/g, certPlace);
   }
 
@@ -172,6 +192,12 @@ export async function renderCertificateView(container) {
               <span class="font-mono" style="font-size: 13px; font-weight: 800; color: var(--text);">${currentCertNo}</span>
             </div>
 
+            <!-- Doctor Digital Signature Button -->
+            <button type="button" id="btn-open-signature-modal" class="cms-btn cms-btn-ghost cms-btn-sm" style="font-size: 12px; padding: 7px 14px; border: 1px solid var(--border); background: ${docSignature ? 'rgba(16,185,129,0.08)' : 'transparent'}; color: ${docSignature ? '#059669' : 'var(--text)'};" title="Add or update Doctor Digital Signature">
+              <i class="fa-solid fa-signature" style="color: ${docSignature ? '#059669' : 'var(--primary)'};"></i>
+              <span>${docSignature ? 'Digital Signature Active' : 'Add Digital Signature'}</span>
+            </button>
+
             <!-- Add Template Button -->
             <button type="button" id="btn-open-add-template" class="cms-btn cms-btn-primary cms-btn-sm" style="font-size: 12px; padding: 7px 14px;">
               <i class="fa-solid fa-plus"></i>
@@ -197,6 +223,15 @@ export async function renderCertificateView(container) {
                 <i class="fa-solid fa-file-signature" style="color: var(--primary); margin-right: 6px;"></i> Issue Medical Certificate
               </div>
               <span class="cms-pill cms-badge-paid font-mono" style="font-size: 11px;">Unique ID: ${currentCertNo}</span>
+            </div>
+
+            <!-- Active Clinic Info Badge -->
+            <div style="background: rgba(20,107,92,0.05); border: 1px solid rgba(20,107,92,0.2); border-radius: var(--radius-md); padding: 8px 12px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--primary);"><i class="fa-solid fa-hospital"></i> ${clinicName}</strong>
+                <span style="color: var(--text-muted); margin-left: 6px;">${clinicAddress.slice(0, 45)}... &bull; Ph: ${clinicPhone}</span>
+              </div>
+              <span class="cms-pill" style="font-size: 10px; background: rgba(20,107,92,0.12); color: var(--primary); font-weight: 700;">Dynamic Clinic Header</span>
             </div>
 
             <!-- Template Selector Row -->
@@ -306,6 +341,7 @@ export async function renderCertificateView(container) {
                 <span class="cms-pill cms-tag-chip" data-tag="{TO_DATE}" style="font-size: 10px; cursor: pointer; background: rgba(37,99,235,0.08); color: var(--primary);">+ {TO_DATE}</span>
                 <span class="cms-pill cms-tag-chip" data-tag="{REST_DAYS}" style="font-size: 10px; cursor: pointer; background: rgba(37,99,235,0.08); color: var(--primary);">+ {REST_DAYS}</span>
                 <span class="cms-pill cms-tag-chip" data-tag="{CERT_ID}" style="font-size: 10px; cursor: pointer; background: rgba(37,99,235,0.08); color: var(--primary);">+ {CERT_ID}</span>
+                <span class="cms-pill cms-tag-chip" data-tag="{CLINIC_NAME}" style="font-size: 10px; cursor: pointer; background: rgba(37,99,235,0.08); color: var(--primary);">+ {CLINIC_NAME}</span>
               </div>
 
               <textarea id="cert-custom-body" class="cms-input" rows="4" style="font-size: 13px; line-height: 1.5; padding: 8px 10px; resize: vertical;">${customBodyText || curTemplate.body}</textarea>
@@ -326,13 +362,19 @@ export async function renderCertificateView(container) {
 
           <!-- RIGHT: Live A4 Medical Certificate Print Preview -->
           <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
               <div style="font-weight: 700; font-size: 13.5px; color: var(--text);">
                 <i class="fa-solid fa-eye" style="color: var(--primary);"></i> Live Certificate Preview (A4 Formatted)
               </div>
-              <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(16,185,129,0.1); color: #059669; font-weight: 700;">
-                <i class="fa-solid fa-shield-check"></i> Verifiable Document
-              </span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button type="button" id="btn-preview-signature-toggle" class="cms-btn cms-btn-ghost cms-btn-sm" style="font-size: 11px; padding: 4px 8px; border: 1px dashed var(--border);" title="Add or edit doctor digital signature">
+                  <i class="fa-solid fa-signature" style="color: var(--primary);"></i>
+                  <span>${docSignature ? 'Edit Digital Signature' : '+ Add Digital Signature'}</span>
+                </button>
+                <span class="cms-pill font-mono" style="font-size: 11px; background: rgba(16,185,129,0.1); color: #059669; font-weight: 700;">
+                  <i class="fa-solid fa-shield-check"></i> Verifiable
+                </span>
+              </div>
             </div>
 
             <div style="background: var(--surface-alt); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); display: flex; justify-content: center; overflow-x: auto;">
@@ -340,13 +382,13 @@ export async function renderCertificateView(container) {
               <!-- Printable A4 Certificate Canvas -->
               <div id="cms-cert-print-area" style="background: #FFFFFF; color: #222222; width: 100%; max-width: 580px; padding: 32px 36px; border: 2.5px solid #146B5C; border-radius: 10px; box-shadow: var(--shadow-md); font-family: 'Inter', Arial, sans-serif; box-sizing: border-box; position: relative;">
                 
-                <!-- Clinic Header -->
+                <!-- Clinic Header (Dynamic) -->
                 <div style="text-align: center; border-bottom: 2px solid #146B5C; padding-bottom: 12px; margin-bottom: 18px;">
-                  <div class="font-display" style="font-size: 22px; font-weight: 900; color: #146B5C; letter-spacing: -0.3px;">
-                    Dhyey Clinic &amp; Nursing Home
+                  <div class="font-display" id="preview-clinic-name" style="font-size: 22px; font-weight: 900; color: #146B5C; letter-spacing: -0.3px;">
+                    ${clinicName}
                   </div>
-                  <div style="font-size: 11px; color: #555555; font-weight: 600; margin-top: 3px;">
-                    Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Ph: 9876543210
+                  <div id="preview-clinic-details" style="font-size: 11px; color: #555555; font-weight: 600; margin-top: 3px;">
+                    ${clinicAddress} &bull; Ph: ${clinicPhone}${clinicEmail ? ' &bull; ' + clinicEmail : ''}
                   </div>
                   <div id="preview-cert-title" style="font-size: 13.5px; font-weight: 800; color: #111111; margin-top: 10px; text-transform: uppercase; letter-spacing: 0.8px;">
                     ${curTemplate.title || 'MEDICAL FITNESS / LEAVE CERTIFICATE'}
@@ -379,10 +421,17 @@ export async function renderCertificateView(container) {
                     <div style="font-size: 10px; color: #666; margin-top: 4px;">Security Verifiable Document</div>
                   </div>
 
-                  <div style="text-align: right;">
-                    <div style="margin-bottom: 30px; font-family: cursive; color: #146B5C; font-size: 15px; opacity: 0.85;">Dr. Chirag Paghdal</div>
+                  <div style="text-align: right; min-width: 170px;">
+                    <!-- Doctor Digital Signature Element -->
+                    <div id="preview-cert-signature-container" style="min-height: 48px; display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 6px;">
+                      ${
+                        docSignature
+                          ? `<img src="${docSignature}" alt="Doctor Digital Signature" style="max-height: 48px; max-width: 140px; object-fit: contain;" />`
+                          : `<div style="font-family: cursive; color: #146B5C; font-size: 15px; opacity: 0.85; padding-bottom: 4px;">${doctorName}</div>`
+                      }
+                    </div>
                     <div style="font-weight: 800; color: #146B5C; font-size: 12.5px;">${doctorName}</div>
-                    <div style="font-size: 10.5px; color: #555555;">Authorized Medical Officer (Reg. No. G-9035)</div>
+                    <div style="font-size: 10.5px; color: #555555;">${doctorDegree} (Reg. No. ${doctorRegNo})</div>
                   </div>
                 </div>
               </div>
@@ -437,6 +486,9 @@ export async function renderCertificateView(container) {
 
       <!-- Verify Certificate Modal Mount -->
       <div id="modal-verify-cert-container"></div>
+
+      <!-- Doctor Digital Signature Modal Mount -->
+      <div id="modal-signature-container"></div>
     `;
 
     wireEventHandlers();
@@ -760,6 +812,11 @@ export async function renderCertificateView(container) {
     const btnOpenVerify = container.querySelector('#btn-open-verify-modal');
     if (btnOpenVerify) btnOpenVerify.addEventListener('click', () => openVerifyModal());
 
+    const btnOpenSig = container.querySelector('#btn-open-signature-modal');
+    const btnPreviewSig = container.querySelector('#btn-preview-signature-toggle');
+    if (btnOpenSig) btnOpenSig.addEventListener('click', () => openSignatureModal());
+    if (btnPreviewSig) btnPreviewSig.addEventListener('click', () => openSignatureModal());
+
     wireHistoryRowActions();
   }
 
@@ -1076,6 +1133,267 @@ export async function renderCertificateView(container) {
     if (presetCertNo) {
       performVerification();
     }
+  }
+
+  // =========================================================
+  // MODAL: DOCTOR DIGITAL SIGNATURE (Upload & Draw Pad)
+  // =========================================================
+  function openSignatureModal() {
+    const modalRoot = container.querySelector('#modal-signature-container');
+    if (!modalRoot) return;
+
+    let activeTab = 'draw'; // 'draw' | 'upload'
+    let drawnSignatureData = '';
+    let uploadedSignatureData = '';
+
+    modalRoot.innerHTML = `
+      <div class="cms-overlay" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; backdrop-filter: blur(3px);">
+        <div class="cms-modal cms-card" style="width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border); padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-signature" style="color: var(--primary); font-size: 20px;"></i>
+              <div>
+                <h2 class="font-display" style="font-weight: 800; font-size: 16px; margin: 0; color: var(--text);">
+                  Doctor Digital Signature
+                </h2>
+                <div style="font-size: 11px; color: var(--text-muted);">
+                  ${doctorName} &bull; ${clinicName}
+                </div>
+              </div>
+            </div>
+            <button type="button" id="btn-close-sig-modal" class="cms-btn cms-btn-ghost" style="padding: 4px 8px; border: none; font-size: 16px;">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Tab Selector -->
+          <div style="display: flex; gap: 8px; background: var(--surface-alt); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+            <button type="button" id="tab-sig-draw" class="cms-btn cms-btn-sm" style="flex: 1; font-weight: 700; background: var(--primary); color: #fff;">
+              <i class="fa-solid fa-pen-nib"></i> Draw Signature
+            </button>
+            <button type="button" id="tab-sig-upload" class="cms-btn cms-btn-sm cms-btn-ghost" style="flex: 1; font-weight: 700;">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image (PNG/JPG)
+            </button>
+          </div>
+
+          <!-- DRAW TAB CONTENT -->
+          <div id="sig-draw-pane" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted);">
+              <span>Sign using mouse, stylus, or touchscreen:</span>
+              <button type="button" id="btn-clear-canvas" class="cms-btn cms-btn-ghost cms-btn-sm" style="font-size: 11px; padding: 2px 8px; border: 1px solid var(--border);">
+                <i class="fa-solid fa-eraser"></i> Clear Canvas
+              </button>
+            </div>
+            
+            <div style="border: 2px dashed #146B5C; border-radius: 8px; background: #ffffff; display: flex; justify-content: center; align-items: center; overflow: hidden; touch-action: none; position: relative;">
+              <canvas id="sig-pad-canvas" width="480" height="150" style="width: 100%; height: 150px; cursor: crosshair; background: #ffffff;"></canvas>
+              <div id="sig-canvas-placeholder" style="position: absolute; pointer-events: none; color: #94a3b8; font-size: 13px; font-style: italic;">
+                Draw Doctor's Signature Here
+              </div>
+            </div>
+          </div>
+
+          <!-- UPLOAD TAB CONTENT -->
+          <div id="sig-upload-pane" style="display: none; flex-direction: column; gap: 10px;">
+            <div class="cms-form-group" style="margin-bottom: 0;">
+              <label class="cms-label" style="font-size: 12px;">Choose Signature Image (Transparent PNG or JPG)</label>
+              <input type="file" id="sig-file-input" accept="image/png, image/jpeg, image/webp" class="cms-input" style="padding: 7px 10px;" />
+            </div>
+
+            <div id="sig-upload-preview-box" style="border: 1px dashed var(--border); border-radius: 8px; padding: 16px; background: var(--surface-alt); text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center;">
+              <span style="color: var(--text-muted); font-size: 12px;">No signature image selected yet.</span>
+            </div>
+          </div>
+
+          <!-- Current Signature Preview (if exists) -->
+          ${
+            docSignature
+              ? `
+            <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--radius-md); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 11px; font-weight: 700; color: #059669; display: block;">CURRENT ACTIVE SIGNATURE</span>
+                <img src="${docSignature}" style="max-height: 38px; max-width: 120px; object-fit: contain; margin-top: 4px;" alt="Active Doctor Signature" />
+              </div>
+              <button type="button" id="btn-remove-saved-sig" class="cms-btn cms-btn-ghost cms-btn-sm" style="color: var(--danger); border: 1px solid var(--danger); font-size: 11px; padding: 4px 8px;">
+                <i class="fa-solid fa-trash-can"></i> Remove Signature
+              </button>
+            </div>
+          `
+              : ''
+          }
+
+          <!-- Footer Actions -->
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--border);">
+            <button type="button" id="btn-cancel-sig-modal" class="cms-btn cms-btn-ghost" style="padding: 8px 16px; border: 1px solid var(--border);">
+              Cancel
+            </button>
+            <button type="button" id="btn-save-apply-sig" class="cms-btn cms-btn-primary" style="padding: 8px 20px;">
+              <i class="fa-solid fa-check"></i> Save &amp; Apply Signature
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+
+    const closeBtn = modalRoot.querySelector('#btn-close-sig-modal');
+    const cancelBtn = modalRoot.querySelector('#btn-cancel-sig-modal');
+    const tabDraw = modalRoot.querySelector('#tab-sig-draw');
+    const tabUpload = modalRoot.querySelector('#tab-sig-upload');
+    const drawPane = modalRoot.querySelector('#sig-draw-pane');
+    const uploadPane = modalRoot.querySelector('#sig-upload-pane');
+    const canvas = modalRoot.querySelector('#sig-pad-canvas');
+    const canvasPlaceholder = modalRoot.querySelector('#sig-canvas-placeholder');
+    const btnClearCanvas = modalRoot.querySelector('#btn-clear-canvas');
+    const fileInput = modalRoot.querySelector('#sig-file-input');
+    const uploadPreviewBox = modalRoot.querySelector('#sig-upload-preview-box');
+    const btnSaveSig = modalRoot.querySelector('#btn-save-apply-sig');
+    const btnRemoveSavedSig = modalRoot.querySelector('#btn-remove-saved-sig');
+
+    const closeModal = () => (modalRoot.innerHTML = '');
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+
+    // Canvas Drawing Logic
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    let isDrawing = false;
+    let hasDrawn = false;
+
+    if (ctx) {
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY,
+        };
+      }
+
+      function startDraw(e) {
+        isDrawing = true;
+        hasDrawn = true;
+        if (canvasPlaceholder) canvasPlaceholder.style.display = 'none';
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      }
+
+      function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      }
+
+      function stopDraw() {
+        if (isDrawing) {
+          isDrawing = false;
+          drawnSignatureData = canvas.toDataURL('image/png');
+        }
+      }
+
+      canvas.addEventListener('mousedown', startDraw);
+      canvas.addEventListener('mousemove', draw);
+      window.addEventListener('mouseup', stopDraw);
+
+      canvas.addEventListener('touchstart', startDraw, { passive: false });
+      canvas.addEventListener('touchmove', draw, { passive: false });
+      window.addEventListener('touchend', stopDraw);
+
+      btnClearCanvas.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasDrawn = false;
+        drawnSignatureData = '';
+        if (canvasPlaceholder) canvasPlaceholder.style.display = 'block';
+      });
+    }
+
+    // Tab Switching
+    tabDraw.addEventListener('click', () => {
+      activeTab = 'draw';
+      tabDraw.style.background = 'var(--primary)';
+      tabDraw.style.color = '#fff';
+      tabUpload.style.background = 'transparent';
+      tabUpload.style.color = 'var(--text)';
+      drawPane.style.display = 'flex';
+      uploadPane.style.display = 'none';
+    });
+
+    tabUpload.addEventListener('click', () => {
+      activeTab = 'upload';
+      tabUpload.style.background = 'var(--primary)';
+      tabUpload.style.color = '#fff';
+      tabDraw.style.background = 'transparent';
+      tabDraw.style.color = 'var(--text)';
+      uploadPane.style.display = 'flex';
+      drawPane.style.display = 'none';
+    });
+
+    // File Upload Handler
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        uploadedSignatureData = evt.target.result;
+        uploadPreviewBox.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+            <img src="${uploadedSignatureData}" style="max-height: 80px; max-width: 260px; object-fit: contain; border: 1px dashed var(--border); padding: 4px; background: #fff;" alt="Uploaded signature preview" />
+            <span style="font-size: 11px; color: #059669; font-weight: 700;"><i class="fa-solid fa-check"></i> Image loaded successfully</span>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Remove Saved Signature
+    if (btnRemoveSavedSig) {
+      btnRemoveSavedSig.addEventListener('click', () => {
+        localStorage.removeItem(`clinic_doc_signature_${clinicId}`);
+        localStorage.removeItem(`clinic_doc_signature_${doctorName}`);
+        docSignature = '';
+        closeModal();
+        renderView();
+        showToast('Doctor signature removed from certificate template.');
+      });
+    }
+
+    // Save & Apply Signature
+    btnSaveSig.addEventListener('click', () => {
+      let finalSig = '';
+      if (activeTab === 'draw') {
+        if (!hasDrawn || !drawnSignatureData) {
+          showToast('Please draw a signature first or switch to Upload Image tab', 'error');
+          return;
+        }
+        finalSig = drawnSignatureData;
+      } else {
+        if (!uploadedSignatureData) {
+          showToast('Please select a signature image file to upload', 'error');
+          return;
+        }
+        finalSig = uploadedSignatureData;
+      }
+
+      docSignature = finalSig;
+      localStorage.setItem(`clinic_doc_signature_${clinicId}`, finalSig);
+      localStorage.setItem(`clinic_doc_signature_${doctorName}`, finalSig);
+
+      closeModal();
+      renderView();
+      showToast('✅ Doctor Digital Signature saved and applied to certificate!');
+    });
   }
 
   // Initial render

@@ -369,8 +369,21 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
+// 404 handler for unknown API routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      success: false,
+      error: 'NOT_FOUND',
+      message: `The API endpoint "${req.method} ${req.path}" does not exist. Please check the URL and try again.`,
+    });
+  }
+  next();
+});
+
 // Error handling middleware
 app.use(errorMiddleware);
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

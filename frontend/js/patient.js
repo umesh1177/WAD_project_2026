@@ -6,7 +6,7 @@
  * =========================================================
  */
 
-import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix } from './api.js';
+import { apiFetch, getLocalDB, saveLocalDB, getAuthSession, pad, showToast, getClinicPrefix, getSharedMasterCollection } from './api.js';
 
 export function renderPatientRegistration(container, presetFamId = null, onSelectPatient, isRedirectFromHeadReg = false, onGoToFamilyReg = null, editPatientId = null) {
   const session = getAuthSession();
@@ -539,8 +539,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
   }
 
   function getKnownSocieties(db) {
-    const defaultSocieties = ['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest'];
-    const socs = new Set(defaultSocieties);
+    const shared = getSharedMasterCollection('societies').map(s => s.name.trim());
+    const socs = new Set(shared);
     (db.customSocieties || []).forEach(s => socs.add(s.trim()));
     (db.masterSocieties || []).forEach(s => socs.add(s.name.trim()));
     const normalized = new Set();
@@ -549,8 +549,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
   }
 
   function getKnownAreas(db) {
-    const defaultAreas = ['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Gota', 'Maninagar', 'Paldi', 'Science City', 'Varachha'];
-    const areas = new Set(defaultAreas);
+    const shared = getSharedMasterCollection('areas').map(a => a.name.trim());
+    const areas = new Set(shared);
     (db.customAreas || []).forEach(a => areas.add(a.trim()));
     (db.masterAreas || []).forEach(a => areas.add(a.name.trim()));
     const normalized = new Set();
@@ -559,8 +559,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
   }
 
   function getKnownAllergies(db) {
-    const defaultAllergies = ['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin'];
-    const als = new Set(defaultAllergies);
+    const shared = getSharedMasterCollection('allergies').map(a => a.name.trim());
+    const als = new Set(shared);
     (db.customAllergies || []).forEach(a => als.add(a.trim()));
     (db.masterAllergies || []).forEach(a => als.add(a.name.trim()));
     const normalized = new Set();
@@ -575,7 +575,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       dlRel.id = 'dl-relation-list';
       document.body.appendChild(dlRel);
     }
-    const allRels = ['Wife', 'Son', 'Daughter', 'Father', 'Mother', 'Brother', 'Sister', 'Husband', 'Grandfather', 'Grandmother', 'Daughter-in-Law', 'Son-in-Law', 'Other', ...(db.customRelations || [])];
+    const sharedRels = getSharedMasterCollection('relations').map(r => r.name);
+    const allRels = [...sharedRels, ...(db.customRelations || [])];
     dlRel.innerHTML = Array.from(new Set(allRels)).map(r => `<option value="${r}"></option>`).join('');
 
     let dlSoc = document.getElementById('dl-member-society-list');
@@ -584,7 +585,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       dlSoc.id = 'dl-member-society-list';
       document.body.appendChild(dlSoc);
     }
-    const allSocs = ['Shanti Niketan Apt', 'Gokuldham Society', 'Surya Kiran Heights', 'Radhe Krishna Bunglows', 'Vrindavan Society', 'Royal Residency', 'Shivam Heights', 'Silver Crest', ...(db.customSocieties || []), ...(db.masterSocieties || []).map(s => s.name)];
+    const sharedSocs = getSharedMasterCollection('societies').map(s => s.name);
+    const allSocs = [...sharedSocs, ...(db.customSocieties || []), ...(db.masterSocieties || []).map(s => s.name)];
     dlSoc.innerHTML = Array.from(new Set(allSocs)).map(s => `<option value="${s}"></option>`).join('');
 
     let dlArea = document.getElementById('dl-member-area-list');
@@ -593,7 +595,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       dlArea.id = 'dl-member-area-list';
       document.body.appendChild(dlArea);
     }
-    const allAreas = ['Vastrapur', 'Satellite', 'Navrangpura', 'Bopal', 'Thaltej', 'Gota', 'Maninagar', 'Paldi', 'Science City', 'Varachha', ...(db.customAreas || []), ...(db.masterAreas || []).map(a => a.name)];
+    const sharedAreas = getSharedMasterCollection('areas').map(a => a.name);
+    const allAreas = [...sharedAreas, ...(db.customAreas || []), ...(db.masterAreas || []).map(a => a.name)];
     dlArea.innerHTML = Array.from(new Set(allAreas)).map(a => `<option value="${a}"></option>`).join('');
 
     let dlAllergy = document.getElementById('dl-member-allergy-list');
@@ -602,7 +605,8 @@ export function renderPatientRegistration(container, presetFamId = null, onSelec
       dlAllergy.id = 'dl-member-allergy-list';
       document.body.appendChild(dlAllergy);
     }
-    const allAllergies = ['None', 'Penicillin', 'Sulfa Drugs', 'Aspirin / NSAIDs', 'Dust / Pollen', 'Peanuts', 'Latex', 'Ciprofloxacin', 'Amoxicillin', ...(db.customAllergies || []), ...(db.masterAllergies || []).map(a => a.name)];
+    const sharedAllergies = getSharedMasterCollection('allergies').map(a => a.name);
+    const allAllergies = [...sharedAllergies, ...(db.customAllergies || []), ...(db.masterAllergies || []).map(a => a.name)];
     dlAllergy.innerHTML = Array.from(new Set(allAllergies)).map(a => `<option value="${a}"></option>`).join('');
   }
 
