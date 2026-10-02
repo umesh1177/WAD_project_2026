@@ -34,10 +34,14 @@
             <a href="#analysis-doctor" data-view="analysis-doctor" class="admin-subnav-link">Doctor wise</a>
             <a href="#analysis-patient" data-view="analysis-patient" class="admin-subnav-link">Patient wise</a>
           </div>
+          <a class="nav-item" href="#services" data-view="services">
+            <span class="nav-item-left"><span class="nav-icon"><i class="fa-solid fa-cubes"></i></span>Services</span>
+            <span class="badge-key">F4</span>
+          </a>
         </nav>
       </div>
       <div class="sidebar-footer-guide">
-        <button class="sidebar-logout" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+        <button class="sidebar-logout" data-action="logout" onclick="handleAdminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
       </div>
     </aside>
 
@@ -56,7 +60,7 @@
             <div class="account-menu" id="accountMenu" hidden>
               <div class="account-menu-heading"><strong>Administrator</strong><small>System administrator</small></div>
               <button type="button" data-action="account-info"><i class="fa-regular fa-id-card"></i> Account information</button>
-              <button type="button" data-action="logout"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
+              <button type="button" data-action="logout" onclick="handleAdminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Log out</button>
             </div>
           </div>
           <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme"><i class="fa-solid fa-moon"></i></button>
@@ -65,7 +69,7 @@
 
       <section class="content-body" id="adminContent" aria-live="polite"></section>
       <footer class="bottom-ticker-bar">
-        <div>Dhyey Clinic · Admin Portal | F1 Overview | F2 Clinics | F3 Analysis</div>
+        <div>Dhyey Clinic · Admin Portal | F1 Overview | F2 Clinics | F3 Analysis | F4 Services</div>
         <div class="ticker-time" id="docClock"></div>
       </footer>
     </main>

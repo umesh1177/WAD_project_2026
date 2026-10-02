@@ -121,4 +121,4 @@
 .quick-filter:hover, .quick-filter.active { color: var(--primary-teal); border-color: var(--primary-teal-border); background: var(--primary-teal-light); }
 @media (max-width: 1000px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } .admin-grid { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } .clinic-form-grid, .report-options { grid-template-columns: 1fr; } .clinic-form-grid .full-width, .report-options .full-width { grid-column: auto; } .detail-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .admin-stats { grid-template-columns: 1fr; } .admin-heading h1 { font-size: 19px; } .admin-user-chip span:not(.admin-avatar) { display: none; } .clinic-form-grid { grid-template-columns: 1fr; } .clinic-form-grid .full-width { grid-column: auto; } .detail-grid { grid-template-columns: 1fr; } }
