@@ -28,7 +28,7 @@
   </script>
   <!-- PWA Meta Tags & Manifest -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0d6efd" />
+  <meta name="theme-color" content="#095c54" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -609,7 +609,7 @@
           ${results.slice(0, 8).map((r, idx) => `
             <div class="cms-search-result-item" data-famid="${r.familyId}" data-patid="${r.patientId}" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-subtle, #f1f5f9); display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: background 0.15s ease;">
               <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-                <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0b5ed7); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #095c54, #0b5ed7); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
                   ${r.patientName.charAt(0).toUpperCase()}
                 </div>
                 <div style="min-width: 0;">
@@ -621,7 +621,7 @@
                     <span><i class="fa-solid fa-users" style="font-size: 10px;"></i> ${r.headName}</span>
                     ${r.phone ? `<span><i class="fa-solid fa-phone" style="font-size: 10px;"></i> ${r.phone}</span>` : ''}
                     ${r.area ? `<span><i class="fa-solid fa-location-dot" style="font-size: 10px;"></i> ${r.area}</span>` : ''}
-                    ${r.matchedCase ? `<span class="cms-pill" style="font-size: 10px; padding: 1px 5px; background: rgba(13,110,253,0.1); color: #0d6efd;">Case #${r.matchedCase}</span>` : ''}
+                    ${r.matchedCase ? `<span class="cms-pill" style="font-size: 10px; padding: 1px 5px; background: rgba(13,110,253,0.1); color: #095c54;">Case #${r.matchedCase}</span>` : ''}
                   </div>
                 </div>
               </div>
