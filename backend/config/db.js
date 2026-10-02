@@ -7,9 +7,13 @@ const connectDB = async () => {
     return;
   }
 
-  const uri =
-    process.env.MONGO_URI ||
-    'mongodb+srv://hp1707697_db_user:n7Raegkyn92va5y1@clinicmanagementsystem.4ugkqkv.mongodb.net/clinicmanagementsystem?retryWrites=true&w=majority&appName=clinicmanagementsystem';
+  const uri = process.env.MONGO_URI;
+
+  if (!uri) {
+    console.error('[MongoDB Error]: MONGO_URI environment variable is not set.');
+    console.error('[MongoDB Error]: Please set MONGO_URI in your .env file or deployment environment.');
+    return;
+  }
 
   try {
     const conn = await mongoose.connect(uri, {
