@@ -8,8 +8,8 @@
 const API_BASE_URL = window.location.origin.includes('5000')
   ? ''
   : window.location.port === '' || window.location.port === '80'
-  ? ''
-  : 'http://localhost:5000';
+    ? ''
+    : 'http://localhost:5000';
 
 /* ---- Storage & Helpers ---- */
 export const pad = (n, len = 4) => String(n || 0).padStart(len, '0');
@@ -321,13 +321,27 @@ export function saveSharedMasterCollection(type, list) {
   }
 }
 
-export function addSharedMasterItem(type, item) {
+export function addSharedMasterItem(type, item, currentDb = null) {
   const cleanItem = sanitizeSharedItem(item);
   const list = getSharedMasterCollection(type);
   const exists = list.some(existing => (existing.name && cleanItem.name && existing.name.toLowerCase() === cleanItem.name.toLowerCase()) || (existing.id && existing.id === cleanItem.id));
+
   if (!exists) {
     list.unshift(cleanItem);
     saveSharedMasterCollection(type, list);
+
+    // Auto-assign '-' shortcut if applicable
+    const shortcutKeys = ['complaints', 'investigations', 'medicines', 'allergies', 'relations'];
+    if (shortcutKeys.includes(type) && currentDb) {
+      if (!currentDb.clinicShortcuts) currentDb.clinicShortcuts = {};
+      if (!currentDb.clinicShortcuts[type]) currentDb.clinicShortcuts[type] = {};
+      if (cleanItem.name && !currentDb.clinicShortcuts[type][cleanItem.name]) {
+        currentDb.clinicShortcuts[type][cleanItem.name] = '-';
+        const session = getAuthSession();
+        const activeId = session?.profile?.activeClinicId || 'demo';
+        saveLocalDB(currentDb, activeId);
+      }
+    }
   }
   return list;
 }
@@ -481,7 +495,7 @@ export function getLocalDB(clinicId = 'demo') {
   try {
     const stored = localStorage.getItem(key);
     if (stored) db = JSON.parse(stored);
-  } catch (e) {}
+  } catch (e) { }
 
   if (cleanId === 'demo') {
     // Only the default demo clinic gets seeded with demo patients and demo shortcuts
@@ -1627,3 +1641,37 @@ function fallbackLocalHandler(endpoint, config) {
 
   return { success: true, data: [] };
 }
+
+// ==========================================
+// UNIVERSAL DATALIST AUTOCOMPLETE INTERCEPTOR
+// ==========================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const input = e.target;
+    if (input.tagName === 'INPUT' && input.hasAttribute('list')) {
+      const listId = input.getAttribute('list');
+      if (!listId) return;
+
+      const datalist = document.getElementById(listId);
+      if (datalist && datalist.options.length > 0) {
+        const val = input.value.trim().toLowerCase();
+        if (val) {
+          const options = Array.from(datalist.options);
+
+          // Find first matching option (prioritize startsWith over includes)
+          let match = options.find(opt => opt.value.toLowerCase().startsWith(val));
+          if (!match) {
+            match = options.find(opt => opt.value.toLowerCase().includes(val));
+          }
+
+          if (match && match.value.toLowerCase() !== val) {
+            // Prevent immediate form submission so the doctor can confirm the autocompleted word
+            e.preventDefault();
+            input.value = match.value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      }
+    }
+  }
+});

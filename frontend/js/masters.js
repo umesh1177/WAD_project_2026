@@ -340,12 +340,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 32px;">No dietary suggestions found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (d, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 32px;">No dietary suggestions found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (d, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -374,9 +373,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -443,12 +442,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No clinical complaints found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (c, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No clinical complaints found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (c, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -470,9 +468,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -538,12 +536,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No lab investigations found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (inv, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No lab investigations found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (inv, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -565,9 +562,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -630,12 +627,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No areas found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (a, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No areas found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (a, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
@@ -656,9 +652,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -724,12 +720,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No medicines found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (m, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No medicines found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (m, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -754,9 +749,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -822,12 +817,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No allergies found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (al, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No allergies found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (al, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -852,9 +846,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -920,12 +914,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No relations found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (r, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No relations found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (r, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -950,9 +943,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -1015,12 +1008,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No societies found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (s, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No societies found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (s, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td style="font-weight: 700; color: var(--text); font-size: 12.5px;">
@@ -1043,9 +1035,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -1108,12 +1100,11 @@ export function renderMastersView(container) {
               </tr>
             </thead>
             <tbody>
-              ${
-                pag.pagedList.length === 0
-                  ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No shortcuts found.</td></tr>`
-                  : pag.pagedList
-                      .map(
-                        (sc, i) => `
+              ${pag.pagedList.length === 0
+        ? `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">No shortcuts found.</td></tr>`
+        : pag.pagedList
+          .map(
+            (sc, i) => `
                     <tr>
                       <td style="text-align: center; font-family: var(--font-mono); color: var(--text-muted);">${pag.startIdx + i + 1}</td>
                       <td>
@@ -1137,9 +1128,9 @@ export function renderMastersView(container) {
                       </td>
                     </tr>
                   `
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -1479,7 +1470,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('complaints', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
         if (!db.customComplaints) db.customComplaints = [];
         if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
@@ -1505,7 +1496,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('investigations', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
         if (!db.customInvestigations) db.customInvestigations = [];
         if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
@@ -1520,7 +1511,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('areas', { id: itemData?.id, name, city, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() });
+          addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1544,7 +1535,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('medicines', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1568,7 +1559,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('allergies', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1592,7 +1583,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('relations', { id: itemData?.id, name, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() });
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
@@ -1605,7 +1596,7 @@ export function renderMastersView(container) {
         if (isEdit) {
           updateSharedMasterItem('societies', { id: itemData?.id, name, area, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() });
+          addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() }, db);
         }
 
         saveLocalDB(db, clinicId);
