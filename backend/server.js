@@ -26,6 +26,7 @@ const followUpRoutes = require('./routes/followUpRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const queueRoutes = require('./routes/queueRoutes');
 const masterRoutes = require('./routes/masterRoutes');
+const clinicRoutes = require('./routes/clinicRoutes');
 
 const app = express();
 
@@ -424,6 +425,8 @@ app.use('/api/queue', queueRoutes);
 app.use('/api/queues', queueRoutes);
 app.use('/api/masters', masterRoutes);
 app.use('/api/master', masterRoutes);
+app.use('/api/clinics', clinicRoutes);
+app.use('/api/clinic', clinicRoutes);
 
 // Direct routes for admin, login, and public landing page
 app.get('/admin', (req, res) => {
@@ -436,115 +439,6 @@ app.get('/login', (req, res) => {
 
 app.get('/landing', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/landing.html'));
-});
-
-// Clinic Registration Requests API (Landing page to Admin workflow)
-let clinicRequests = [
-  {
-    id: 'REQ-101',
-    clinicId: 'CLN-004',
-    name: 'Sterling Multispeciality Clinic',
-    city: 'Gandhinagar',
-    registrationNumber: 'REG-GJ-2026-9912',
-    phone: '+91 98250 12345',
-    email: 'info@sterlingclinic.com',
-    address: '402, Titanium City Centre, Sector 11, Gandhinagar',
-    operatingDays: 'Monday - Saturday',
-    workingHours: '09:00 - 21:00',
-    specialties: 'General Medicine, Cardiology, Orthopedics',
-    facilities: 'Pharmacy, Path Lab, Minor OT, ECG',
-    applicantName: 'Dr. Ramesh S. Parikh',
-    applicantRole: 'Medical Director',
-    doctorsCount: 2,
-    doctors: [
-      { name: 'Dr. Ramesh S. Parikh', specialty: 'Cardiology', registration: 'MCI-88291' },
-      { name: 'Dr. Sunita K. Sharma', specialty: 'General Medicine', registration: 'MCI-91024' }
-    ],
-    status: 'Pending',
-    submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-    formattedDate: 'Today, 09:30 AM',
-    submittedFrom: 'Landing Page'
-  },
-  {
-    id: 'REQ-102',
-    clinicId: 'CLN-005',
-    name: 'Aura Health & Skin Clinic',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-7841',
-    phone: '+91 98790 54321',
-    email: 'contact@auraskinclinic.com',
-    address: '2nd Floor, Safal Pegasuss, Prahlad Nagar, Ahmedabad',
-    operatingDays: 'Monday - Saturday',
-    workingHours: '10:00 - 19:00',
-    specialties: 'Dermatology, Cosmetology',
-    facilities: 'Laser Treatment, Minor OT',
-    applicantName: 'Dr. Ananya Roy',
-    applicantRole: 'Clinic Owner',
-    doctorsCount: 1,
-    doctors: [
-      { name: 'Dr. Ananya Roy', specialty: 'Dermatology', registration: 'MCI-76543' }
-    ],
-    status: 'Approved',
-    submittedAt: new Date(Date.now() - 86400000).toISOString(),
-    formattedDate: 'Yesterday, 04:15 PM',
-    submittedFrom: 'Landing Page'
-  }
-];
-
-app.get('/api/clinics/requests', (req, res) => {
-  res.json({ success: true, count: clinicRequests.length, data: clinicRequests });
-});
-
-app.post('/api/clinics/register-request', (req, res) => {
-  try {
-    const data = req.body || {};
-    const newReq = {
-      id: `REQ-${Date.now().toString().slice(-4)}`,
-      clinicId: `CLN-${String(Date.now()).slice(-3)}`,
-      name: (data.name || 'New Clinic').trim(),
-      city: (data.city || (data.address ? data.address.split(',').pop().trim() : '') || 'Ahmedabad').trim(),
-      registrationNumber: (data.registrationNumber || data.registration || 'REG-PENDING').trim(),
-      phone: (data.phone || '').trim(),
-      email: (data.email || '').trim(),
-      address: (data.address || '').trim(),
-      operatingDays: (data.operatingDays || data.days || 'Monday - Saturday').trim(),
-      workingHours: (data.workingHours || data.hours || '09:00 - 20:00').trim(),
-      specialties: (data.specialties || '').trim(),
-      facilities: (data.facilities || '').trim(),
-      applicantName: (data.applicantName || 'Applicant').trim(),
-      applicantRole: (data.applicantRole || 'Owner').trim(),
-      clinicCertificate: (data.clinicCertificate || '').trim(),
-      doctorsCount: data.doctors ? data.doctors.length : Number(data.doctorsCount || 1),
-      doctors: Array.isArray(data.doctors) ? data.doctors.map((doctor) => ({
-        name: String(doctor.name || '').trim(),
-        specialty: String(doctor.specialty || '').trim(),
-        registration: String(doctor.registration || '').trim(),
-        email: String(doctor.email || '').trim(),
-        certificate: String(doctor.certificate || '').trim()
-      })) : [],
-      status: 'Pending',
-      submittedAt: new Date().toISOString(),
-      formattedDate: new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-      submittedFrom: 'Landing Page'
-    };
-    clinicRequests.unshift(newReq);
-    console.log(`[Clinic Registration]: New request received from landing page: ${newReq.name} (${newReq.id})`);
-    res.status(201).json({ success: true, message: 'Clinic registration request submitted successfully', data: newReq });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.patch('/api/clinics/requests/:id', (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body || {};
-  const target = clinicRequests.find(r => r.id === id);
-  if (!target) {
-    return res.status(404).json({ success: false, error: 'Registration request not found' });
-  }
-  if (status) target.status = status;
-  console.log(`[Clinic Registration]: Request ${id} status updated to: ${status}`);
-  res.json({ success: true, message: `Request status updated to ${status}`, data: target });
 });
 
 // SPA / direct route fallback for frontend pages

@@ -51,6 +51,22 @@ function fallbackLocalLogin(username, password) {
     return adminSession;
   }
 
+  // Check locally registered admins
+  try {
+    const admins = JSON.parse(localStorage.getItem('dhyey-admin-accounts') || '[]');
+    const matchedAdmin = admins.find(a => ((a.username || '').toLowerCase() === u || (a.email || '').toLowerCase() === u));
+    if (matchedAdmin) {
+      const adminSession = {
+        role: 'admin',
+        profile: { username: matchedAdmin.username, name: matchedAdmin.name || 'Administrator', role: 'admin', email: matchedAdmin.email },
+        token: 'mock-admin-token-' + matchedAdmin.username,
+      };
+      setAuthSession(adminSession);
+      showToast(`Signed in as ${matchedAdmin.name || matchedAdmin.username}`);
+      return adminSession;
+    }
+  } catch (e) {}
+
   if (u === 'dhyey' && p === '123') {
     const doctorSession = {
       role: 'doctor',

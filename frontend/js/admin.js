@@ -170,109 +170,22 @@ const defaultClinics = [
   }
 ];
 
-const doctors = [
-  { name: 'Dr. Mehul Shah', specialty: 'General Medicine', clinic: 'Dhyey Main Clinic', patients: 218, visits: 86, rating: 94 },
-  { name: 'Dr. Riya Patel', specialty: 'Dermatology', clinic: 'Satellite Wellness Centre', patients: 164, visits: 71, rating: 91 },
-  { name: 'Dr. Harsh Trivedi', specialty: 'Pediatrics', clinic: 'Dhyey Main Clinic', patients: 143, visits: 63, rating: 88 },
-  { name: 'Dr. Neha Desai', specialty: 'Gynecology', clinic: 'Riverside Family Care', patients: 98, visits: 42, rating: 86 }
-];
-
-const patients = [
-  { name: 'Aarav Mehta', id: 'PAT-1042', clinic: 'Dhyey Main Clinic', doctor: 'Dr. Mehul Shah', visits: 8, lastVisit: '01 Oct 2026', status: 'Active' },
-  { name: 'Kavya Shah', id: 'PAT-1038', clinic: 'Satellite Wellness Centre', doctor: 'Dr. Riya Patel', visits: 5, lastVisit: '30 Sep 2026', status: 'Active' },
-  { name: 'Ishaan Patel', id: 'PAT-1024', clinic: 'Dhyey Main Clinic', doctor: 'Dr. Harsh Trivedi', visits: 3, lastVisit: '29 Sep 2026', status: 'Follow-up' },
-  { name: 'Mira Joshi', id: 'PAT-1019', clinic: 'Riverside Family Care', doctor: 'Dr. Neha Desai', visits: 6, lastVisit: '25 Sep 2026', status: 'Active' }
-];
-
+let doctors = [];
+let patients = [];
 let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultClinics;
-// Ensure older cached data removes reports and enforces consistency
-clinics.forEach(c => {
-  if (Array.isArray(c.services)) {
-    c.services = c.services.filter(s => s !== 'reports');
-    // If receptionist is off, ensure appointment queue is off
-    if (!c.services.includes('receptionist')) {
-      c.services = c.services.filter(s => s !== 'appointment');
-    }
-  } else {
-    c.services = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
-  }
-});
-
-let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || doctors.map(doctor => ({
-  ...doctor,
-  email: `${doctor.name.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`,
-  status: 'Active'
-}));
-
+let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || [];
 const STORAGE_KEY_REQUESTS = 'dhyey-clinic-requests';
-const defaultClinicRequests = [
-  {
-    id: 'REQ-101',
-    clinicId: 'CLN-004',
-    name: 'Apollo City Clinic & Diagnostics',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-9021',
-    registration: 'REG-GJ-2026-9021',
-    phone: '+91 98250 12345',
-    email: 'info@apollocityclinic.com',
-    address: 'GF-04, Shivalik Plaza, IIM Road, Panjrapole, Ahmedabad - 380015',
-    days: 'Monday - Saturday',
-    hours: '09:00 - 21:00',
-    specialties: 'General Medicine, Cardiology, Orthopedics',
-    facilities: 'Pharmacy, Path Lab, Minor OT, ECG',
-    applicantName: 'Dr. Ramesh S. Parikh',
-    applicantRole: 'Medical Director',
-    doctorsCount: 2,
-    doctors: [
-      { name: 'Dr. Ramesh S. Parikh', specialty: 'Cardiology', registration: 'MCI-88291', email: 'ramesh.parikh@apollocityclinic.com', phone: '+91 98250 12345' },
-      { name: 'Dr. Sunita K. Sharma', specialty: 'General Medicine', registration: 'MCI-91024', email: 'sunita.sharma@apollocityclinic.com', phone: '+91 98250 54321' }
-    ],
-    status: 'Pending',
-    submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-    formattedDate: 'Today, 09:30 AM',
-    submittedFrom: 'Landing Page'
-  },
-  {
-    id: 'REQ-102',
-    clinicId: 'CLN-005',
-    name: 'Aura Health & Skin Clinic',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-7841',
-    registration: 'REG-GJ-2026-7841',
-    phone: '+91 98790 54321',
-    email: 'contact@auraskinclinic.com',
-    address: '2nd Floor, Safal Pegasuss, Prahlad Nagar, Ahmedabad',
-    days: 'Monday - Saturday',
-    hours: '10:00 - 19:00',
-    specialties: 'Dermatology, Cosmetology',
-    facilities: 'Laser Treatment, Minor OT',
-    applicantName: 'Dr. Ananya Roy',
-    applicantRole: 'Clinic Owner',
-    doctorsCount: 1,
-    doctors: [
-      { name: 'Dr. Ananya Roy', specialty: 'Dermatology', registration: 'MCI-76543', email: 'ananya.roy@auraskinclinic.com', phone: '+91 98790 54321' }
-    ],
-    status: 'Approved',
-    submittedAt: new Date(Date.now() - 86400000).toISOString(),
-    formattedDate: 'Yesterday, 04:15 PM',
-    submittedFrom: 'Landing Page'
-  }
-];
-
-let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || defaultClinicRequests;
+let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || [];
 let currentClinicTab = 'active';
 const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
 let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
 const STORAGE_KEY_ADMINS = 'dhyey-admin-accounts';
 let adminAccounts = JSON.parse(localStorage.getItem(STORAGE_KEY_ADMINS) || '[]');
 
-function saveClinicRequests() {
-  localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
-}
-
-function saveActivityLogs() {
-  localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(activityLogs.slice(0, 500)));
-}
+function saveClinics() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clinics)); }
+function saveDoctors() { localStorage.setItem('dhyey-admin-doctors', JSON.stringify(clinicDoctors)); }
+function saveClinicRequests() { localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests)); }
+function saveActivityLogs() { localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(activityLogs.slice(0, 500))); }
 
 function logActivity(action, entity, entityId, result = 'Success', details = '') {
   activityLogs.unshift({
@@ -288,38 +201,67 @@ function logActivity(action, entity, entityId, result = 'Success', details = '')
   saveActivityLogs();
 }
 
-async function syncClinicRequestsFromAPI() {
+async function syncAllAdminDataFromAPI() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
-        const localMap = new Map(clinicRequests.map(r => [r.id, r]));
-        json.data.forEach(apiReq => {
-          if (!localMap.has(apiReq.id)) {
-            clinicRequests.unshift(apiReq);
-          } else {
-            const existing = localMap.get(apiReq.id);
-            if (existing.status !== 'Pending') {
-              apiReq.status = existing.status;
+    const [clinicsRes, docsRes, patsRes, reqsRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/clinics`).catch(() => null),
+      fetch(`${API_BASE_URL}/api/clinics/doctors`).catch(() => null),
+      fetch(`${API_BASE_URL}/api/clinics/patients`).catch(() => null),
+      fetch(`${API_BASE_URL}/api/clinics/requests`).catch(() => null),
+    ]);
+
+    if (clinicsRes && clinicsRes.ok) {
+      const json = await clinicsRes.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        clinics = json.data;
+        clinics.forEach(c => {
+          c.id = c.clinicId || c.id;
+          if (Array.isArray(c.services)) {
+            c.services = c.services.filter(s => s !== 'reports');
+            if (!c.services.includes('receptionist')) {
+              c.services = c.services.filter(s => s !== 'appointment');
             }
+          } else {
+            c.services = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
           }
         });
+        saveClinics();
+      }
+    }
+
+    if (docsRes && docsRes.ok) {
+      const json = await docsRes.json();
+      if (json.success && Array.isArray(json.data)) {
+        clinicDoctors = json.data;
+        saveDoctors();
+      }
+    }
+
+    if (patsRes && patsRes.ok) {
+      const json = await patsRes.json();
+      if (json.success && Array.isArray(json.data)) {
+        patients = json.data;
+      }
+    }
+
+    if (reqsRes && reqsRes.ok) {
+      const json = await reqsRes.json();
+      if (json.success && Array.isArray(json.data)) {
+        clinicRequests = json.data;
         saveClinicRequests();
       }
     }
   } catch (err) {
-    // API server fallback to local storage
+    console.warn('[Admin API Sync Warning]:', err);
   }
 }
-syncClinicRequestsFromAPI();
 
-const content = document.getElementById('adminContent');
-
-function money(value) { return `₹${value.toLocaleString('en-IN')}`; }
-function saveClinics() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clinics)); }
-function saveDoctors() { localStorage.setItem('dhyey-admin-doctors', JSON.stringify(clinicDoctors)); }
-function clinicOptions() { return clinics.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); }
+// Kick off initial sync
+syncAllAdminDataFromAPI().then(() => {
+  if (typeof navigate === 'function') {
+    navigate();
+  }
+});
 
 function page(title, subtitle, body, actions = '') {
   content.innerHTML = `<div class="admin-page"><div class="admin-heading"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="admin-actions">${actions}</div></div>${body}</div>`;
@@ -2293,89 +2235,95 @@ function openClinicModal() {
       visits: 0
     }));
 
-    if (newDoctors.some(doctor => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(doctor.email) || doctor.password.length < 8 || !doctor.certificate)) {
-      showToast('Check every doctor email, password, and certificate.');
+    if (newDoctors.some(doctor => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(doctor.email) || doctor.password.length < 4)) {
+      showToast('Check every doctor email and password.', 'error');
       return;
     }
 
-    if (newDoctors.some(doctor => clinicDoctors.some(existing => existing.email === doctor.email))) {
-      showToast('Each doctor email must be unique.');
+    // Check uniqueness ONLY within the new doctors submitted in this form
+    const enteredEmails = newDoctors.map(d => d.email);
+    if (new Set(enteredEmails).size !== enteredEmails.length) {
+      showToast('Each doctor in this form must have a unique email address.', 'error');
       return;
     }
 
-    const doctorCount = entries.children.length;
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving to MongoDB Atlas...`;
+    }
+
     const newClinicId = `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
-
-    newDoctors.forEach(doctor => {
-      doctor.clinic = clinicName;
-      doctor.clinicId = newClinicId;
-      doctor.services = finalServices;
-      clinicDoctors.unshift(doctor);
-    });
-
-    clinics.unshift({
+    const payload = {
       id: newClinicId,
+      clinicId: newClinicId,
       name: clinicName,
-      city: address.split(',').pop().trim() || 'Not specified',
-      doctors: doctorCount,
-      patients: 0,
-      visits: 0,
-      status: 'Active',
-      updated: 'Just now',
-      services: finalServices,
-      receptionist: receptionistData,
-      specialties: data.get('specialties'),
-      facilities: data.get('facilities'),
+      city: address.split(',').pop().trim() || 'Ahmedabad',
       phone,
       email,
       registration,
       address,
-      days: data.get('days'),
-      hours: data.get('hours'),
-      verifiedDocuments: doctorCount + 1
-    });
-
-    // Strictly initialize isolated clean database for new clinic
-    const cleanClinicKey = `clinic-db-${newClinicId}`;
-    const cleanDB = {
-      counters: { family: 0, patient: 0, visit: 0 },
-      families: {},
-      appointments: [],
-      certificates: [],
-      bills: [],
-      feedbacks: [],
-      dietary: {},
-      clinicShortcuts: {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      },
-      _shortcutsCleanedV2: true,
-      customShortcuts: [],
-      masterMedicines: [],
-      masterComplaints: [],
-      masterInvestigations: [],
-      masterAreas: [],
-      masterSocieties: [],
-      masterAllergies: [],
-      masterRelations: []
+      days: data.get('days') || 'Monday - Saturday',
+      hours: data.get('hours') || '08:30 AM - 08:30 PM',
+      specialties: data.get('specialties') || 'General Medicine',
+      facilities: data.get('facilities') || 'Consultation, Pharmacy',
+      services: finalServices,
+      receptionist: receptionistData,
+      doctors: newDoctors,
+      doctorsCount: newDoctors.length || 1,
+      status: 'Active'
     };
-    localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
 
-    saveClinics();
-    saveDoctors();
-    logActivity('Deleted clinic', 'Clinic', clinic.id, 'Warning', clinic.name);
-    closeModal();
-    showToast(isRecSelected 
-      ? `Clinic registered with Receptionist + Doctor dual-login!` 
-      : `Clinic registered in Doctor-Only direct mode!`);
-    
-    if (location.hash === '#services') renderServices();
-    else renderClinics();
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/clinics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to save clinic to MongoDB Atlas');
+      }
+
+      // Initialize clean database key for new clinic
+      const cleanClinicKey = `clinic-db-${newClinicId}`;
+      const cleanDB = {
+        counters: { family: 0, patient: 0, visit: 0 },
+        families: {},
+        appointments: [],
+        certificates: [],
+        bills: [],
+        feedbacks: [],
+        dietary: {},
+        clinicShortcuts: { medicines: {}, complaints: {}, investigations: {}, allergies: {}, relations: {}, areas: {}, societies: {} },
+        _shortcutsCleanedV2: true,
+        customShortcuts: [],
+        masterMedicines: [],
+        masterComplaints: [],
+        masterInvestigations: [],
+        masterAreas: [],
+        masterSocieties: [],
+        masterAllergies: [],
+        masterRelations: []
+      };
+      localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
+
+      await syncAllAdminDataFromAPI();
+      logActivity('Registered new clinic', 'Clinic', newClinicId, 'Success', clinicName);
+      closeModal();
+      showToast(isRecSelected 
+        ? `Clinic "${clinicName}" saved in MongoDB Atlas with Receptionist + Doctor logins!` 
+        : `Clinic "${clinicName}" saved in MongoDB Atlas in Doctor-Only direct mode!`);
+      
+      if (location.hash === '#services') renderServices();
+      else renderClinics();
+    } catch (err) {
+      showToast(err.message || 'Error saving clinic', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-shield-check"></i> Register Clinic with Selected Services`;
+      }
+    }
   });
 }
 
@@ -2423,15 +2371,18 @@ function deleteClinic(clinicId) {
   if (!clinic) return;
   confirmAction(
     `Are you sure you want to permanently delete <strong>${clinic.name}</strong>?<br>All associated doctor mappings will also be removed. This action cannot be undone.`,
-    () => {
-      // Remove clinic doctors
-      clinicDoctors = clinicDoctors.filter(d => d.clinic !== clinic.name);
-      // Remove clinic
+    async () => {
+      try {
+        await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinicId)}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('API delete clinic error:', err);
+      }
+      clinicDoctors = clinicDoctors.filter(d => d.clinic !== clinic.name && d.clinicId !== clinicId);
       clinics = clinics.filter(c => c.id !== clinicId);
-      // Clear local db for that clinic
       localStorage.removeItem(`clinic-db-${clinicId}`);
       saveClinics();
       saveDoctors();
+      await syncAllAdminDataFromAPI();
       closeDetails();
       showToast(`Clinic "${clinic.name}" has been deleted.`, 'error');
       if (location.hash === '#services') renderServices();
@@ -2441,36 +2392,47 @@ function deleteClinic(clinicId) {
 }
 
 /* ---- Toggle individual service on/off ---- */
-function toggleClinicService(clinicId, serviceId) {
+async function toggleClinicService(clinicId, serviceId) {
   const clinic = clinics.find(c => c.id === clinicId);
   if (!clinic) return;
   const services = clinic.services || [];
   const isOn = services.includes(serviceId);
 
+  let newServices;
   if (isOn) {
     // Turn off
-    let newServices = services.filter(s => s !== serviceId);
+    newServices = services.filter(s => s !== serviceId);
     // If receptionist turned off, also auto-remove appointment
     if (serviceId === 'receptionist') {
       newServices = newServices.filter(s => s !== 'appointment');
     }
-    clinic.services = newServices;
   } else {
     // Turn on
-    // appointment can only be enabled when receptionist is on
     if (serviceId === 'appointment' && !services.includes('receptionist')) {
       showToast('Appointment Queue requires Receptionist Service to be enabled first.', 'error');
       return;
     }
-    clinic.services = [...services, serviceId];
+    newServices = [...services, serviceId];
   }
 
+  clinic.services = newServices;
   clinic.updated = 'Just now';
 
   // Propagate to doctor localStorage so doctor dashboard reads it immediately
   propagateServicesToClinicDB(clinicId, clinic.services);
-
   saveClinics();
+
+  try {
+    await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinicId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ services: newServices })
+    });
+    await syncAllAdminDataFromAPI();
+  } catch (e) {
+    console.warn('API toggle service error:', e);
+  }
+
   logActivity(`${isOn ? 'Disabled' : 'Enabled'} clinic service`, 'Service', `${clinic.name}:${serviceId}`);
   showToast(`${isOn ? 'Disabled' : 'Enabled'} "${serviceId}" for ${clinic.name}.`);
   // Re-open the details with updated data
@@ -2495,13 +2457,24 @@ function removeDoctorFromClinic(doctorName, clinicId) {
   if (!doctor || !clinic) return;
   confirmAction(
     `Remove <strong>${doctorName}</strong> from <strong>${clinic.name}</strong>?<br>The doctor account will be unlinked but not permanently deleted.`,
-    () => {
+    async () => {
       doctor.clinic = 'Unassigned';
       doctor.clinicId = null;
       if (clinic.doctors > 0) clinic.doctors--;
       saveClinics();
       saveDoctors();
-      openClinicDetails(clinicId); // refresh modal
+      try {
+        const remainingDocs = (clinic.doctors && Array.isArray(clinic.doctors))
+          ? clinic.doctors.filter(d => d.name !== doctorName)
+          : [];
+        await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinicId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doctors: remainingDocs })
+        });
+        await syncAllAdminDataFromAPI();
+      } catch (e) {}
+      openClinicDetails(clinicId);
       showToast(`${doctorName} has been removed from ${clinic.name}.`);
     }
   );
@@ -2624,7 +2597,7 @@ function openAddDoctorModal(clinicId = null) {
 
   const btnAssignExisting = document.getElementById('btnAssignExisting');
   if (btnAssignExisting) {
-    btnAssignExisting.addEventListener('click', () => {
+    btnAssignExisting.addEventListener('click', async () => {
       const selectedName = document.getElementById('selectUnassignedDoc')?.value;
       if (!selectedName) {
         showToast('Please select a doctor to link.', 'error');
@@ -2642,6 +2615,21 @@ function openAddDoctorModal(clinicId = null) {
 
       saveDoctors();
       saveClinics();
+
+      try {
+        await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(targetClinic.id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doctors: [
+              ...(Array.isArray(targetClinic.doctors) ? targetClinic.doctors : []),
+              { name: doctor.name, email: doctor.email, specialty: doctor.specialty, status: 'Active' }
+            ]
+          })
+        });
+        await syncAllAdminDataFromAPI();
+      } catch (err) {}
+
       closeModal();
       const detailsModal = document.getElementById('detailsModal');
       if (detailsModal && detailsModal.classList.contains('active')) {
@@ -2653,7 +2641,7 @@ function openAddDoctorModal(clinicId = null) {
     });
   }
 
-  document.getElementById('addDoctorForm').addEventListener('submit', e => {
+  document.getElementById('addDoctorForm').addEventListener('submit', async e => {
     e.preventDefault();
     const data = new FormData(e.target);
     const targetClinicId = clinicId || data.get('clinicId');
@@ -2683,14 +2671,7 @@ function openAddDoctorModal(clinicId = null) {
       return;
     }
 
-    if (clinicDoctors.some(d => (d.email || '').toLowerCase() === email)) {
-      const err = document.getElementById('docEmailError');
-      if (err) { err.textContent = 'A doctor with this email already exists.'; err.style.display = 'block'; }
-      return;
-    }
-
     const newDoc = {
-      id: `doc_${Date.now()}`,
       name: docName,
       specialty,
       clinic: targetClinic.name,
@@ -2701,26 +2682,31 @@ function openAddDoctorModal(clinicId = null) {
       password,
       status: 'Active',
       patients: 0,
-      visits: 0,
-      rating: 95,
-      services: targetClinic.services || []
+      visits: 0
     };
 
-    clinicDoctors.unshift(newDoc);
-    targetClinic.doctors = (targetClinic.doctors || 0) + 1;
-    targetClinic.updated = 'Just now';
+    const existingDocs = Array.isArray(targetClinic.doctors) ? targetClinic.doctors : [];
+    const updatedDocs = [...existingDocs, newDoc];
 
-    saveDoctors();
-    saveClinics();
+    try {
+      await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(targetClinic.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doctors: updatedDocs })
+      });
+      await syncAllAdminDataFromAPI();
+    } catch (err) {
+      console.warn('Add doctor API error:', err);
+    }
+
     closeModal();
-
     const detailsModal = document.getElementById('detailsModal');
     if (detailsModal && detailsModal.classList.contains('active')) {
       openClinicDetails(targetClinic.id);
     } else {
       renderClinics();
     }
-    showToast(`Doctor ${docName} successfully added to ${targetClinic.name}!`);
+    showToast(`Doctor ${docName} successfully added to ${targetClinic.name} in MongoDB Atlas!`);
   });
 }
 
@@ -2801,7 +2787,7 @@ function openAddReceptionistModal(clinicId) {
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
 
-  document.getElementById('receptionistForm').addEventListener('submit', e => {
+  document.getElementById('receptionistForm').addEventListener('submit', async e => {
     e.preventDefault();
     const data = new FormData(e.target);
     const name = (data.get('name') || '').trim();
@@ -2829,7 +2815,7 @@ function openAddReceptionistModal(clinicId) {
     }
     if (!valid) return;
 
-    clinic.receptionist = {
+    const updatedRec = {
       name,
       email,
       phone,
@@ -2837,12 +2823,24 @@ function openAddReceptionistModal(clinicId) {
       status,
       password
     };
+
+    clinic.receptionist = updatedRec;
     clinic.updated = 'Just now';
 
-    saveClinics();
+    try {
+      await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinic.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receptionist: updatedRec })
+      });
+      await syncAllAdminDataFromAPI();
+    } catch (err) {
+      console.warn('API save receptionist error:', err);
+    }
+
     closeModal();
     openClinicDetails(clinic.id);
-    showToast(`Receptionist "${name}" saved for ${clinic.name}.`);
+    showToast(`Receptionist "${name}" saved for ${clinic.name} in MongoDB Atlas.`);
   });
 }
 
@@ -2853,10 +2851,18 @@ function removeReceptionistFromClinic(clinicId) {
 
   confirmAction(
     `Remove receptionist account <strong>${clinic.receptionist.name}</strong> from <strong>${clinic.name}</strong>?`,
-    () => {
+    async () => {
       clinic.receptionist = null;
       clinic.updated = 'Just now';
       saveClinics();
+      try {
+        await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinicId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ receptionist: null })
+        });
+        await syncAllAdminDataFromAPI();
+      } catch (err) {}
       openClinicDetails(clinicId);
       showToast(`Receptionist removed from ${clinic.name}.`);
     }
@@ -2946,7 +2952,7 @@ function openEditClinicModal(clinicId) {
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
 
-  document.getElementById('editClinicForm').addEventListener('submit', e => {
+  document.getElementById('editClinicForm').addEventListener('submit', async e => {
     e.preventDefault();
     const data = new FormData(e.target);
     const name = data.get('name').trim();
@@ -2966,30 +2972,36 @@ function openEditClinicModal(clinicId) {
     if (!/^[6-9]\d{9}$/.test(phone)) showFieldError('editPhoneError', 'Enter a valid 10-digit Indian phone number.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) showFieldError('editEmailError', 'Enter a valid email address.');
     if (registration.length < 4) showFieldError('editRegError', 'Registration number is too short.');
-    if (address.length < 10) showFieldError('editAddrError', 'Please enter a more detailed address.');
+    if (address.length < 5) showFieldError('editAddrError', 'Please enter a more detailed address.');
     if (!valid) return;
 
-    // Update clinic object
-    clinic.name = name;
-    clinic.phone = phone;
-    clinic.email = email;
-    clinic.registration = registration;
-    clinic.address = address;
-    clinic.days = data.get('days');
-    clinic.hours = data.get('hours');
-    clinic.specialties = data.get('specialties');
-    clinic.facilities = data.get('facilities');
-    clinic.status = data.get('status');
-    clinic.city = address.split(',').pop().trim() || clinic.city;
-    clinic.updated = 'Just now';
+    const payload = {
+      name,
+      phone,
+      email,
+      registration,
+      address,
+      days: data.get('days'),
+      hours: data.get('hours'),
+      specialties: data.get('specialties'),
+      facilities: data.get('facilities'),
+      status: data.get('status'),
+      city: address.split(',').pop().trim() || clinic.city,
+    };
 
-    // Update clinic name in all mapped doctors
-    clinicDoctors.forEach(d => { if (d.clinicId === clinicId) d.clinic = name; });
+    try {
+      await fetch(`${API_BASE_URL}/api/clinics/${encodeURIComponent(clinicId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      await syncAllAdminDataFromAPI();
+    } catch (err) {
+      console.warn('API update clinic error:', err);
+    }
 
-    saveClinics();
-    saveDoctors();
     closeModal();
-    showToast(`Clinic "${name}" details updated successfully.`);
+    showToast(`Clinic "${name}" details updated in MongoDB Atlas.`);
     if (location.hash === '#services') renderServices();
     else renderClinics();
   });

@@ -58,8 +58,13 @@ const login = async (req, res) => {
       });
     }
 
-    // Check in MongoDB
-    let user = await User.findOne({ username: username.trim() });
+    // Check in MongoDB Atlas by username or email
+    const cleanUser = username.trim();
+    const cleanEmail = cleanUser.toLowerCase();
+    let user = await User.findOne({
+      $or: [{ username: cleanUser }, { email: cleanEmail }, { username: cleanEmail }],
+    });
+
     if (user) {
       const isMatch = (user.password === password) || (await bcrypt.compare(password, user.password).catch(() => false));
       if (!isMatch) {
@@ -73,12 +78,13 @@ const login = async (req, res) => {
         user: {
           id: user._id,
           username: user.username,
-          role: user.role,
-          name: user.name || `Dr. ${user.username}`,
+          email: user.email || user.username,
+          role: user.role || 'doctor',
+          name: user.name || user.username,
           degree: user.degree,
           regNo: user.regNo,
-          clinics: user.clinics || [{ id: 'demo', name: 'Default Clinic' }],
-          activeClinicId: user.activeClinicId || 'demo',
+          clinics: user.clinics && user.clinics.length > 0 ? user.clinics : [{ id: user.activeClinicId || 'CLN-001', name: 'Default Clinic' }],
+          activeClinicId: user.activeClinicId || (user.clinics && user.clinics[0] && user.clinics[0].id) || 'CLN-001',
         },
       });
     }
