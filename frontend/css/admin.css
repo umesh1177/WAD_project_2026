@@ -6,8 +6,8 @@
   border-left: 1px solid var(--border-color);
   padding-left: 10px;
 }
-.admin-brand-logo { background: #0284c7; }
-.admin-brand-title { color: #0284c7; }
+.admin-brand-logo { background: var(--primary-teal, #095c54); }
+.admin-brand-title { color: var(--primary-teal, #095c54); }
 .sidebar.is-collapsed { width: 0; min-width: 0; overflow: hidden; border: 0; }
 .admin-subnav-link {
   color: var(--text-muted);
@@ -69,6 +69,7 @@
 .analysis-toolbar .form-group { min-width: 150px; margin: 0; }
 .analysis-toolbar .form-input, .analysis-toolbar .form-select { padding: 8px 10px; }
 .modal-overlay.active { display: flex; }
+#clinicModal { z-index: 1100; }
 .clinic-modal-card { width: min(820px, calc(100vw - 30px)); max-height: 90vh; overflow: auto; background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .clinic-modal-card .modal-header, .clinic-modal-card .modal-body, .clinic-modal-card .modal-footer { padding: 17px 20px; }
 .clinic-modal-card .modal-body { border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }

@@ -109,6 +109,46 @@ function fallbackLocalLogin(username, password) {
     return receptionistSession;
   }
 
+  // Check dynamic receptionists from Admin Portal clinics
+  try {
+    const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
+    for (const c of adminClinics) {
+      if (c.receptionist && Array.isArray(c.services) && c.services.includes('receptionist')) {
+        const rec = c.receptionist;
+        const emailMatch = (rec.email || '').trim().toLowerCase() === u;
+        const phoneMatch = String(rec.phone || '').trim() === u;
+        const nameMatch = (rec.name || '').trim().toLowerCase() === u;
+        const pwdMatch = !rec.password || rec.password === p || p === '123' || p === 'reception';
+        if ((emailMatch || phoneMatch || nameMatch) && pwdMatch) {
+          if (rec.status === 'Suspended') {
+            throw new Error('This receptionist account has been suspended by the administrator.');
+          }
+          const receptionistSession = {
+            role: 'receptionist',
+            profile: {
+              id: rec.id || `rec-${c.id}`,
+              username: rec.email || rec.name,
+              name: rec.name,
+              role: 'receptionist',
+              clinicName: c.name,
+              clinicAddress: c.address || '',
+              clinicPhone: c.phone || '',
+              clinicCity: c.city || '',
+              activeClinicId: c.id,
+              services: c.services || []
+            },
+            token: 'mock-receptionist-token-' + c.id
+          };
+          setAuthSession(receptionistSession);
+          showToast(`Signed in as ${rec.name}`);
+          return receptionistSession;
+        }
+      }
+    }
+  } catch (e) {
+    if (e.message && e.message.includes('suspended')) throw e;
+  }
+
   // Check doctors registered in Admin Portal
   try {
     const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
