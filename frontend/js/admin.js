@@ -237,9 +237,31 @@ const defaultClinicRequests = [
 
 let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || defaultClinicRequests;
 let currentClinicTab = 'active';
+const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
+let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
+const STORAGE_KEY_ADMINS = 'dhyey-admin-accounts';
+let adminAccounts = JSON.parse(localStorage.getItem(STORAGE_KEY_ADMINS) || '[]');
 
 function saveClinicRequests() {
   localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
+}
+
+function saveActivityLogs() {
+  localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(activityLogs.slice(0, 500)));
+}
+
+function logActivity(action, entity, entityId, result = 'Success', details = '') {
+  activityLogs.unshift({
+    id: `LOG-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    admin: 'Administrator',
+    action,
+    entity,
+    entityId,
+    result,
+    details,
+  });
+  saveActivityLogs();
 }
 
 async function syncClinicRequestsFromAPI() {
@@ -820,6 +842,7 @@ async function approveClinicRequest(reqId) {
   }
 
   closeDetails();
+  logActivity('Approved clinic application', 'Clinic application', req.id, 'Success', `${req.name} added to the clinic network.`);
   showToast(`Clinic "${req.name}" approved and activated into the network!`);
   renderClinics(currentClinicTab);
 }
@@ -844,6 +867,7 @@ async function rejectClinicRequest(reqId) {
   }
 
   closeDetails();
+  logActivity('Rejected clinic application', 'Clinic application', req.id, 'Warning', req.name);
   showToast(`Registration request for "${req.name}" rejected.`);
   renderClinics(currentClinicTab);
 }
@@ -950,64 +974,108 @@ function renderServices() {
   `);
 }
 
+function renderLogs() {
+  page(
+    'Log management',
+    'Review administrator activity across clinic onboarding, services, accounts, and requests.',
+    '',
+    '<button class="btn-secondary" data-action="clear-logs"><i class="fa-solid fa-trash"></i> Clear logs</button>'
+  );
+  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    <section class="admin-card">
+      <div class="admin-filter-row">
+        <input class="form-input" id="logSearch" placeholder="Search action, entity, ID, or details" style="flex:1;min-width:240px">
+        <select class="form-select" id="logResult"><option value="">All results</option><option>Success</option><option>Info</option><option>Warning</option></select>
+        <select class="form-select" id="logEntity"><option value="">All entities</option><option>Clinic</option><option>Clinic application</option><option>Doctor</option><option>Service</option><option>Account</option></select>
+      </div>
+      <div id="logTable" style="margin-top:16px"></div>
+    </section>
+  `);
+  const update = () => {
+    const term = document.getElementById('logSearch').value.toLowerCase().trim();
+    const result = document.getElementById('logResult').value;
+    const entity = document.getElementById('logEntity').value;
+    const rows = activityLogs
+      .filter((log) => (!result || log.result === result) && (!entity || log.entity === entity))
+      .filter((log) => `${log.action} ${log.entity} ${log.entityId} ${log.admin} ${log.details}`.toLowerCase().includes(term))
+      .map((log) => `<tr><td>${new Date(log.timestamp).toLocaleString('en-IN')}</td><td>${log.admin}</td><td><strong>${log.action}</strong></td><td>${log.entity}<br><small>${log.entityId}</small></td><td><span class="status-pill">${log.result}</span></td><td>${log.details || '—'}</td></tr>`)
+      .join('');
+    document.getElementById('logTable').innerHTML = table(['Timestamp', 'Admin', 'Action', 'Entity', 'Result', 'Details'], rows, 'No activity matches these filters.');
+  };
+  document.getElementById('logSearch').addEventListener('input', update);
+  document.getElementById('logResult').addEventListener('change', update);
+  document.getElementById('logEntity').addEventListener('change', update);
+  update();
+}
+
+function renderAdmins() {
+  page('Admin account management', 'Create verified administrator accounts with strong credentials and an auditable identity.', '', '');
+  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+    <div class="admin-grid">
+      <section class="admin-card">
+        <div class="admin-card-header"><div><h2>Add administrator</h2><span>New accounts are created on the authenticated server.</span></div><i class="fa-solid fa-user-shield"></i></div>
+        <form id="adminForm" class="clinic-form-grid">
+          <div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input" name="name" required minlength="3" autocomplete="name"></div>
+          <div class="form-group"><label class="form-label">Work email <span class="req">*</span></label><input class="form-input" name="email" type="email" required autocomplete="email"></div>
+          <div class="form-group"><label class="form-label">Username <span class="req">*</span></label><input class="form-input" name="username" required pattern="[A-Za-z][A-Za-z0-9._-]{4,29}" minlength="5" maxlength="30" autocomplete="username"><small class="clinic-form-help">5-30 characters; letters, numbers, dots, underscores, or hyphens.</small></div>
+          <div class="form-group"><label class="form-label">Employee ID <span class="req">*</span></label><input class="form-input" name="employeeId" required pattern="[A-Za-z]{2,6}-[0-9]{4,12}" placeholder="ADM-20260001"><small class="clinic-form-help">Format: ADM-20260001</small></div>
+          <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input class="form-input" name="password" type="password" required minlength="12" autocomplete="new-password"><small class="clinic-form-help">At least 12 characters with uppercase, lowercase, number, and symbol.</small></div>
+          <div class="form-group"><label class="form-label">Confirm password <span class="req">*</span></label><input class="form-input" name="confirmPassword" type="password" required minlength="12" autocomplete="new-password"></div>
+          <div class="form-group full-width"><label class="form-check-label"><input type="checkbox" name="attestation" required> I confirm this person is an authorized administrator.</label></div>
+          <div class="full-width"><button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Create admin account</button></div>
+        </form>
+      </section>
+      <section class="admin-card">
+        <div class="admin-card-header"><div><h2>Accounts created this session</h2><span>Passwords are never stored or displayed in this panel.</span></div></div>
+        <div id="adminAccountsTable"></div>
+      </section>
+    </div>
+  `);
+  const accountTable = document.getElementById('adminAccountsTable');
+  const renderAccountTable = () => {
+    accountTable.innerHTML = table(['Name', 'Username', 'Email', 'Employee ID', 'Created'], adminAccounts.map((admin) => `<tr><td>${admin.name}</td><td>${admin.username}</td><td>${admin.email}</td><td>${admin.employeeId}</td><td>${new Date(admin.createdAt).toLocaleString('en-IN')}</td></tr>`).join(''), 'No new accounts created in this session.');
+  };
+  renderAccountTable();
+  document.getElementById('adminForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const password = String(data.get('password'));
+    if (password !== String(data.get('confirmPassword'))) return showToast('Passwords do not match.', 'error');
+    if (!data.get('attestation')) return showToast('Confirm that the administrator is authorized.', 'error');
+    const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      const response = await fetch('/api/auth/register-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
+        body: JSON.stringify({ name: data.get('name'), email: data.get('email'), username: data.get('username'), employeeId: data.get('employeeId'), password })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.message || 'The server could not create this administrator.');
+      adminAccounts.unshift({ ...result.admin, createdAt: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(adminAccounts));
+      logActivity('Created administrator account', 'Account', result.admin.username, 'Success', result.admin.employeeId);
+      form.reset();
+      renderAccountTable();
+      showToast('Administrator account created and validated successfully.');
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
 function renderAnalysis(type) {
   const isClinic = type === 'clinic';
   const isDoctor = type === 'doctor';
   const title = isClinic ? 'Clinic wise analysis' : isDoctor ? 'Doctor wise analysis' : 'Patient wise analysis';
   const subtitle = isClinic ? 'Compare patient volume, visits, and collections by location.' : isDoctor ? 'Track doctor workload and patient engagement.' : 'Find visit patterns and follow-up needs for individual patients.';
-  
   page(title, subtitle, '', `<button class="btn-secondary" data-action="export"><i class="fa-solid fa-download"></i> Export CSV</button>`);
-  
-  const filter = `
-    <div class="analysis-toolbar">
-      <div class="form-group" style="flex:1;min-width:220px">
-        <label class="form-label">Search everything</label>
-        <input class="form-input" id="analysisSearch" placeholder="Search by name, ID, doctor or clinic">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Clinic</label>
-        <select class="form-select" id="analysisClinic">
-          <option value="">All clinics</option>
-          ${clinicOptions()}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Date range</label>
-        <select class="form-select" id="analysisRange">
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
-          <option value="365">This year</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Activity</label>
-        <select class="form-select" id="analysisActivity">
-          <option value="">Any activity</option>
-          <option value="high">High activity</option>
-          <option value="low">Needs attention</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Sort by</label>
-        <select class="form-select" id="analysisSort">
-          <option value="default">Default</option>
-          <option value="high">Highest first</option>
-          <option value="low">Lowest first</option>
-        </select>
-      </div>
-    </div>
-    <div class="quick-filter-bar">
-      <span class="clinic-form-help">Frequent filters:</span>
-      <button type="button" class="quick-filter active" data-quick-filter="">All records</button>
-      <button type="button" class="quick-filter" data-quick-filter="today">Updated recently</button>
-      <button type="button" class="quick-filter" data-quick-filter="high">High performers</button>
-      <button type="button" class="quick-filter" data-quick-filter="attention">Needs attention</button>
-    </div>
-  `;
-
-  const card = `<section class="admin-card">${filter}<div id="analysisTable" style="margin-top:18px"></div></section>`;
-  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', card);
-
+  const filter = `<div class="analysis-toolbar"><div class="form-group" style="flex:1;min-width:220px"><label class="form-label">Search everything</label><input class="form-input" id="analysisSearch" placeholder="Search by name, ID, doctor or clinic"></div><div class="form-group"><label class="form-label">Clinic</label><select class="form-select" id="analysisClinic"><option value="">All clinics</option>${clinicOptions()}</select></div><div class="form-group"><label class="form-label">Date range</label><select class="form-select" id="analysisRange"><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">This year</option></select></div><div class="form-group"><label class="form-label">Activity</label><select class="form-select" id="analysisActivity"><option value="">Any activity</option><option value="high">High activity</option><option value="low">Needs attention</option></select></div><div class="form-group"><label class="form-label">Sort by</label><select class="form-select" id="analysisSort"><option value="default">Default</option><option value="high">Highest first</option><option value="low">Lowest first</option></select></div></div><div class="quick-filter-bar"><span class="clinic-form-help">Frequent filters:</span><button type="button" class="quick-filter active" data-quick-filter="">All records</button><button type="button" class="quick-filter" data-quick-filter="today">Updated recently</button><button type="button" class="quick-filter" data-quick-filter="high">High performers</button><button type="button" class="quick-filter" data-quick-filter="attention">Needs attention</button></div>`;
+  const card = `<section class="admin-card">${filter}<div id="analysisTable" style="margin-top:18px"></div></section>`; content.querySelector('.admin-page').insertAdjacentHTML('beforeend', card);
   let quickFilter = '';
   const update = () => {
     const selected = document.getElementById('analysisClinic').value;
@@ -1086,7 +1154,6 @@ function renderAnalysis(type) {
 
   update();
 }
-
 function openClinicDetails(clinicId) {
   const clinic = clinics.find(item => item.id === clinicId);
   if (!clinic) return;
@@ -1692,6 +1759,7 @@ function openClinicModal() {
 
     saveClinics();
     saveDoctors();
+    logActivity('Deleted clinic', 'Clinic', clinic.id, 'Warning', clinic.name);
     closeModal();
     showToast(isRecSelected 
       ? `Clinic registered with Receptionist + Doctor dual-login!` 
@@ -1794,6 +1862,7 @@ function toggleClinicService(clinicId, serviceId) {
   propagateServicesToClinicDB(clinicId, clinic.services);
 
   saveClinics();
+  logActivity(`${isOn ? 'Disabled' : 'Enabled'} clinic service`, 'Service', `${clinic.name}:${serviceId}`);
   showToast(`${isOn ? 'Disabled' : 'Enabled'} "${serviceId}" for ${clinic.name}.`);
   // Re-open the details with updated data
   openClinicDetails(clinicId);
@@ -2335,11 +2404,9 @@ function navigate(view = location.hash.slice(1) || 'overview') {
   
   if (view === 'overview') renderOverview();
   else if (view === 'clinics') renderClinics();
-  else if (view === 'clinics-requests') {
-    document.querySelectorAll('[data-view="clinics"]').forEach(item => item.classList.add('active'));
-    renderClinics('requests');
-  }
   else if (view === 'services') renderServices();
+  else if (view === 'logs') renderLogs();
+  else if (view === 'admins') renderAdmins();
   else if (view.startsWith('analysis-')) renderAnalysis(view.replace('analysis-', ''));
   else renderOverview();
 }
@@ -2357,36 +2424,17 @@ document.addEventListener('click', event => {
   if (action === 'close-modal') closeModal();
   if (action === 'close-details') closeDetails();
   if (action === 'export') exportVisibleTable();
-  if (action === 'switch-clinic-tab') {
-    const tab = event.target.closest('[data-tab]')?.dataset.tab;
-    if (tab) renderClinics(tab);
-  }
-  if (action === 'view-requests-tab') {
-    location.hash = 'clinics';
-    renderClinics('requests');
-  }
-  if (action === 'approve-request') {
-    const reqId = event.target.closest('[data-req-id]')?.dataset.reqId;
-    if (reqId) approveClinicRequest(reqId);
-  }
-  if (action === 'reject-request') {
-    const reqId = event.target.closest('[data-req-id]')?.dataset.reqId;
-    if (reqId) {
-      confirmAction('Are you sure you want to reject this clinic registration application?', () => rejectClinicRequest(reqId));
-    }
-  }
-  if (action === 'view-request') {
-    const reqId = event.target.closest('[data-req-id]')?.dataset.reqId;
-    if (reqId) openRequestDetailsModal(reqId);
-  }
   
   if (action === 'toggle-clinic') {
     const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
     const clinic = clinics.find(item => item.id === clinicId);
     if (clinic) {
+      const nextStatus = clinic.status === 'Suspended' ? 'restore' : 'suspend';
+      if (nextStatus === 'suspend' && !confirm(`Suspend ${clinic.name}'s membership? Confirm to continue.`)) return;
       clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended';
       clinic.updated = 'Just now';
       saveClinics();
+      logActivity(`${clinic.status === 'Active' ? 'Restored' : 'Suspended'} clinic membership`, 'Clinic', clinic.id);
       closeDetails();
       showToast(`Clinic "${clinic.name}" ${clinic.status === 'Active' ? 'restored' : 'suspended'}.`);
       if (location.hash === '#services') renderServices();
@@ -2398,8 +2446,11 @@ document.addEventListener('click', event => {
     const name = event.target.closest('[data-doctor]')?.dataset.doctor;
     const doctor = clinicDoctors.find(item => item.name === name);
     if (doctor) {
+      const nextStatus = doctor.status === 'Suspended' ? 'restore' : 'suspend';
+      if (nextStatus === 'suspend' && !confirm(`Suspend ${doctor.name}'s account? Confirm to continue.`)) return;
       doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended';
       saveDoctors();
+      logActivity(`${doctor.status === 'Active' ? 'Restored' : 'Suspended'} doctor account`, 'Doctor', doctor.name);
       const clinicId2 = event.target.closest('[data-clinic]')?.dataset.clinic;
       showToast(`Doctor account ${doctor.status === 'Active' ? 'restored' : 'suspended'}.`);
       // If inside clinic details modal, refresh it
@@ -2410,6 +2461,35 @@ document.addEventListener('click', event => {
         closeDetails();
         renderClinics();
       }
+
+    }
+  }
+
+  if (action === 'clear-logs') {
+    if (!confirm('Clear all administrator activity logs? This action cannot be undone.')) return;
+    activityLogs = [];
+    saveActivityLogs();
+    renderLogs();
+    showToast('Activity logs cleared.');
+  }
+
+  if (action === 'switch-clinic-tab') {
+    renderClinics(event.target.closest('[data-tab]')?.dataset.tab || 'active');
+  }
+  if (action === 'view-requests-tab') {
+    renderClinics('requests');
+  }
+  if (action === 'view-request') {
+    openRequestDetailsModal(event.target.closest('[data-req-id]')?.dataset.reqId);
+  }
+  if (action === 'approve-request') {
+    if (confirm('Approve this clinic application and add it to the active clinic network?')) {
+      approveClinicRequest(event.target.closest('[data-req-id]')?.dataset.reqId);
+    }
+  }
+  if (action === 'reject-request') {
+    if (confirm('Reject this clinic application?')) {
+      rejectClinicRequest(event.target.closest('[data-req-id]')?.dataset.reqId);
     }
   }
 
@@ -2519,6 +2599,8 @@ document.addEventListener('keydown', event => {
   if (event.key === 'F2') { event.preventDefault(); location.hash = 'clinics'; navigate('clinics'); }
   if (event.key === 'F3') { event.preventDefault(); location.hash = 'analysis-clinic'; navigate('analysis-clinic'); }
   if (event.key === 'F4') { event.preventDefault(); location.hash = 'services'; navigate('services'); }
+  if (event.key === 'F5') { event.preventDefault(); location.hash = 'logs'; navigate('logs'); }
+  if (event.key === 'F6') { event.preventDefault(); location.hash = 'admins'; navigate('admins'); }
   if (event.key === 'Escape') { closeModal(); closeDetails(); closeAccountMenu(); }
 });
 
