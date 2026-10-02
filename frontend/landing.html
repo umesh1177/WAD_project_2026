@@ -48,7 +48,10 @@
           <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
           <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
         </ul>
-        <div class="nav-actions">
+        <div class="nav-actions d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#clinicRegisterModal">
+            <i class="ri-hospital-line"></i> Add Clinic
+          </button>
           <a href="pages/login.html" class="btn btn-primary-custom">
             <i class="ri-login-box-line"></i> Sign In
           </a>
@@ -83,11 +86,14 @@
             <span class="h-pill"><i class="ri-shield-check-line"></i> Secure & Private</span>
           </div>
 
-          <div class="hero-cta-group mt-4">
-            <a href="pages/login.html" class="btn btn-primary-custom btn-lg">
+          <div class="hero-cta-group mt-4 d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary-custom btn-lg" data-bs-toggle="modal" data-bs-target="#clinicRegisterModal">
+              <i class="ri-hospital-line"></i> Add / Register Clinic
+            </button>
+            <a href="pages/login.html" class="btn btn-outline-custom btn-lg">
               Sign In to App <i class="ri-arrow-right-line"></i>
             </a>
-            <a href="#modules" class="btn btn-outline-custom btn-lg">
+            <a href="#modules" class="btn btn-link text-decoration-none d-flex align-items-center gap-1 text-muted ms-2">
               <i class="ri-play-circle-line"></i> Explore Modules
             </a>
           </div>
@@ -1045,7 +1051,310 @@
         navbar.style.boxShadow = 'none';
       }
     });
+
+    // ==========================================
+    // CLINIC REGISTRATION WORKFLOW (LANDING TO ADMIN)
+    // ==========================================
+    const landingDoctorEntries = document.getElementById('landingDoctorEntries');
+    const btnAddLandingDoctor = document.getElementById('btnAddLandingDoctor');
+    const landingClinicForm = document.getElementById('landingClinicForm');
+
+    function createDoctorEntry(index) {
+      return `
+        <div class="doctor-entry-box p-3 mb-2 rounded border" id="landingDocRow_${index}" style="background: rgba(9,92,84,0.02); border-color: #e2e8f0;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-light text-dark border"><i class="ri-user-follow-line text-success"></i> Doctor ${index}</span>
+            ${index > 1 ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none btn-remove-doc" onclick="removeLandingDoctor(${index})"><i class="ri-delete-bin-line"></i> Remove</button>` : ''}
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Doctor Full Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm doc-name" required placeholder="Dr. Full Name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Specialization <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm doc-specialty" required placeholder="e.g. General Medicine, Cardiology">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Medical Reg. Number <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm doc-reg" required placeholder="e.g. MCI-55210">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Council Certificate Proof <span class="text-danger">*</span></label>
+              <input type="file" class="form-control form-control-sm doc-cert" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    let doctorCount = 1;
+    if (landingDoctorEntries) {
+      landingDoctorEntries.innerHTML = createDoctorEntry(1);
+    }
+
+    if (btnAddLandingDoctor) {
+      btnAddLandingDoctor.addEventListener('click', () => {
+        doctorCount++;
+        landingDoctorEntries.insertAdjacentHTML('beforeend', createDoctorEntry(doctorCount));
+      });
+    }
+
+    window.removeLandingDoctor = function(index) {
+      const row = document.getElementById(`landingDocRow_${index}`);
+      if (row) row.remove();
+    };
+
+    if (landingClinicForm) {
+      landingClinicForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('btnSubmitLandingClinic');
+        const origText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting Request...';
+
+        const form = e.target;
+        const doctorRows = landingDoctorEntries.querySelectorAll('.doctor-entry-box');
+        const doctors = [];
+        doctorRows.forEach(row => {
+          const name = row.querySelector('.doc-name')?.value.trim();
+          const specialty = row.querySelector('.doc-specialty')?.value.trim();
+          const registration = row.querySelector('.doc-reg')?.value.trim();
+          if (name) {
+            doctors.push({ name, specialty, registration });
+          }
+        });
+
+        const reqId = `REQ-${Date.now().toString().slice(-4)}`;
+        const clinicData = {
+          id: reqId,
+          clinicId: `CLN-${String(Date.now()).slice(-3)}`,
+          name: form.name.value.trim(),
+          registrationNumber: form.registration.value.trim(),
+          phone: form.phone.value.trim(),
+          email: form.email.value.trim(),
+          city: form.city.value.trim(),
+          address: form.address.value.trim(),
+          operatingDays: form.days.value.trim(),
+          workingHours: form.hours.value.trim(),
+          specialties: form.specialties.value.trim(),
+          facilities: form.facilities.value.trim(),
+          applicantName: form.applicantName.value.trim(),
+          applicantRole: form.applicantRole.value.trim(),
+          doctors: doctors,
+          doctorsCount: doctors.length,
+          status: 'Pending',
+          submittedAt: new Date().toISOString(),
+          formattedDate: new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
+          submittedFrom: 'Landing Page'
+        };
+
+        // 1. Save locally to localStorage (shared with Admin Portal)
+        try {
+          const stored = JSON.parse(localStorage.getItem('dhyey-clinic-requests') || '[]');
+          stored.unshift(clinicData);
+          localStorage.setItem('dhyey-clinic-requests', JSON.stringify(stored));
+        } catch (storageErr) {
+          console.error('LocalStorage write error:', storageErr);
+        }
+
+        // 2. Post to Backend API if server is online
+        try {
+          await fetch('/api/clinics/register-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(clinicData)
+          });
+        } catch (apiErr) {
+          console.warn('Backend API request skipped (using offline/local storage):', apiErr);
+        }
+
+        // 3. Reset form and switch modals
+        form.reset();
+        doctorCount = 1;
+        landingDoctorEntries.innerHTML = createDoctorEntry(1);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origText;
+
+        const regModalEl = document.getElementById('clinicRegisterModal');
+        const regModalInstance = bootstrap.Modal.getInstance(regModalEl) || new bootstrap.Modal(regModalEl);
+        regModalInstance.hide();
+
+        document.getElementById('successAppId').textContent = reqId;
+        document.getElementById('successClinicName').textContent = clinicData.name;
+        document.getElementById('successCity').textContent = clinicData.city;
+
+        const successModalEl = document.getElementById('clinicRegisterSuccessModal');
+        const successModalInstance = new bootstrap.Modal(successModalEl);
+        successModalInstance.show();
+      });
+    }
   </script>
+
+  <!-- ============================
+       CLINIC REGISTRATION MODAL
+       ============================ -->
+  <div class="modal fade" id="clinicRegisterModal" tabindex="-1" aria-labelledby="clinicRegisterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 18px;">
+        <div class="modal-header border-bottom p-4" style="background: linear-gradient(135deg, #095c54 0%, #0d6e65 100%); color: #fff;">
+          <div>
+            <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-1" id="clinicRegisterModalLabel">
+              <i class="ri-hospital-line" style="font-size: 22px;"></i> Add / Register New Clinic Branch
+            </h5>
+            <p class="small mb-0 opacity-75">Submit credentials for admin verification and network onboarding.</p>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        
+        <form id="landingClinicForm">
+          <div class="modal-body p-4">
+            
+            <!-- Alert Badge -->
+            <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-3" style="background: #e6f4f1; border: 1px solid #b8e0d7; color: #095c54;">
+              <i class="ri-information-line fs-4 flex-shrink-0"></i>
+              <div class="small">
+                <strong>Administrator Approval Required:</strong> Your submitted clinic branch and doctors will be forwarded directly to the system administrator dashboard for review and activation.
+              </div>
+            </div>
+
+            <!-- Section 1: Clinic Identity & Contact -->
+            <div class="mb-4">
+              <h6 class="fw-bold text-uppercase mb-3" style="color: #095c54; letter-spacing: 0.5px; font-size: 12.5px;">
+                <i class="ri-building-line me-1"></i> Clinic Identity &amp; Physical Address
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Legal Clinic Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="name" required placeholder="e.g. LifeCare Wellness Hospital">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Clinic Reg. / License Number <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="registration" required placeholder="e.g. REG-GJ-2026-0941">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Official Phone Number <span class="text-danger">*</span></label>
+                  <input type="tel" class="form-control" name="phone" required placeholder="+91 98765 43210">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Official Email Address <span class="text-danger">*</span></label>
+                  <input type="email" class="form-control" name="email" required placeholder="contact@lifecareclinic.com">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">City / District <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="city" required placeholder="e.g. Ahmedabad, Gandhinagar">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Applicant Name &amp; Role <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="applicantName" required placeholder="Dr. R. K. Patel (Medical Director)">
+                  <input type="hidden" name="applicantRole" value="Medical Director / Owner">
+                </div>
+                <div class="col-12">
+                  <label class="form-label small fw-semibold">Complete Clinic Address <span class="text-danger">*</span></label>
+                  <textarea class="form-control" name="address" rows="2" required placeholder="Premise, Road, Area, City, State and PIN Code"></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Operating Days <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="days" required value="Monday - Saturday" placeholder="e.g. Monday - Saturday">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Working Hours <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="hours" required value="09:00 - 20:00" placeholder="e.g. 09:00 - 20:00">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Services & Facilities -->
+            <div class="mb-4 pt-3 border-top">
+              <h6 class="fw-bold text-uppercase mb-3" style="color: #095c54; letter-spacing: 0.5px; font-size: 12.5px;">
+                <i class="ri-stethoscope-line me-1"></i> Services, Facilities &amp; Accreditation
+              </h6>
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small fw-semibold">Specialties Provided <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="specialties" required placeholder="e.g. General Medicine, Pediatrics, Cardiology, Dermatology">
+                  <div class="form-text small">Separate multiple clinical specialties with commas.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Available Facilities</label>
+                  <input type="text" class="form-control" name="facilities" placeholder="e.g. Pharmacy, Pathology Lab, Minor OT, ECG">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Clinic Certificate / License <span class="text-danger">*</span></label>
+                  <input type="file" class="form-control" name="clinicCertificate" accept=".pdf,.jpg,.jpeg,.png">
+                  <div class="form-text small">Upload registration document (PDF/JPG/PNG).</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Registered Doctors -->
+            <div class="pt-3 border-top">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-uppercase mb-0" style="color: #095c54; letter-spacing: 0.5px; font-size: 12.5px;">
+                  <i class="ri-user-star-line me-1"></i> Doctors &amp; Credentials
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-success" id="btnAddLandingDoctor">
+                  <i class="ri-add-circle-line"></i> Add Another Doctor
+                </button>
+              </div>
+              <div id="landingDoctorEntries">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+          </div>
+          
+          <div class="modal-footer border-top p-3 bg-light">
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary-custom px-4" id="btnSubmitLandingClinic">
+              <i class="ri-send-plane-fill me-1"></i> Submit for Admin Approval
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================
+       SUCCESS CONFIRMATION MODAL
+       ============================ -->
+  <div class="modal fade" id="clinicRegisterSuccessModal" tabindex="-1" aria-labelledby="clinicRegisterSuccessLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 text-center p-4" style="border-radius: 20px;">
+        <div class="modal-body">
+          <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 72px; height: 72px; border-radius: 50%; background: #ecfdf5; color: #059669; font-size: 38px;">
+            <i class="ri-checkbox-circle-fill"></i>
+          </div>
+          <h4 class="fw-bold mb-2 text-dark">Application Sent to Administrator!</h4>
+          <p class="text-muted small mb-3">
+            Your clinic registration request for <strong id="successClinicName" class="text-dark">Your Clinic</strong> (<span id="successCity">City</span>) has been submitted successfully.
+          </p>
+          <div class="p-3 rounded-3 mb-4 text-start" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+            <div class="d-flex justify-content-between mb-1 small">
+              <span class="text-muted">Application ID:</span>
+              <strong id="successAppId" class="text-primary font-mono">REQ-XXXX</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1 small">
+              <span class="text-muted">Status:</span>
+              <span class="badge bg-warning text-dark"><i class="ri-time-line"></i> Pending Admin Approval</span>
+            </div>
+            <div class="d-flex justify-content-between small">
+              <span class="text-muted">Review Time:</span>
+              <span>Typically reviewed within 24 hours</span>
+            </div>
+          </div>
+          <div class="d-grid gap-2">
+            <a href="pages/admin/dashboard.html#clinics-requests" class="btn btn-outline-success">
+              <i class="ri-shield-user-line"></i> Open Admin Portal to Review (Demo)
+            </a>
+            <button type="button" class="btn btn-primary-custom" data-bs-dismiss="modal">
+              Done &amp; Return to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
