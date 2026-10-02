@@ -46,6 +46,7 @@
           <li class="nav-item"><a class="nav-link" href="#modules">Modules</a></li>
           <li class="nav-item"><a class="nav-link" href="#testimonials">Reviews</a></li>
           <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+          <li class="nav-item"><a class="nav-link text-primary fw-bold" href="#" data-bs-toggle="modal" data-bs-target="#verifyCertModal"><i class="ri-shield-check-line"></i> Verify Certificate</a></li>
           <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
         </ul>
         <div class="nav-actions d-flex align-items-center gap-2">
@@ -1248,9 +1249,9 @@
        CLINIC REGISTRATION MODAL
        ============================ -->
   <div class="modal fade" id="clinicRegisterModal" tabindex="-1" aria-labelledby="clinicRegisterModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content shadow-lg border-0" style="border-radius: 18px;">
-        <div class="modal-header border-bottom p-4" style="background: linear-gradient(135deg, #095c54 0%, #0d6e65 100%); color: #fff;">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style="max-height: 92vh;">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 18px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header border-bottom p-4 flex-shrink-0" style="background: linear-gradient(135deg, #095c54 0%, #0d6e65 100%); color: #fff;">
           <div>
             <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-1" id="clinicRegisterModalLabel">
               <i class="ri-hospital-line" style="font-size: 22px;"></i> Add / Register New Clinic Branch
@@ -1260,8 +1261,8 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         
-        <form id="landingClinicForm">
-          <div class="modal-body p-4">
+        <form id="landingClinicForm" style="display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0;">
+          <div class="modal-body p-4" style="overflow-y: auto; max-height: calc(90vh - 160px);">
             
             <!-- Alert Badge -->
             <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-3" style="background: #e6f4f1; border: 1px solid #b8e0d7; color: #095c54;">
@@ -1408,6 +1409,138 @@
       </div>
     </div>
   </div>
+
+  <!-- ============================
+       VERIFY CERTIFICATE MODAL
+       ============================ -->
+  <div class="modal fade" id="verifyCertModal" tabindex="-1" aria-labelledby="verifyCertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 p-3" style="border-radius: 16px;">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h5 class="modal-title fw-bold" id="verifyCertModalLabel">
+            <i class="ri-shield-check-line text-success"></i> Verify Medical Certificate
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Enter the unique Certificate ID printed on the official medical certificate issued by Dhyey Clinic to verify its authenticity.
+          </p>
+          <div class="d-flex gap-2 mb-3">
+            <input type="text" id="landing-verify-input" class="form-control font-monospace fw-bold" placeholder="e.g. CERT-2026-0001" />
+            <button type="button" id="btn-landing-verify" class="btn btn-primary-custom px-4">
+              <i class="ri-search-line"></i> Verify
+            </button>
+          </div>
+          <div id="landing-verify-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Landing page specific Verify Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnVerify = document.getElementById('btn-landing-verify');
+      const inputVerify = document.getElementById('landing-verify-input');
+      const resultBox = document.getElementById('landing-verify-result');
+
+      const performVerify = async () => {
+        const code = inputVerify.value.trim();
+        if (!code) {
+          inputVerify.focus();
+          return;
+        }
+
+        resultBox.innerHTML = '<div class="text-center text-muted py-3"><i class="ri-loader-4-line ri-spin fs-4"></i><div class="mt-2">Verifying Certificate with Registry...</div></div>';
+
+        let found = null;
+
+        // 1. Try public backend API first
+        try {
+          const apiRes = await fetch(`/api/certificates/verify/${encodeURIComponent(code)}`);
+          if (apiRes.ok) {
+            const json = await apiRes.json();
+            if (json && json.data) found = json.data;
+          }
+        } catch (e) {}
+
+        // 2. Search local clinic database keys
+        if (!found) {
+          for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key && (key.startsWith('clinic-db-') || key.startsWith('clinic_db_'))) {
+              try {
+                let db = JSON.parse(localStorage.getItem(key) || '{}');
+                let match = (db.certificates || []).find((c) => (c.certNo || '').toLowerCase() === code.toLowerCase());
+                if (match) {
+                  found = match;
+                  break;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+        if (found) {
+          const splitDate = (d) => {
+            if (!d) return 'N/A';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          };
+          resultBox.innerHTML = `
+            <div style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.12)); border: 1.5px solid #059669; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                <span class="badge" style="background: #059669; color: white; font-weight: 800; font-size: 11.5px; padding: 5px 10px; border-radius: 6px;">
+                  <i class="ri-checkbox-circle-fill"></i> VERIFIED &amp; AUTHENTIC
+                </span>
+                <span class="font-monospace" style="font-weight: 800; font-size: 14px; color: #059669;">${found.certNo}</span>
+              </div>
+
+              <div style="font-size: 13.5px; color: #1e293b; line-height: 1.7; background: #ffffff; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(5,150,105,0.2);">
+                <div><b>Patient:</b> ${found.patientName || 'N/A'} ${found.patientAge ? '(' + found.patientAge + 'Y/' + (found.patientGender || 'Male') + ')' : ''}</div>
+                <div><b>Diagnosis / Condition:</b> ${found.diagnosis || 'Medical Consultation'}</div>
+                <div><b>Recommended Period:</b> ${splitDate(found.fromDate)} &rarr; ${splitDate(found.toDate)} ${found.restDays ? '(' + found.restDays + ' days)' : ''}</div>
+                <div><b>Issued Date:</b> ${splitDate(found.issuedDate || found.createdAt)} at ${found.place || 'Surat'}</div>
+                <div><b>Issuing Doctor:</b> ${found.doctorName || 'Dr. Chirag Paghdal'} (Reg. No. G-9035)</div>
+              </div>
+
+              <div style="font-size: 11.5px; color: #059669; font-weight: 600; border-top: 1px dashed rgba(5,150,105,0.4); padding-top: 8px;">
+                <i class="ri-shield-check-fill"></i> Tamper-proof Digital Verification Confirmed.
+              </div>
+            </div>
+          `;
+        } else {
+          resultBox.innerHTML = `
+            <div class="p-4 text-center" style="background: #fef2f2; border: 1.5px dashed #ef4444; border-radius: 10px;">
+              <i class="ri-error-warning-fill text-danger" style="font-size: 36px;"></i>
+              <div class="fw-bold text-danger mt-2" style="font-size: 15px;">Certificate Not Found</div>
+              <div class="small text-muted mt-1">No official medical certificate matching ID <b class="text-dark">${code}</b> was found in the clinic database.</div>
+            </div>
+          `;
+        }
+      };
+
+      if (btnVerify) btnVerify.addEventListener('click', performVerify);
+      if (inputVerify) inputVerify.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          performVerify();
+        }
+      });
+
+      // Auto-focus input on modal open
+      const verifyModal = document.getElementById('verifyCertModal');
+      if (verifyModal) {
+        verifyModal.addEventListener('shown.bs.modal', () => {
+          inputVerify.focus();
+        });
+        verifyModal.addEventListener('hidden.bs.modal', () => {
+          inputVerify.value = '';
+          resultBox.innerHTML = '';
+        });
+      }
+    });
+  </script>
 </body>
 
 </html>

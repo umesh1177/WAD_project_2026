@@ -261,35 +261,36 @@ function renderView() {
   if (currentView === 'dashboard') {
     renderDashboard(container);
   } else if (currentView === 'family') {
-    // EXACT same form as doctor dashboard — only callback differs
+    // Reuses exact same form as doctor dashboard
     renderFamilyRegistration(
       container,
       (famId, patId) => {
-        // "Open case" → for receptionist = push to queue
-        openQueueModal(famId, patId);
+        // Self (Head) selected -> directly add head to patient queue without popup
+        directPushToQueue(famId, patId, 'General OPD Consultation');
       },
       (famId, patId) => {
-        // "Added family, go add member" → navigate to member view
+        // Family Member selected -> redirect directly to Add Member tab with new family preselected
+        showToast('Family Head registered. Now add member details.');
         navigateTo('member', { familyId: famId, patientId: patId, isRedirectFromHeadReg: true });
       }
     );
-    // Patch submit button text after render
-    patchSubmitButton(container, 'family');
+    // Setup dynamic submit button text for receptionist
+    setupReceptionistFamilyForm(container);
   } else if (currentView === 'member') {
-    // EXACT same form as doctor dashboard — only callback differs
+    // Reuses exact same form as doctor dashboard
     renderPatientRegistration(
       container,
       currentSelection.familyId || null,
       (famId, patId) => {
-        // "Open case" → for receptionist = push to queue
-        openQueueModal(famId, patId);
+        // Member registered -> directly add member to patient queue without popup
+        directPushToQueue(famId, patId, 'General OPD Consultation');
       },
       currentSelection.isRedirectFromHeadReg || false,
       () => { navigateTo('family'); },
       null
     );
-    // Patch submit button text after render
-    patchSubmitButton(container, 'member');
+    // Setup dynamic submit button text for receptionist
+    setupReceptionistMemberForm(container);
   } else if (currentView === 'queue') {
     renderQueueView(container);
   } else if (currentView === 'search') {
@@ -298,23 +299,103 @@ function renderView() {
 }
 
 /**
- * After the doctor's form renders, change the primary submit button text
- * from "Save" / "Register" to "Register & Add to Patient Queue"
+ * Setup submit button text and change listener for Family Head Registration form
  */
-function patchSubmitButton(container, mode) {
-  // Give a tiny tick for the form to be in DOM
+function setupReceptionistFamilyForm(container) {
   setTimeout(() => {
-    // Find primary submit button (cms-btn-primary type=submit)
-    const primaryBtn = container.querySelector('button[type="submit"].cms-btn.cms-btn-primary')
-      || container.querySelector('button[type="submit"]');
-    if (primaryBtn) {
-      if (mode === 'family') {
-        primaryBtn.innerHTML = '<i class="fa-solid fa-users-line"></i> Register & Add to Patient Queue';
+    const regBySelect = container.querySelector('#head-registered-by-input');
+    const btnText = container.querySelector('#btn-submit-text');
+    const btnIcon = container.querySelector('#btn-submit-icon');
+
+    function updateRecButton() {
+      const editCancel = container.querySelector('#btn-cancel-edit-family');
+      const isEditing = editCancel && editCancel.style.display !== 'none';
+      if (isEditing) {
+        if (btnText) btnText.textContent = 'Update Family Head';
+        if (btnIcon) btnIcon.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+        return;
+      }
+      const val = regBySelect?.value;
+      if (val === 'Family Member') {
+        if (btnText) btnText.textContent = 'Register Head & Add Member';
+        if (btnIcon) btnIcon.innerHTML = '<i class="fa-solid fa-user-plus"></i>';
       } else {
-        primaryBtn.innerHTML = '<i class="fa-solid fa-users-line"></i> Save Member & Add to Patient Queue';
+        if (btnText) btnText.textContent = 'Register & Add to Patient Queue';
+        if (btnIcon) btnIcon.innerHTML = '<i class="fa-solid fa-users-line"></i>';
       }
     }
-  }, 50);
+
+    if (regBySelect) {
+      regBySelect.addEventListener('change', updateRecButton);
+    }
+    updateRecButton();
+  }, 40);
+}
+
+/**
+ * Setup submit button text for Member Registration form
+ */
+function setupReceptionistMemberForm(container) {
+  setTimeout(() => {
+    const submitBtn = container.querySelector('#btn-submit-member') || container.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      const spans = submitBtn.querySelectorAll('span');
+      if (spans.length >= 2) {
+        spans[0].innerHTML = '<i class="fa-solid fa-users-line"></i>';
+        spans[1].textContent = 'Submit & Add to Patient Queue';
+      } else {
+        submitBtn.innerHTML = '<i class="fa-solid fa-users-line"></i> Submit & Add to Patient Queue <span class="cms-kbd">Enter</span>';
+      }
+    }
+  }, 40);
+}
+
+// ---- Direct Queue Push (No popup required) ----
+async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation') {
+  db = getLocalDB(clinicId);
+  const family = db.families?.[familyId] || Object.values(db.families || {}).find(f => f.famId === familyId || f.id === familyId);
+  const patient = family?.patients
+    ? (family.patients[patientId] || Object.values(family.patients).find(p => p.patId === patientId || p.id === patientId))
+    : null;
+
+  const patName = patient?.name || family?.headName || 'Patient';
+  const age = patient?.age || '';
+  const gender = patient?.gender || 'Male';
+  const phone = patient?.phone || family?.phone || '';
+  const area = patient?.area || family?.area || '';
+
+  const token = pushToQueue({
+    patientId: patient?.patId || patient?.id || patientId,
+    patientName: patName,
+    familyId: family?.famId || family?.id || familyId,
+    familyHead: family?.headName || patName,
+    age,
+    gender,
+    phone,
+    area,
+    complaint,
+    vitals: {}
+  });
+
+  // Sync to backend API dynamically
+  try {
+    await apiFetch('/queue/push', {
+      method: 'POST',
+      body: {
+        patientId: patient?.patId || patient?.id || patientId,
+        patientName: patName,
+        familyId: family?.famId || family?.id || familyId,
+        complaint,
+        token,
+        vitals: {}
+      }
+    });
+  } catch (err) {
+    console.warn('Backend queue push sync note:', err);
+  }
+
+  showToast(`✅ ${patName} added to Patient Queue (Token: ${token})`);
+  navigateTo('queue');
 }
 
 // ---- Dashboard View ----
@@ -349,21 +430,13 @@ function renderDashboard(container) {
         </div>
       </div>
 
-      <!-- KPI Cards -->
+      <!-- KPI Summary Cards -->
       <div class="cms-stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
         ${kpiCard('fa-people-roof', families.length, 'Registered Families', 'var(--primary)')}
         ${kpiCard('fa-users', totalPatients, 'Total Patients', 'var(--info)')}
         ${kpiCard('fa-clock', waiting.length, 'Waiting in Queue', 'var(--danger)')}
         ${kpiCard('fa-stethoscope', inConsult.length, 'In Consultation', 'var(--accent)')}
         ${kpiCard('fa-circle-check', completed.length, 'Completed Today', 'var(--success)')}
-      </div>
-
-      <!-- Quick Action Buttons -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
-        ${quickBtn('family', 'fa-people-roof', 'Register Family Head', 'Create new family file & auto-generate ID', 'F1', 'var(--primary)', 'var(--primary-dark)')}
-        ${quickBtn('member', 'fa-user-plus', 'Add Family Member', 'Add member to an existing family head', 'F2', '#0288d1', '#0277bd')}
-        ${quickBtn('search', 'fa-magnifying-glass', 'Find Patient & Queue', 'Search patient and push to consultation queue', 'F5', '#7c3aed', '#6d28d9')}
-        ${quickBtn('queue', 'fa-list-check', 'Manage Patient Queue', 'View and manage today\'s OPD queue', 'F3', 'var(--accent)', 'var(--accent-dark)')}
       </div>
 
       <!-- Live Queue Preview -->
@@ -379,11 +452,6 @@ function renderDashboard(container) {
 
     </div>
   `;
-
-  // Wire quick action buttons
-  container.querySelectorAll('[data-nav-view]').forEach(btn => {
-    btn.addEventListener('click', () => navigateTo(btn.dataset.navView));
-  });
 }
 
 function kpiCard(icon, val, label, color) {
@@ -398,56 +466,62 @@ function kpiCard(icon, val, label, color) {
   `;
 }
 
-function quickBtn(view, icon, title, sub, key, bg, bgHover) {
-  return `
-    <button type="button" data-nav-view="${view}"
-      style="background:linear-gradient(135deg,${bg},${bgHover});color:#fff;border:none;border-radius:var(--radius-lg);padding:18px;text-align:left;cursor:pointer;box-shadow:var(--shadow-md);display:flex;justify-content:space-between;align-items:center;transition:transform .15s,box-shadow .15s;"
-      onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-lg)'"
-      onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-md)'">
-      <div>
-        <div style="font-size:15px;font-weight:800;"><i class="fa-solid ${icon}"></i> ${title}</div>
-        <div style="font-size:11.5px;opacity:0.85;margin-top:3px;">${sub}</div>
-      </div>
-      <span style="background:rgba(255,255,255,0.2);padding:4px 8px;border-radius:5px;font-size:11px;font-weight:800;">${key}</span>
-    </button>
-  `;
-}
-
 // Global nav shortcut for inline onclick
 window.recNav = (view) => navigateTo(view);
 
 // ---- Queue View ----
+let currentQueueTab = 'pending'; // 'pending' | 'completed'
+
 function renderQueueView(container) {
   const queue = db.patientQueue || [];
+  const pendingQueue = queue.filter(q => !q.status || q.status === 'Waiting' || q.status === 'In Consultation');
+  const completedQueue = queue.filter(q => q.status === 'Completed' || q.status === 'Done');
+
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:18px;">
-      <div class="cms-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div class="cms-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <div>
           <div class="cms-card-title"><i class="fa-solid fa-users-line" style="color:var(--primary);"></i> Patient Consultation Queue</div>
-          <div style="font-size:12px;color:var(--text-muted);">Synchronized with Doctor's consultation desk in real-time</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Synchronized with Doctor's consultation desk in real-time</div>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="font-size:12.5px;padding:8px 16px;">
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <!-- Two Tabs: Pending / Completed -->
+          <div style="display:flex;background:var(--surface-alt);padding:4px;border-radius:var(--radius-md);border:1px solid var(--border);gap:4px;">
+            <button type="button" class="cms-btn cms-btn-sm queue-tab-btn ${currentQueueTab === 'pending' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="pending" style="font-size:12px;padding:6px 14px;">
+              <i class="fa-solid fa-clock"></i> Pending / Waiting (${pendingQueue.length})
+            </button>
+            <button type="button" class="cms-btn cms-btn-sm queue-tab-btn ${currentQueueTab === 'completed' ? 'cms-btn-primary' : 'cms-btn-ghost'}" data-tab="completed" style="font-size:12px;padding:6px 14px;">
+              <i class="fa-solid fa-circle-check"></i> Completed (${completedQueue.length})
+            </button>
+          </div>
+
+          <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="font-size:12px;padding:7px 14px;">
             <i class="fa-solid fa-user-plus"></i> Add Patient to Queue
           </button>
         </div>
       </div>
-      <div class="cms-card">${renderQueueTable(queue)}</div>
+
+      <div class="cms-card" style="padding:0;overflow:hidden;">
+        ${renderQueueTable(currentQueueTab === 'completed' ? completedQueue : pendingQueue, currentQueueTab)}
+      </div>
     </div>
   `;
   wireQueueActions(container);
 }
 
-function renderQueueTable(queue) {
-  if (!queue || queue.length === 0) {
+function renderQueueTable(list, activeTab) {
+  if (!list || list.length === 0) {
     return `
-      <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
-        <i class="fa-solid fa-users-slash" style="font-size:34px;display:block;margin-bottom:8px;opacity:0.4;"></i>
-        <div style="font-size:15px;font-weight:700;color:var(--text);">No patients in queue right now</div>
-        <p style="font-size:12px;margin-top:4px;">Register a family or find a patient to push them into the queue.</p>
-        <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="margin-top:12px;padding:8px 18px;font-size:12.5px;">
-          <i class="fa-solid fa-magnifying-glass"></i> Find Patient (F5)
-        </button>
+      <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
+        <i class="fa-solid ${activeTab === 'completed' ? 'fa-clipboard-check' : 'fa-users-slash'}" style="font-size:36px;display:block;margin-bottom:10px;opacity:0.4;"></i>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">${activeTab === 'completed' ? 'No completed consultations today' : 'No patients currently waiting in queue'}</div>
+        <p style="font-size:12px;margin-top:4px;">${activeTab === 'completed' ? 'When patients finish consultation, they will appear here.' : 'Register a family or find a patient to push them into the queue.'}</p>
+        ${activeTab === 'pending' ? `
+          <button type="button" onclick="recNav('search')" class="cms-btn cms-btn-primary" style="margin-top:12px;padding:8px 18px;font-size:12.5px;">
+            <i class="fa-solid fa-magnifying-glass"></i> Find Patient &amp; Queue (F5)
+          </button>
+        ` : ''}
       </div>
     `;
   }
@@ -456,42 +530,62 @@ function renderQueueTable(queue) {
   const statusBg = { 'Waiting': 'var(--danger-soft)', 'In Consultation': 'var(--success-soft)', 'Completed': 'var(--info-soft)', 'Done': 'var(--info-soft)' };
 
   return `
-    <div class="cms-table-wrapper">
-      <table class="cms-table">
+    <div class="cms-table-wrapper" style="margin:0;">
+      <table class="cms-table" style="width:100%;">
         <thead>
           <tr>
-            <th>Token</th>
-            <th>Patient</th>
-            <th>Family Head</th>
+            <th style="width:90px;">Token</th>
+            <th>Patient Details</th>
+            <th>Family Head &amp; Contact</th>
             <th>Chief Complaint</th>
             <th>Arrived</th>
             <th>Status</th>
-            <th>Actions</th>
+            <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          ${queue.map((q, i) => {
+          ${list.map((q, i) => {
             const st = q.status || 'Waiting';
             const col = statusColor[st] || 'var(--text-muted)';
             const bg = statusBg[st] || 'var(--surface-alt)';
             return `
               <tr>
-                <td><span class="cms-pill font-mono" style="background:var(--primary-soft);color:var(--primary-dark);font-weight:800;">${q.token || 'T-' + pad(i+1,2)}</span></td>
+                <td><span class="cms-pill font-mono" style="background:var(--primary-soft);color:var(--primary-dark);font-weight:800;font-size:12px;">${q.token || 'T-' + pad(i+1,2)}</span></td>
                 <td>
-                  <div style="font-weight:700;">${q.patientName || q.name}</div>
-                  <div style="font-size:11px;color:var(--text-muted);">${q.age ? q.age+'Y' : ''}${q.gender ? ' · '+q.gender : ''}</div>
-                </td>
-                <td style="font-size:12.5px;">${q.familyHead || '-'}</td>
-                <td style="font-size:12.5px;max-width:180px;">${q.complaint || 'OPD Consultation'}</td>
-                <td style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;">${q.arrivedAt || '-'}</td>
-                <td>
-                  <span class="cms-pill" style="background:${bg};color:${col};">${st}</span>
+                  <div style="font-weight:800;color:var(--text);font-size:13.5px;">${q.patientName || q.name}</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">
+                    ${q.age ? q.age+' Yrs' : 'Adult'}${q.gender ? ' · '+q.gender : ''} · <span class="font-mono">${q.patientId || 'ID-N/A'}</span>
+                  </div>
                 </td>
                 <td>
-                  <div style="display:flex;gap:6px;">
-                    ${st === 'Waiting' ? `<button type="button" class="cms-btn cms-btn-primary queue-action-btn" data-action="consult" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-stethoscope"></i> Call</button>` : ''}
-                    ${st === 'In Consultation' ? `<button type="button" class="cms-btn cms-btn-ghost queue-action-btn" data-action="complete" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-check"></i> Done</button>` : ''}
-                    <button type="button" class="cms-btn cms-btn-danger queue-action-btn" data-action="remove" data-token="${q.token}" style="font-size:11px;padding:5px 10px;"><i class="fa-solid fa-xmark"></i></button>
+                  <div style="font-size:12.5px;font-weight:600;"><i class="fa-solid fa-people-roof" style="color:var(--primary);font-size:11px;"></i> ${q.familyHead || '-'}</div>
+                  <div style="font-size:11px;color:var(--text-muted);">${q.phone ? '📞 ' + q.phone : (q.area || 'General')}</div>
+                </td>
+                <td style="font-size:12.5px;max-width:200px;">
+                  <span style="font-weight:600;color:var(--text);">${q.complaint || 'OPD Consultation'}</span>
+                </td>
+                <td style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text-muted);">${q.arrivedAt || '-'}</td>
+                <td>
+                  <span class="cms-pill" style="background:${bg};color:${col};font-weight:700;font-size:11px;">${st}</span>
+                </td>
+                <td>
+                  <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+                    <button type="button" class="cms-btn cms-btn-ghost btn-view-queue-details" data-token="${q.token}" style="font-size:11px;padding:5px 9px;border:1px solid var(--border);" title="View Full Details">
+                      <i class="fa-solid fa-eye"></i> View
+                    </button>
+                    ${st === 'Waiting' ? `
+                      <button type="button" class="cms-btn cms-btn-primary queue-action-btn" data-action="consult" data-token="${q.token}" style="font-size:11px;padding:5px 9px;" title="Call for consultation">
+                        <i class="fa-solid fa-stethoscope"></i> Call
+                      </button>
+                    ` : ''}
+                    ${st === 'In Consultation' ? `
+                      <button type="button" class="cms-btn cms-btn-ghost queue-action-btn" data-action="complete" data-token="${q.token}" style="font-size:11px;padding:5px 9px;border:1px solid var(--border);color:#059669;" title="Mark consultation completed">
+                        <i class="fa-solid fa-check"></i> Done
+                      </button>
+                    ` : ''}
+                    <button type="button" class="cms-btn cms-btn-danger queue-action-btn" data-action="remove" data-token="${q.token}" style="font-size:11px;padding:5px 8px;" title="Remove">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -504,7 +598,23 @@ function renderQueueTable(queue) {
 }
 
 function wireQueueActions(container) {
-  (container || document).querySelectorAll('.queue-action-btn').forEach(btn => {
+  // Tab Switcher
+  container.querySelectorAll('.queue-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentQueueTab = btn.dataset.tab;
+      renderQueueView(container);
+    });
+  });
+
+  // View Details Modal
+  container.querySelectorAll('.btn-view-queue-details').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openQueueDetailModal(btn.dataset.token);
+    });
+  });
+
+  // Action Buttons
+  container.querySelectorAll('.queue-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.action;
       const token = btn.dataset.token;
@@ -526,9 +636,89 @@ function wireQueueActions(container) {
         saveQueue(queue);
       }
       db = getLocalDB(clinicId);
-      renderView();
+      renderQueueView(container);
     });
   });
+}
+
+function openQueueDetailModal(token) {
+  db = getLocalDB(clinicId);
+  const queue = db.patientQueue || [];
+  const item = queue.find(q => q.token === token);
+  if (!item) {
+    showToast('Patient record not found in queue', 'error');
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'cms-overlay';
+  overlay.innerHTML = `
+    <div class="cms-modal" style="max-width:540px;width:100%;">
+      <div class="cms-modal-header" style="background:var(--primary-soft);border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="cms-pill font-mono" style="background:var(--primary);color:#fff;font-size:14px;font-weight:900;padding:4px 10px;">${item.token}</span>
+          <div>
+            <div style="font-weight:800;font-size:16px;color:var(--text);">${item.patientName || item.name}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">${item.age ? item.age + ' Yrs' : 'Adult'} &bull; ${item.gender || 'Male'} &bull; ID: ${item.patientId || '-'}</div>
+          </div>
+        </div>
+        <button type="button" id="modal-detail-close" class="cms-btn-ghost cms-btn-icon"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="cms-modal-body" style="display:flex;flex-direction:column;gap:14px;padding:20px;">
+        <!-- Status Banner -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-alt);border-radius:var(--radius-md);border:1px solid var(--border);">
+          <span style="font-size:12px;color:var(--text-muted);font-weight:600;">Queue Status</span>
+          <span class="cms-pill" style="font-weight:800;font-size:11.5px;background:${item.status === 'In Consultation' ? 'var(--success-soft)' : item.status === 'Completed' ? 'var(--info-soft)' : 'var(--danger-soft)'};color:${item.status === 'In Consultation' ? 'var(--success)' : item.status === 'Completed' ? 'var(--info)' : 'var(--danger)'};">${item.status || 'Waiting'}</span>
+        </div>
+
+        <!-- Family Information -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Family &amp; Contact</div>
+          <div style="font-size:13px;line-height:1.7;">
+            <div><i class="fa-solid fa-people-roof" style="color:var(--primary);width:18px;"></i> Family Head: <b>${item.familyHead || 'Self'}</b> ${item.familyId ? '(FAM ' + item.familyId + ')' : ''}</div>
+            <div><i class="fa-solid fa-phone" style="color:var(--primary);width:18px;"></i> Contact Phone: <b>${item.phone || 'N/A'}</b></div>
+            <div><i class="fa-solid fa-location-dot" style="color:var(--primary);width:18px;"></i> Area / Address: ${item.area || 'General Area'}</div>
+          </div>
+        </div>
+
+        <!-- Chief Complaint -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Chief Complaint / Reason for Visit</div>
+          <div style="font-size:13.5px;font-weight:600;color:var(--text);">${item.complaint || 'General OPD Consultation'}</div>
+        </div>
+
+        <!-- Pre-Consultation OPD Vitals -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">OPD Vitals Recorded</div>
+          ${item.vitals && (item.vitals.bp || item.vitals.pulse || item.vitals.temp || item.vitals.spo2 || item.vitals.weight) ? `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;">
+              ${item.vitals.bp ? `<div style="background:var(--surface-alt);padding:6px 10px;border-radius:6px;font-size:12px;"><span style="color:var(--text-muted);display:block;font-size:10px;">Blood Pressure</span><b>${item.vitals.bp}</b></div>` : ''}
+              ${item.vitals.pulse ? `<div style="background:var(--surface-alt);padding:6px 10px;border-radius:6px;font-size:12px;"><span style="color:var(--text-muted);display:block;font-size:10px;">Pulse Rate</span><b>${item.vitals.pulse}</b></div>` : ''}
+              ${item.vitals.temp ? `<div style="background:var(--surface-alt);padding:6px 10px;border-radius:6px;font-size:12px;"><span style="color:var(--text-muted);display:block;font-size:10px;">Temperature</span><b>${item.vitals.temp}</b></div>` : ''}
+              ${item.vitals.spo2 ? `<div style="background:var(--surface-alt);padding:6px 10px;border-radius:6px;font-size:12px;"><span style="color:var(--text-muted);display:block;font-size:10px;">SpO2</span><b>${item.vitals.spo2}</b></div>` : ''}
+              ${item.vitals.weight ? `<div style="background:var(--surface-alt);padding:6px 10px;border-radius:6px;font-size:12px;"><span style="color:var(--text-muted);display:block;font-size:10px;">Weight</span><b>${item.vitals.weight}</b></div>` : ''}
+            </div>
+          ` : `
+            <div style="font-size:12px;color:var(--text-muted);font-style:italic;">No pre-consultation vitals recorded.</div>
+          `}
+        </div>
+
+        <div style="font-size:11.5px;color:var(--text-muted);display:flex;justify-content:space-between;">
+          <span>Arrived: <b>${item.arrivedAt || 'N/A'}</b></span>
+          <span>Date: <b>${item.date || todayISO()}</b></span>
+        </div>
+      </div>
+      <div class="cms-modal-footer" style="background:var(--surface-alt);border-top:1px solid var(--border);padding:10px 16px;">
+        <button type="button" id="modal-detail-done" class="cms-btn cms-btn-primary" style="margin-left:auto;padding:7px 18px;">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('modal-root').appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-detail-close').addEventListener('click', close);
+  overlay.querySelector('#modal-detail-done').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
 }
 
 function saveQueue(queueArr) {
@@ -566,7 +756,7 @@ function pushToQueue(data) {
   return token;
 }
 
-// ---- Search & Push View ----
+// ---- Search & Direct Push View ----
 function renderSearchView(container) {
   const allPats = [];
   Object.values(db.families || {}).forEach(f => {
@@ -656,109 +846,8 @@ function buildSearchCards(list, q) {
 function wireSearchPushBtns(container) {
   (container || document).querySelectorAll('.btn-push-queue').forEach(btn => {
     btn.addEventListener('click', () => {
-      openQueueModal(btn.dataset.famid, btn.dataset.patid);
+      directPushToQueue(btn.dataset.famid, btn.dataset.patid);
     });
-  });
-}
-
-// ---- Queue Push Modal ----
-function openQueueModal(familyId, patientId) {
-  db = getLocalDB(clinicId);
-  const family = db.families[familyId] || Object.values(db.families||{}).find(f => f.famId===familyId || f.id===familyId);
-  const patient = family?.patients
-    ? (family.patients[patientId] || Object.values(family.patients).find(p => p.patId===patientId || p.id===patientId))
-    : null;
-
-  if (!family || !patient) {
-    showToast('Patient data not found', 'error');
-    return;
-  }
-
-  const today = todayISO();
-  const q = db.patientQueue || [];
-  const todayQ = q.filter(x => (x.date||today) === today);
-  const previewToken = 'T-' + pad(todayQ.length + 1, 2);
-
-  const overlay = document.createElement('div');
-  overlay.className = 'cms-overlay';
-  overlay.innerHTML = `
-    <div class="cms-modal">
-      <div class="cms-modal-header">
-        <div>
-          <div style="font-weight:800;font-size:16px;"><i class="fa-solid fa-users-line" style="color:var(--primary);"></i> Add to Patient Queue</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Token <b>${previewToken}</b> will be assigned</div>
-        </div>
-        <button type="button" id="modal-close-btn" class="cms-btn-ghost cms-btn-icon"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="cms-modal-body" style="display:flex;flex-direction:column;gap:14px;">
-        <div style="background:var(--primary-soft);border:1.5px solid var(--primary);border-radius:var(--radius-md);padding:12px 16px;">
-          <div style="font-weight:800;font-size:14px;color:var(--text);">${patient.name}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
-            ${patient.age ? patient.age+' yrs' : 'Adult'} &bull; ${patient.gender||'Male'} &bull; 
-            Family Head: <b>${family.headName}</b> &bull; 
-            Ph: ${patient.phone||family.phone}
-          </div>
-        </div>
-        <form id="queue-push-form" style="display:flex;flex-direction:column;gap:12px;">
-          <div class="cms-form-group">
-            <label class="cms-label">Chief Complaint / Reason for Visit *</label>
-            <input type="text" id="q-complaint" class="cms-input" required placeholder="e.g. Fever, Headache, Routine checkup" autofocus />
-          </div>
-          <div class="cms-form-group">
-            <label class="cms-label">OPD Vitals (Optional)</label>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-              <input type="text" id="q-bp" class="cms-input cms-input-sm" placeholder="BP (120/80)" />
-              <input type="text" id="q-pulse" class="cms-input cms-input-sm" placeholder="Pulse (72 bpm)" />
-              <input type="text" id="q-temp" class="cms-input cms-input-sm" placeholder="Temp (98.6F)" />
-              <input type="text" id="q-spo2" class="cms-input cms-input-sm" placeholder="SpO2 (99%)" />
-              <input type="text" id="q-weight" class="cms-input cms-input-sm" placeholder="Weight (68kg)" />
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="cms-modal-footer">
-        <button type="button" id="modal-cancel-btn" class="cms-btn cms-btn-ghost">Cancel</button>
-        <button type="button" id="modal-submit-btn" class="cms-btn cms-btn-primary">
-          <i class="fa-solid fa-users-line"></i> Assign ${previewToken} &amp; Add to Queue
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('modal-root').appendChild(overlay);
-
-  const close = () => overlay.remove();
-  overlay.querySelector('#modal-close-btn').addEventListener('click', close);
-  overlay.querySelector('#modal-cancel-btn').addEventListener('click', close);
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-
-  overlay.querySelector('#modal-submit-btn').addEventListener('click', () => {
-    const complaint = overlay.querySelector('#q-complaint')?.value?.trim();
-    if (!complaint) {
-      overlay.querySelector('#q-complaint').focus();
-      showToast('Please enter the chief complaint', 'error');
-      return;
-    }
-    const vitals = {};
-    ['bp','pulse','temp','spo2','weight'].forEach(k => {
-      const v = overlay.querySelector('#q-'+k)?.value?.trim();
-      if (v) vitals[k] = v;
-    });
-    const token = pushToQueue({
-      patientId: patient.patId||patient.id,
-      patientName: patient.name,
-      familyId: family.famId||family.id,
-      familyHead: family.headName,
-      age: patient.age,
-      gender: patient.gender,
-      phone: patient.phone||family.phone,
-      area: family.area,
-      complaint,
-      vitals
-    });
-    showToast(`${patient.name} added to queue — Token ${token}`);
-    close();
-    navigateTo('queue');
   });
 }
 

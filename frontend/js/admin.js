@@ -1,3 +1,21 @@
+// Authentication & Authorization Guard: Admin access only
+(function verifyAdminAccess() {
+  try {
+    const raw = localStorage.getItem('clinic-auth-session');
+    if (!raw) {
+      window.location.replace('../login.html?auth=admin_required');
+      return;
+    }
+    const session = JSON.parse(raw);
+    if (!session || !session.token || session.role !== 'admin') {
+      window.location.replace('../login.html?auth=admin_required');
+      return;
+    }
+  } catch (e) {
+    window.location.replace('../login.html?auth=admin_required');
+  }
+})();
+
 const STORAGE_KEY = 'dhyey-admin-clinics';
 
 const PLATFORM_SERVICES = [

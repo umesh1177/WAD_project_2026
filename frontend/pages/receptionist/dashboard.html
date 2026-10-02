@@ -1,10 +1,28 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reception Desk - Dhyey Clinic Management System</title>
   <meta name="description" content="Receptionist portal for managing patient registration, family records and OPD consultation queue." />
+  <script>
+    (function() {
+      try {
+        const raw = localStorage.getItem('clinic-auth-session');
+        if (!raw) {
+          window.location.replace('../login.html?auth=receptionist_required');
+          return;
+        }
+        const session = JSON.parse(raw);
+        if (!session || !session.token || (session.role !== 'receptionist' && session.role !== 'admin' && session.role !== 'doctor')) {
+          window.location.replace('../login.html?auth=receptionist_required');
+          return;
+        }
+      } catch (e) {
+        window.location.replace('../login.html?auth=receptionist_required');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../css/style.css" />
   <link rel="stylesheet" href="../../css/dashboard.css" />

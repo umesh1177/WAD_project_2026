@@ -783,7 +783,7 @@
 
         // Check if user is already signed in
         const existingSession = initAuth();
-        if (existingSession && !window.location.search.includes('logout=true')) {
+        if (existingSession && !window.location.search.includes('logout=true') && !window.location.search.includes('auth=')) {
             if (existingSession.role === 'admin') {
                 window.location.href = 'admin/dashboard.html';
             } else if (existingSession.role === 'receptionist') {
@@ -792,6 +792,25 @@
                 window.location.href = '../index.html';
             }
         }
+
+        // Handle URL parameters for authentication warnings
+        const urlParams = new URLSearchParams(window.location.search);
+        const authParam = urlParams.get('auth');
+        setTimeout(() => {
+            if (authParam === 'admin_required') {
+                const adminBtn = document.getElementById('btnRoleAdmin') || document.querySelectorAll('.role-btn')[2];
+                if (adminBtn) window.selectRole('admin', adminBtn);
+                window.showToast('🔒 Access Restricted: Please log in with Administrator credentials to open the Admin Portal.', 'info');
+            } else if (authParam === 'receptionist_required') {
+                const recBtn = document.getElementById('btnRoleReception') || document.querySelectorAll('.role-btn')[1];
+                if (recBtn) window.selectRole('receptionist', recBtn);
+                window.showToast('🔒 Please log in with Receptionist credentials to access Reception Desk.', 'info');
+            } else if (authParam === 'login_required' || authParam === 'doctor_required') {
+                const docBtn = document.getElementById('btnRoleDoctor') || document.querySelectorAll('.role-btn')[0];
+                if (docBtn) window.selectRole('doctor', docBtn);
+                window.showToast('🔒 Please log in to access the clinic workspace.', 'info');
+            }
+        }, 150);
 
         // Update active clinics count & doctor count from admin storage
         try {
