@@ -102,10 +102,10 @@ const validateBill = (req, res, next) => {
 
 // ---- Medical Certificate ----
 const validateCertificate = (req, res, next) => {
-  const { patId, certType, templateId } = req.body;
+  const { patientName } = req.body;
 
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the certificate.', 'patId');
+  if (!isNonEmpty(patientName))
+    return validationError(res, 'Patient Name is required for the certificate.', 'patientName');
 
   next();
 };

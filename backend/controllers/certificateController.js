@@ -70,18 +70,24 @@ const createCertificate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Patient name, diagnosis, and dates are required' });
     }
 
-    // Generate unique Certificate ID
-    const count = await Certificate.countDocuments({ clinicId });
-    const year = new Date().getFullYear();
-    let certNo = `CERT-${year}-${pad(count + 1, 4)}`;
+    let certNo = req.body.certNo;
+    if (!certNo) {
+      const count = await Certificate.countDocuments({ clinicId });
+      const year = new Date().getFullYear();
+      certNo = `CERT-${year}-${pad(count + 1, 4)}`;
 
-    // Ensure certNo uniqueness
-    let exists = await Certificate.findOne({ certNo, clinicId });
-    let seq = count + 1;
-    while (exists) {
-      seq++;
-      certNo = `CERT-${year}-${pad(seq, 4)}`;
-      exists = await Certificate.findOne({ certNo, clinicId });
+      let exists = await Certificate.findOne({ certNo, clinicId });
+      let seq = count + 1;
+      while (exists) {
+        seq++;
+        certNo = `CERT-${year}-${pad(seq, 4)}`;
+        exists = await Certificate.findOne({ certNo, clinicId });
+      }
+    } else {
+      let exists = await Certificate.findOne({ certNo, clinicId });
+      if (exists) {
+        return res.status(400).json({ success: false, message: 'Certificate ID already exists.' });
+      }
     }
 
     const newCert = new Certificate({

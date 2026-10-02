@@ -46,10 +46,13 @@
           <li class="nav-item"><a class="nav-link" href="#modules">Modules</a></li>
           <li class="nav-item"><a class="nav-link" href="#testimonials">Reviews</a></li>
           <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+          <li class="nav-item"><a class="nav-link text-primary fw-bold" href="#" data-bs-toggle="modal"
+              data-bs-target="#verifyCertModal"><i class="ri-shield-check-line"></i> Verify Certificate</a></li>
           <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
         </ul>
         <div class="nav-actions d-flex align-items-center gap-2">
-          <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#clinicRegisterModal">
+          <button type="button" class="btn btn-outline-custom" data-bs-toggle="modal"
+            data-bs-target="#clinicRegisterModal">
             <i class="ri-hospital-line"></i> Add Clinic
           </button>
           <a href="pages/login.html" class="btn btn-primary-custom">
@@ -87,13 +90,15 @@
           </div>
 
           <div class="hero-cta-group mt-4 d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-primary-custom btn-lg" data-bs-toggle="modal" data-bs-target="#clinicRegisterModal">
+            <button type="button" class="btn btn-primary-custom btn-lg" data-bs-toggle="modal"
+              data-bs-target="#clinicRegisterModal">
               <i class="ri-hospital-line"></i> Add / Register Clinic
             </button>
             <a href="pages/login.html" class="btn btn-outline-custom btn-lg">
               Sign In to App <i class="ri-arrow-right-line"></i>
             </a>
-            <a href="#modules" class="btn btn-link text-decoration-none d-flex align-items-center gap-1 text-muted ms-2">
+            <a href="#modules"
+              class="btn btn-link text-decoration-none d-flex align-items-center gap-1 text-muted ms-2">
               <i class="ri-play-circle-line"></i> Explore Modules
             </a>
           </div>
@@ -970,7 +975,8 @@
         <div class="col-lg-3 col-md-4 footer-col">
           <h4>CLINIC PORTALS</h4>
           <ul>
-            <li><a href="pages/login.html" class="highlight-link"><i class="ri-login-box-line"></i> Sign In to System →</a></li>
+            <li><a href="pages/login.html" class="highlight-link"><i class="ri-login-box-line"></i> Sign In to System
+                →</a></li>
             <li><a href="pages/receptionist/dashboard.html"><i class="ri-user-heart-line"></i> Reception Desk</a></li>
             <li><a href="pages/admin/dashboard.html"><i class="ri-shield-user-line"></i> Admin Portal</a></li>
             <li><a href="#contact"><i class="ri-mail-send-line"></i> Request Live Demo</a></li>
@@ -1100,7 +1106,7 @@
       });
     }
 
-    window.removeLandingDoctor = function(index) {
+    window.removeLandingDoctor = function (index) {
       const row = document.getElementById(`landingDocRow_${index}`);
       if (row) row.remove();
     };
@@ -1194,10 +1200,12 @@
   <!-- ============================
        CLINIC REGISTRATION MODAL
        ============================ -->
-  <div class="modal fade" id="clinicRegisterModal" tabindex="-1" aria-labelledby="clinicRegisterModalLabel" aria-hidden="true">
+  <div class="modal fade" id="clinicRegisterModal" tabindex="-1" aria-labelledby="clinicRegisterModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content shadow-lg border-0" style="border-radius: 18px;">
-        <div class="modal-header border-bottom p-4" style="background: linear-gradient(135deg, #095c54 0%, #0d6e65 100%); color: #fff;">
+        <div class="modal-header border-bottom p-4"
+          style="background: linear-gradient(135deg, #095c54 0%, #0d6e65 100%); color: #fff;">
           <div>
             <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-1" id="clinicRegisterModalLabel">
               <i class="ri-hospital-line" style="font-size: 22px;"></i> Add / Register New Clinic Branch
@@ -1206,15 +1214,17 @@
           </div>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        
+
         <form id="landingClinicForm">
           <div class="modal-body p-4">
-            
+
             <!-- Alert Badge -->
-            <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-3" style="background: #e6f4f1; border: 1px solid #b8e0d7; color: #095c54;">
+            <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-3"
+              style="background: #e6f4f1; border: 1px solid #b8e0d7; color: #095c54;">
               <i class="ri-information-line fs-4 flex-shrink-0"></i>
               <div class="small">
-                <strong>Administrator Approval Required:</strong> Your submitted clinic branch and doctors will be forwarded directly to the system administrator dashboard for review and activation.
+                <strong>Administrator Approval Required:</strong> Your submitted clinic branch and doctors will be
+                forwarded directly to the system administrator dashboard for review and activation.
               </div>
             </div>
 
@@ -1225,41 +1235,55 @@
               </h6>
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Legal Clinic Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="name" required placeholder="e.g. LifeCare Wellness Hospital">
+                  <label class="form-label small fw-semibold">Legal Clinic Name <span
+                      class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="name" required
+                    placeholder="e.g. LifeCare Wellness Hospital">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Clinic Reg. / License Number <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="registration" required placeholder="e.g. REG-GJ-2026-0941">
+                  <label class="form-label small fw-semibold">Clinic Reg. / License Number <span
+                      class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="registration" required
+                    placeholder="e.g. REG-GJ-2026-0941">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Official Phone Number <span class="text-danger">*</span></label>
+                  <label class="form-label small fw-semibold">Official Phone Number <span
+                      class="text-danger">*</span></label>
                   <input type="tel" class="form-control" name="phone" required placeholder="+91 98765 43210">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Official Email Address <span class="text-danger">*</span></label>
-                  <input type="email" class="form-control" name="email" required placeholder="contact@lifecareclinic.com">
+                  <label class="form-label small fw-semibold">Official Email Address <span
+                      class="text-danger">*</span></label>
+                  <input type="email" class="form-control" name="email" required
+                    placeholder="contact@lifecareclinic.com">
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">City / District <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="city" required placeholder="e.g. Ahmedabad, Gandhinagar">
+                  <input type="text" class="form-control" name="city" required
+                    placeholder="e.g. Ahmedabad, Gandhinagar">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Applicant Name &amp; Role <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="applicantName" required placeholder="Dr. R. K. Patel (Medical Director)">
+                  <label class="form-label small fw-semibold">Applicant Name &amp; Role <span
+                      class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="applicantName" required
+                    placeholder="Dr. R. K. Patel (Medical Director)">
                   <input type="hidden" name="applicantRole" value="Medical Director / Owner">
                 </div>
                 <div class="col-12">
-                  <label class="form-label small fw-semibold">Complete Clinic Address <span class="text-danger">*</span></label>
-                  <textarea class="form-control" name="address" rows="2" required placeholder="Premise, Road, Area, City, State and PIN Code"></textarea>
+                  <label class="form-label small fw-semibold">Complete Clinic Address <span
+                      class="text-danger">*</span></label>
+                  <textarea class="form-control" name="address" rows="2" required
+                    placeholder="Premise, Road, Area, City, State and PIN Code"></textarea>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Operating Days <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="days" required value="Monday - Saturday" placeholder="e.g. Monday - Saturday">
+                  <input type="text" class="form-control" name="days" required value="Monday - Saturday"
+                    placeholder="e.g. Monday - Saturday">
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Working Hours <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="hours" required value="09:00 - 20:00" placeholder="e.g. 09:00 - 20:00">
+                  <input type="text" class="form-control" name="hours" required value="09:00 - 20:00"
+                    placeholder="e.g. 09:00 - 20:00">
                 </div>
               </div>
             </div>
@@ -1271,16 +1295,20 @@
               </h6>
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label small fw-semibold">Specialties Provided <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="specialties" required placeholder="e.g. General Medicine, Pediatrics, Cardiology, Dermatology">
+                  <label class="form-label small fw-semibold">Specialties Provided <span
+                      class="text-danger">*</span></label>
+                  <input type="text" class="form-control" name="specialties" required
+                    placeholder="e.g. General Medicine, Pediatrics, Cardiology, Dermatology">
                   <div class="form-text small">Separate multiple clinical specialties with commas.</div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label small fw-semibold">Available Facilities</label>
-                  <input type="text" class="form-control" name="facilities" placeholder="e.g. Pharmacy, Pathology Lab, Minor OT, ECG">
+                  <input type="text" class="form-control" name="facilities"
+                    placeholder="e.g. Pharmacy, Pathology Lab, Minor OT, ECG">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label small fw-semibold">Clinic Certificate / License <span class="text-danger">*</span></label>
+                  <label class="form-label small fw-semibold">Clinic Certificate / License <span
+                      class="text-danger">*</span></label>
                   <input type="file" class="form-control" name="clinicCertificate" accept=".pdf,.jpg,.jpeg,.png">
                   <div class="form-text small">Upload registration document (PDF/JPG/PNG).</div>
                 </div>
@@ -1290,7 +1318,8 @@
             <!-- Section 3: Registered Doctors -->
             <div class="pt-3 border-top">
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-uppercase mb-0" style="color: #095c54; letter-spacing: 0.5px; font-size: 12.5px;">
+                <h6 class="fw-bold text-uppercase mb-0"
+                  style="color: #095c54; letter-spacing: 0.5px; font-size: 12.5px;">
                   <i class="ri-user-star-line me-1"></i> Doctors &amp; Credentials
                 </h6>
                 <button type="button" class="btn btn-sm btn-outline-success" id="btnAddLandingDoctor">
@@ -1303,7 +1332,7 @@
             </div>
 
           </div>
-          
+
           <div class="modal-footer border-top p-3 bg-light">
             <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary-custom px-4" id="btnSubmitLandingClinic">
@@ -1318,16 +1347,19 @@
   <!-- ============================
        SUCCESS CONFIRMATION MODAL
        ============================ -->
-  <div class="modal fade" id="clinicRegisterSuccessModal" tabindex="-1" aria-labelledby="clinicRegisterSuccessLabel" aria-hidden="true">
+  <div class="modal fade" id="clinicRegisterSuccessModal" tabindex="-1" aria-labelledby="clinicRegisterSuccessLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow-lg border-0 text-center p-4" style="border-radius: 20px;">
         <div class="modal-body">
-          <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 72px; height: 72px; border-radius: 50%; background: #ecfdf5; color: #059669; font-size: 38px;">
+          <div class="mx-auto mb-3 d-flex align-items-center justify-content-center"
+            style="width: 72px; height: 72px; border-radius: 50%; background: #ecfdf5; color: #059669; font-size: 38px;">
             <i class="ri-checkbox-circle-fill"></i>
           </div>
           <h4 class="fw-bold mb-2 text-dark">Application Sent to Administrator!</h4>
           <p class="text-muted small mb-3">
-            Your clinic registration request for <strong id="successClinicName" class="text-dark">Your Clinic</strong> (<span id="successCity">City</span>) has been submitted successfully.
+            Your clinic registration request for <strong id="successClinicName" class="text-dark">Your Clinic</strong>
+            (<span id="successCity">City</span>) has been submitted successfully.
           </p>
           <div class="p-3 rounded-3 mb-4 text-start" style="background: #f8fafc; border: 1px solid #e2e8f0;">
             <div class="d-flex justify-content-between mb-1 small">
@@ -1355,7 +1387,119 @@
       </div>
     </div>
   </div>
+
+  <!-- ============================
+       VERIFY CERTIFICATE MODAL
+       ============================ -->
+  <div class="modal fade" id="verifyCertModal" tabindex="-1" aria-labelledby="verifyCertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0 p-3" style="border-radius: 16px;">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h5 class="modal-title fw-bold" id="verifyCertModalLabel"><i class="ri-shield-check-line text-success"></i>
+            Verify Medical Certificate</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex gap-2 mb-3">
+            <input type="text" id="landing-verify-input" class="form-control font-monospace fw-bold"
+              placeholder="Enter Certificate ID (e.g. CERT-2026-0001)" />
+            <button type="button" id="btn-landing-verify" class="btn btn-primary-custom px-4">
+              <i class="ri-search-line"></i> Verify
+            </button>
+          </div>
+          <div id="landing-verify-result"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Landing page specific Verify Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnVerify = document.getElementById('btn-landing-verify');
+      const inputVerify = document.getElementById('landing-verify-input');
+      const resultBox = document.getElementById('landing-verify-result');
+
+      const performVerify = async () => {
+        const code = inputVerify.value.trim();
+        if (!code) return;
+
+        resultBox.innerHTML = '<div class="text-center text-muted py-3"><i class="ri-loader-4-line ri-spin fs-4"></i><div class="mt-2">Verifying...</div></div>';
+
+        let found = null;
+        for (let i = 0; i < localStorage.length; i++) {
+          let key = localStorage.key(i);
+          if (key.startsWith('clinic-db-')) {
+            try {
+              let db = JSON.parse(localStorage.getItem(key) || '{}');
+              let match = (db.certificates || []).find((c) => (c.certNo || '').toLowerCase() === code.toLowerCase());
+              if (match) {
+                found = match;
+                break;
+              }
+            } catch (e) { }
+          }
+        }
+
+        if (found) {
+          const splitDate = (d) => {
+            if (!d) return '';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          };
+          resultBox.innerHTML = `
+            <div style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.12)); border: 1.5px solid #059669; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="badge" style="background: #059669; color: white; font-weight: 800; font-size: 11.5px; padding: 4px 8px;">
+                  VERIFIED &amp; AUTHENTIC
+                </span>
+                <span class="font-monospace" style="font-weight: 800; font-size: 13px; color: #059669;">${found.certNo}</span>
+              </div>
+
+              <div style="font-size: 13.5px; color: #222; line-height: 1.6;">
+                <div><b style="font-weight:600;">Patient:</b> ${found.patientName} ${found.patientAge ? `(${found.patientAge}Y/${found.patientGender || 'Male'})` : ''}</div>
+                <div><b style="font-weight:600;">Diagnosis:</b> ${found.diagnosis}</div>
+                <div><b style="font-weight:600;">Period:</b> ${splitDate(found.fromDate)} &rarr; ${splitDate(found.toDate)} ${found.restDays ? `(${found.restDays} days)` : ''}</div>
+                <div><b style="font-weight:600;">Issued On:</b> ${splitDate(found.issuedDate || found.createdAt)} at ${found.place || 'Surat'}</div>
+                <div><b style="font-weight:600;">Issuing Doctor:</b> ${found.doctorName || 'Dr. Chirag Paghdal'} (Reg. No. G-9035)</div>
+              </div>
+
+              <div style="font-size: 11.5px; color: #059669; font-weight: 600; border-top: 1px dashed rgba(5,150,105,0.4); padding-top: 8px; margin-top: 2px;">
+                <i class="ri-checkbox-circle-fill"></i> Official Medical Certificate Record Matched in Clinic Registry.
+              </div>
+            </div>
+          `;
+        } else {
+          resultBox.innerHTML = `
+            <div class="p-3 text-center" style="background: #fef2f2; border: 1.5px dashed #ef4444; border-radius: 8px;">
+              <i class="ri-error-warning-line text-danger fs-1"></i>
+              <div class="fw-bold text-danger mt-2">Certificate Not Found</div>
+              <div class="small text-muted mt-1">No official medical certificate matching ID <b class="text-dark">${code}</b> exists in the clinic database.</div>
+            </div>
+          `;
+        }
+      };
+
+      if (btnVerify) btnVerify.addEventListener('click', performVerify);
+      if (inputVerify) inputVerify.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          performVerify();
+        }
+      });
+
+      // Auto-focus input on modal open
+      const verifyModal = document.getElementById('verifyCertModal');
+      if (verifyModal) {
+        verifyModal.addEventListener('shown.bs.modal', () => {
+          inputVerify.focus();
+        });
+        verifyModal.addEventListener('hidden.bs.modal', () => {
+          inputVerify.value = '';
+          resultBox.innerHTML = '';
+        });
+      }
+    });
+  </script>
 </body>
 
 </html>
-

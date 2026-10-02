@@ -62,7 +62,7 @@ export async function renderCertificateView(container) {
       db.certificateTemplates = templates;
       saveLocalDB(db, clinicId);
     }
-  } catch (err) {}
+  } catch (err) { }
 
   // Load issued certificates from API or fallback to local
   let certificates = db.certificates || [];
@@ -73,7 +73,7 @@ export async function renderCertificateView(container) {
       db.certificates = certificates;
       saveLocalDB(db, clinicId);
     }
-  } catch (err) {}
+  } catch (err) { }
 
   // State
   let selectedTemplateId = templates[0]?.id || 'tpl-1';
@@ -204,11 +204,7 @@ export async function renderCertificateView(container) {
               <span>Add Template</span>
             </button>
 
-            <!-- Verify Certificate Button -->
-            <button type="button" id="btn-open-verify-modal" class="cms-btn cms-btn-ghost cms-btn-sm" style="font-size: 12px; padding: 7px 14px; border: 1px solid var(--border);" title="Verify Authenticity of Certificate ID">
-              <i class="fa-solid fa-shield-check" style="color: var(--primary);"></i>
-              <span>Verify Certificate</span>
-            </button>
+
           </div>
         </div>
 
@@ -246,14 +242,14 @@ export async function renderCertificateView(container) {
               </div>
               <select id="cert-template-select" class="cms-select cms-input" style="padding: 7px 10px; font-weight: 600;">
                 ${templates
-                  .map(
-                    (t) => `
+        .map(
+          (t) => `
                   <option value="${t.id || t._id}" ${(t.id || t._id) === selectedTemplateId ? 'selected' : ''}>
                     ${t.templateName} (${t.category || 'General'})
                   </option>
                 `
-                  )
-                  .join('')}
+        )
+        .join('')}
               </select>
             </div>
 
@@ -266,8 +262,8 @@ export async function renderCertificateView(container) {
                 <input type="text" id="cert-patient-lookup" class="cms-input" list="dl-cert-patients" placeholder="Type name or ID to auto-fill..." style="padding: 7px 10px;" />
                 <datalist id="dl-cert-patients">
                   ${allPatients
-                    .map((p) => `<option value="${p.name}">ID: ${p.id} &bull; ${p.age}Y/${p.gender} &bull; Head: ${p.famHead}</option>`)
-                    .join('')}
+        .map((p) => `<option value="${p.name}">ID: ${p.id} &bull; ${p.age}Y/${p.gender} &bull; Head: ${p.famHead}</option>`)
+        .join('')}
                 </datalist>
               </div>
 
@@ -424,11 +420,10 @@ export async function renderCertificateView(container) {
                   <div style="text-align: right; min-width: 170px;">
                     <!-- Doctor Digital Signature Element -->
                     <div id="preview-cert-signature-container" style="min-height: 48px; display: flex; justify-content: flex-end; align-items: flex-end; margin-bottom: 6px;">
-                      ${
-                        docSignature
-                          ? `<img src="${docSignature}" alt="Doctor Digital Signature" style="max-height: 48px; max-width: 140px; object-fit: contain;" />`
-                          : `<div style="font-family: cursive; color: #146B5C; font-size: 15px; opacity: 0.85; padding-bottom: 4px;">${doctorName}</div>`
-                      }
+                      ${docSignature
+        ? `<img src="${docSignature}" alt="Doctor Digital Signature" style="max-height: 48px; max-width: 140px; object-fit: contain;" />`
+        : `<div style="font-family: cursive; color: #146B5C; font-size: 15px; opacity: 0.85; padding-bottom: 4px;">${doctorName}</div>`
+      }
                     </div>
                     <div style="font-weight: 800; color: #146B5C; font-size: 12.5px;">${doctorName}</div>
                     <div style="font-size: 10.5px; color: #555555;">${doctorDegree} (Reg. No. ${doctorRegNo})</div>
@@ -775,7 +770,7 @@ export async function renderCertificateView(container) {
           method: 'POST',
           body: certRecord,
         });
-      } catch (e) {}
+      } catch (e) { }
 
       // Save locally
       if (!db.certificates) db.certificates = [];
@@ -862,7 +857,7 @@ export async function renderCertificateView(container) {
         if (confirm(`Are you sure you want to delete Certificate record ${certNo}?`)) {
           try {
             await apiFetch(`/certificates/${id || certNo}`, { method: 'DELETE' });
-          } catch (e) {}
+          } catch (e) { }
 
           db.certificates = (db.certificates || []).filter((c) => c.certNo !== certNo && c.id !== id);
           saveLocalDB(db, clinicId);
@@ -1010,7 +1005,7 @@ export async function renderCertificateView(container) {
           method: 'POST',
           body: newTemplate,
         });
-      } catch (err) {}
+      } catch (err) { }
 
       if (!db.certificateTemplates) db.certificateTemplates = [...defaultCertificateTemplates];
       db.certificateTemplates.push(newTemplate);
@@ -1086,7 +1081,7 @@ export async function renderCertificateView(container) {
         if (apiRes && apiRes.data) {
           found = apiRes.data;
         }
-      } catch (err) {}
+      } catch (err) { }
 
       if (found) {
         resultBox.innerHTML = `
@@ -1207,9 +1202,8 @@ export async function renderCertificateView(container) {
           </div>
 
           <!-- Current Signature Preview (if exists) -->
-          ${
-            docSignature
-              ? `
+          ${docSignature
+        ? `
             <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--radius-md); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
               <div>
                 <span style="font-size: 11px; font-weight: 700; color: #059669; display: block;">CURRENT ACTIVE SIGNATURE</span>
@@ -1220,8 +1214,8 @@ export async function renderCertificateView(container) {
               </button>
             </div>
           `
-              : ''
-          }
+        : ''
+      }
 
           <!-- Footer Actions -->
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--border);">
