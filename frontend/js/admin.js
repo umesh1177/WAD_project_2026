@@ -1157,9 +1157,9 @@ function openClinicDetails(clinicId) {
             </div>
             <div class="detail-grid">
               <div class="detail-item"><small>Name</small><strong>${clinic.receptionist.name}</strong></div>
-              <div class="detail-item"><small>Email</small><strong>${clinic.receptionist.email}</strong></div>
               <div class="detail-item"><small>Phone</small><strong>${clinic.receptionist.phone || 'N/A'}</strong></div>
               <div class="detail-item"><small>Shift</small><strong>${clinic.receptionist.shift || 'General Shift'}</strong></div>
+              <div class="detail-item span-2"><small>Email (Login)</small><strong>${clinic.receptionist.email}</strong></div>
               <div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.receptionist.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.receptionist.status || 'Active'}</span></strong></div>
             </div>
           ` : `
