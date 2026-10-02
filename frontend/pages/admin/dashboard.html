@@ -4,6 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Portal - Dhyey Clinic</title>
+  <script>
+    (function() {
+      try {
+        const raw = localStorage.getItem('clinic-auth-session');
+        if (!raw) {
+          window.location.replace('../login.html?auth=admin_required');
+          return;
+        }
+        const session = JSON.parse(raw);
+        if (!session || !session.token || session.role !== 'admin') {
+          window.location.replace('../login.html?auth=admin_required');
+          return;
+        }
+      } catch (e) {
+        window.location.replace('../login.html?auth=admin_required');
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="../../css/receptionist.css">
   <link rel="stylesheet" href="../../css/admin.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

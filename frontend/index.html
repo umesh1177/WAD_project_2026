@@ -4,7 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dhyey Clinic & Hospital - Clinical Management System</title>
-  
+  <script>
+    (function() {
+      try {
+        const raw = localStorage.getItem('clinic-auth-session');
+        if (!raw) {
+          window.location.replace('pages/login.html?auth=login_required');
+          return;
+        }
+        const session = JSON.parse(raw);
+        if (!session || !session.token) {
+          window.location.replace('pages/login.html?auth=login_required');
+          return;
+        }
+        if (session.role === 'admin') {
+          window.location.replace('pages/admin/dashboard.html');
+          return;
+        }
+      } catch (e) {
+        window.location.replace('pages/login.html?auth=login_required');
+      }
+    })();
+  </script>
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="css/style.css">
