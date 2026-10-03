@@ -6,7 +6,7 @@
     <title>Sign In &middot; Dhyey Clinic Management System</title>
     <!-- PWA Meta Tags & Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#095c54" />
+    <meta name="theme-color" content="#42645f" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -20,13 +20,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #095c54;
-            --primary-dark: #042f2b;
-            --primary-light: #0d9488;
-            --primary-glow: #10b981;
-            --accent: #0284c7;
-            --accent-light: #38bdf8;
-            --bg-dark: #071513;
+            --primary: #42645f;
+            --primary-dark: #35544f;
+            --primary-light: #eff3f1;
+            --primary-glow: #66817b;
+            --accent: #42645f;
+            --accent-light: #66817b;
+            --bg-dark: #eef1ef;
             --surface-card: #ffffff;
             --text-main: #0f172a;
             --text-muted: #64748b;
@@ -52,66 +52,19 @@
             padding: 24px 16px;
             position: relative;
             overflow-x: hidden;
-            color: #ffffff;
+            color: var(--text-main);
         }
 
-        /* Ambient Glowing Background Orbs */
-        .ambient-glow {
-            position: fixed;
-            inset: 0;
-            overflow: hidden;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.35;
-            animation: orbFloat 14s ease-in-out infinite alternate;
-        }
-        .orb-1 {
-            width: 500px;
-            height: 500px;
-            background: #0d9488;
-            top: -150px;
-            left: -150px;
-        }
-        .orb-2 {
-            width: 450px;
-            height: 450px;
-            background: #0284c7;
-            bottom: -150px;
-            right: -100px;
-            animation-duration: 18s;
-        }
-        .orb-3 {
-            width: 380px;
-            height: 380px;
-            background: #059669;
-            top: 40%;
-            left: 35%;
-            opacity: 0.2;
-            animation-duration: 12s;
-        }
-
-        @keyframes orbFloat {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(40px, 50px) scale(1.08); }
-        }
-
-        /* Glassmorphic Main Layout Container */
+        /* Main Layout Container */
         .login-layout-card {
             position: relative;
             z-index: 10;
             width: 100%;
             max-width: 1080px;
-            background: rgba(13, 27, 24, 0.82);
-            backdrop-filter: blur(32px);
-            -webkit-backdrop-filter: blur(32px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: #ffffff;
+            border: 1px solid #dfe5e2;
             border-radius: var(--radius-lg);
-            box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+            box-shadow: 0 18px 45px rgba(34, 48, 43, 0.12);
             display: grid;
             grid-template-columns: 1.15fr 1fr;
             overflow: hidden;
@@ -125,22 +78,22 @@
 
         /* Left Brand Showcase Panel */
         .brand-showcase-panel {
-            background: linear-gradient(150deg, rgba(6, 78, 59, 0.55) 0%, rgba(4, 47, 46, 0.8) 50%, rgba(15, 23, 42, 0.95) 100%);
+            background: #f1f3f2;
             padding: 48px 44px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid #dfe5e2;
         }
 
         .brand-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(52, 211, 153, 0.35);
-            color: #34d399;
+            background: #e7ece9;
+            border: 1px solid #d5dfdb;
+            color: var(--primary-dark);
             font-size: 11.5px;
             font-weight: 700;
             padding: 6px 14px;
@@ -161,13 +114,13 @@
             width: 56px;
             height: 56px;
             border-radius: 16px;
-            background: linear-gradient(135deg, #10b981 0%, #0284c7 100%);
+            background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #ffffff;
             font-size: 26px;
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 8px 18px rgba(66, 100, 95, 0.18);
             flex-shrink: 0;
         }
 
@@ -175,14 +128,14 @@
             font-family: 'Outfit', sans-serif;
             font-size: 28px;
             font-weight: 800;
-            color: #ffffff;
+            color: var(--text-main);
             letter-spacing: -0.5px;
             line-height: 1.2;
         }
 
         .brand-desc-text {
             font-size: 13.5px;
-            color: #cbd5e1;
+            color: #687571;
             line-height: 1.6;
             margin-bottom: 28px;
         }
@@ -195,8 +148,8 @@
         }
 
         .feature-card-item {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid #dfe5e2;
             border-radius: var(--radius-md);
             padding: 12px 14px;
             display: flex;
@@ -206,17 +159,16 @@
         }
 
         .feature-card-item:hover {
-            background: rgba(255, 255, 255, 0.09);
-            border-color: rgba(52, 211, 153, 0.4);
-            transform: translateX(4px);
+            background: #f8faf9;
+            border-color: #cbd5cf;
         }
 
         .feature-item-icon {
             width: 38px;
             height: 38px;
             border-radius: 10px;
-            background: rgba(16, 185, 129, 0.18);
-            color: #34d399;
+            background: #eff3f1;
+            color: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -227,14 +179,14 @@
         .feature-item-text strong {
             display: block;
             font-size: 13px;
-            color: #ffffff;
+            color: var(--text-main);
             font-weight: 700;
             margin-bottom: 2px;
         }
 
         .feature-item-text span {
             font-size: 11.5px;
-            color: #94a3b8;
+            color: #687571;
             line-height: 1.4;
         }
 
@@ -243,7 +195,7 @@
             align-items: center;
             justify-content: space-between;
             padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid #dfe5e2;
             gap: 12px;
         }
 
@@ -257,13 +209,13 @@
             font-family: 'Outfit', sans-serif;
             font-size: 20px;
             font-weight: 800;
-            color: #34d399;
+            color: var(--primary);
             letter-spacing: -0.3px;
         }
 
         .metric-lbl {
             font-size: 10.5px;
-            color: #94a3b8;
+            color: #687571;
             text-transform: uppercase;
             font-weight: 700;
             letter-spacing: 0.5px;
@@ -272,7 +224,7 @@
         .metric-divider {
             width: 1px;
             height: 30px;
-            background: rgba(255, 255, 255, 0.12);
+            background: #d5dfdb;
         }
 
         /* Right Form Panel */
@@ -343,15 +295,15 @@
         }
 
         .role-btn.active.doctor-active {
-            color: #095c54;
-            border-color: #095c54;
-            background: #e6f4f1;
+            color: var(--primary-dark);
+            border-color: #d5dfdb;
+            background: #eff3f1;
         }
 
         .role-btn.active.admin-active {
-            color: #0284c7;
-            border-color: #0284c7;
-            background: #f0f9ff;
+            color: var(--primary-dark);
+            border-color: #d5dfdb;
+            background: #eff3f1;
         }
 
         /* Form Inputs */
@@ -375,7 +327,7 @@
         }
 
         .field-label .req {
-            color: #ef4444;
+            color: #a94f4f;
         }
 
         .forgot-link {
@@ -472,7 +424,7 @@
         .btn-submit-main {
             width: 100%;
             padding: 14px 24px;
-            background: linear-gradient(135deg, #095c54 0%, #0d9488 60%, #10b981 100%);
+            background: var(--primary);
             color: #ffffff;
             border: none;
             border-radius: 12px;
@@ -483,14 +435,13 @@
             align-items: center;
             justify-content: space-between;
             cursor: pointer;
-            box-shadow: 0 10px 24px -4px rgba(9, 92, 84, 0.45);
+            box-shadow: 0 8px 18px rgba(66, 100, 95, 0.2);
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .btn-submit-main:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 14px 30px -4px rgba(9, 92, 84, 0.6);
-            filter: brightness(1.05);
+            background: var(--primary-dark);
+            box-shadow: 0 10px 22px rgba(53, 84, 79, 0.22);
         }
 
         .btn-submit-main:active {
@@ -546,16 +497,16 @@
         }
 
         .quick-chip:hover {
-            background: #e6f4f1;
-            color: #095c54;
-            border-color: #b8e0d7;
+            background: #eff3f1;
+            color: var(--primary-dark);
+            border-color: #d5dfdb;
             transform: translateY(-1px);
         }
 
         .quick-chip.chip-admin:hover {
-            background: #f0f9ff;
-            color: #0284c7;
-            border-color: #bae6fd;
+            background: #eff3f1;
+            color: var(--primary-dark);
+            border-color: #d5dfdb;
         }
 
         /* Floating Toast Container */
@@ -573,24 +524,31 @@
         }
 
         .toast-item {
+<<<<<<< Updated upstream
             background: #1e293b;
             color: #ffffff;
             width: min(100%, 620px);
             padding: 14px 18px;
+=======
+            background: #ffffff;
+            color: var(--text-main);
+            padding: 12px 18px;
+>>>>>>> Stashed changes
             border-radius: 10px;
             font-size: 13px;
             font-weight: 700;
             display: flex;
             align-items: center;
             gap: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 22px rgba(34, 48, 43, 0.14);
             animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             pointer-events: auto;
         }
 
-        .toast-item.success { border-left: 4px solid #10b981; }
-        .toast-item.error { border-left: 4px solid #ef4444; }
-        .toast-item.info { border-left: 4px solid #0284c7; }
+        .toast-item.success { border-left: 4px solid #66817b; }
+        .toast-item.error { border-left: 4px solid #a94f4f; }
+        .toast-item.info { border-left: 4px solid #87948e; }
 
         @keyframes toastSlideIn {
             from { transform: translateX(50px); opacity: 0; }
@@ -663,13 +621,6 @@
 </head>
 <body>
 
-    <!-- Ambient Glowing Backdrops -->
-    <div class="ambient-glow">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
-
     <!-- Main Card Container -->
     <div class="login-layout-card">
         
@@ -687,7 +638,7 @@
                     </div>
                     <div>
                         <h1 class="brand-title-text">Dhyey Clinic &amp; Hospital</h1>
-                        <span style="font-size: 12px; color: #34d399; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Clinical Management System</span>
+                        <span style="font-size: 12px; color: #687571; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Clinical Management System</span>
                     </div>
                 </div>
 
@@ -747,7 +698,7 @@
                     <h2 class="form-heading-title">Portal Sign In</h2>
                     <p class="form-heading-sub">Select your account role and enter credentials to access your portal</p>
                 </div>
-                <a href="../landing.html" style="color: #34d399; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: rgba(52,211,153,0.1); padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(52,211,153,0.25); white-space: nowrap;">
+                <a href="../landing.html" style="color: #42645f; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: #eff3f1; padding: 5px 10px; border-radius: 6px; border: 1px solid #d5dfdb; white-space: nowrap;">
                     <i class="fa-solid fa-house"></i> Website
                 </a>
             </div>
@@ -819,13 +770,13 @@
                 <span class="quick-presets-title">Quick Demo Presets</span>
                 <div class="quick-chips-wrap" id="quickChipsContainer">
                     <button type="button" class="quick-chip" onclick="quickLogin('doctor')">
-                        <i class="fa-solid fa-user-doctor" style="color:#095c54"></i> Dr. Chirag (dhyey / 123)
+                        <i class="fa-solid fa-user-doctor" style="color:#42645f"></i> Dr. Chirag (dhyey / 123)
                     </button>
                     <button type="button" class="quick-chip" onclick="quickLogin('receptionist')">
-                        <i class="fa-solid fa-clipboard-user" style="color:#0d9488"></i> Receptionist (reception / 123)
+                        <i class="fa-solid fa-clipboard-user" style="color:#42645f"></i> Receptionist (reception / 123)
                     </button>
                     <button type="button" class="quick-chip chip-admin" onclick="quickLogin('admin')">
-                        <i class="fa-solid fa-shield-halved" style="color:#0284c7"></i> Admin (admin / admin)
+                        <i class="fa-solid fa-shield-halved" style="color:#42645f"></i> Admin (admin / admin)
                     </button>
                 </div>
             </div>
@@ -895,7 +846,7 @@
                     btn.type = 'button';
                     btn.className = 'quick-chip';
                     const docShortName = doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name.split(' ')[0] || doc.name}`;
-                    btn.innerHTML = `<i class="fa-solid fa-stethoscope" style="color:#095c54"></i> ${docShortName} (${doc.clinic || 'Clinic'})`;
+                    btn.innerHTML = `<i class="fa-solid fa-stethoscope" style="color:#42645f"></i> ${docShortName} (${doc.clinic || 'Clinic'})`;
                     btn.onclick = () => {
                         window.selectRole('doctor', document.getElementById('btnRoleDoctor'));
                         document.getElementById('username').value = doc.email;

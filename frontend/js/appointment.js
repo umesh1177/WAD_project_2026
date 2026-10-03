@@ -139,16 +139,16 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
           .map((q, idx) => {
             const st = q.status || 'Waiting';
             const statusColor = {
-              Waiting: '#b91c1c',
-              'In Consultation': '#166534',
-              Completed: '#0369a1',
-              Done: '#0369a1',
+              Waiting: 'var(--queue-waiting)',
+              'In Consultation': 'var(--queue-active)',
+              Completed: 'var(--queue-complete)',
+              Done: 'var(--queue-complete)',
             };
             const statusBg = {
-              Waiting: '#fee2e2',
-              'In Consultation': '#dcfce7',
-              Completed: '#e0f2fe',
-              Done: '#e0f2fe',
+              Waiting: 'var(--queue-waiting-soft)',
+              'In Consultation': 'var(--queue-active-soft)',
+              Completed: 'var(--queue-complete-soft)',
+              Done: 'var(--queue-complete-soft)',
             };
             const col = statusColor[st] || 'var(--text-muted)';
             const bg = statusBg[st] || 'var(--surface-alt)';
@@ -216,7 +216,7 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
                             ${st !== 'Completed'
                 ? `
-                              <button type="button" class="cms-btn cms-btn-ghost btn-mark-queue-done" data-token="${q.token}" style="font-size: 11px; padding: 5px 8px; border: 1px solid var(--border); color: #059669;" title="Mark as Completed">
+                              <button type="button" class="cms-btn cms-btn-ghost btn-mark-queue-done" data-token="${q.token}" style="font-size: 11px; padding: 5px 8px; border: 1px solid var(--border); color: var(--primary-dark);" title="Mark as Completed">
                                 <i class="fa-solid fa-check"></i>
                               </button>
                             `
@@ -378,7 +378,7 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
             <!-- Status Row -->
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--surface-alt); border-radius: var(--radius-md); border: 1px solid var(--border);">
               <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">Queue Status:</span>
-              <span class="cms-pill" style="font-weight: 800; font-size: 11px; background: ${item.status === 'In Consultation' ? '#dcfce7' : item.status === 'Completed' ? '#e0f2fe' : '#fee2e2'}; color: ${item.status === 'In Consultation' ? '#166534' : item.status === 'Completed' ? '#0369a1' : '#b91c1c'};">
+              <span class="cms-pill" style="font-weight: 800; font-size: 11px; background: ${item.status === 'In Consultation' ? 'var(--queue-active-soft)' : item.status === 'Completed' ? 'var(--queue-complete-soft)' : 'var(--queue-waiting-soft)'}; color: ${item.status === 'In Consultation' ? 'var(--queue-active)' : item.status === 'Completed' ? 'var(--queue-complete)' : 'var(--queue-waiting)'};">
                 ${item.status || 'Waiting'}
               </span>
             </div>
@@ -688,4 +688,3 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
 // Backwards compatibility alias so all existing calls to renderAppointmentsView work seamlessly
 export const renderAppointmentsView = renderPatientQueueView;
-

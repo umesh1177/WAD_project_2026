@@ -7,8 +7,104 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../css/style.css">
   <link rel="stylesheet" href="../../css/patient.css">
+  <style>
+    .patient-list-page {
+      --primary: #42645f;
+      --primary-dark: #35544f;
+      --primary-light: #66817b;
+      --primary-soft: #eff3f1;
+      --primary-ring: rgba(66, 100, 95, 0.14);
+      --surface-alt: #f1f3f2;
+      --surface-hover: #e7ece9;
+      --danger: #a94f4f;
+      --danger-dark: #874040;
+      --danger-soft: #fbefee;
+      --success: #54756f;
+      --success-soft: #eff3f1;
+      --info: #687571;
+      --info-soft: #f1f3f2;
+      --warning: #94764c;
+      --warning-dark: #765e3d;
+    }
+
+    .patient-list-page.dark {
+      --primary: #54756f;
+      --primary-dark: #66817b;
+      --primary-light: #8da49e;
+      --primary-soft: #24332f;
+      --primary-ring: rgba(84, 117, 111, 0.22);
+      --surface-alt: #293733;
+      --surface-hover: #34433e;
+      --danger: #c17b75;
+      --danger-dark: #d0938e;
+      --danger-soft: #3b2d2b;
+      --success: #8da49e;
+      --success-soft: #293733;
+      --info: #aab6b1;
+      --info-soft: #293733;
+    }
+
+    .patient-list-page .cms-topbar-title {
+      color: var(--text) !important;
+    }
+
+    .patient-list-page .cms-patient-header-banner {
+      border-left-color: var(--primary);
+    }
+
+    .patient-list-page .cms-patient-header-title {
+      color: var(--primary-dark);
+    }
+
+    .patient-list-page .cms-due-pill-btn,
+    .patient-list-page .cms-fam-due-btn {
+      background: var(--danger);
+      box-shadow: none;
+    }
+
+    .patient-list-page .cms-due-pill-btn:hover,
+    .patient-list-page .cms-fam-due-btn:hover {
+      background: var(--danger-dark);
+      box-shadow: none;
+    }
+
+    .patient-list-page .cms-btn-del-patient {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: #ead1ce;
+    }
+
+    .patient-list-page .cms-btn-del-patient:hover {
+      background: #f3dfdd;
+      color: var(--danger-dark);
+    }
+
+    .patient-list-page .cms-btn-edit-patient {
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      border-color: #d5dfdb;
+    }
+
+    .patient-list-page .cms-btn-edit-patient:hover {
+      background: #e3ebe7;
+      color: var(--primary-dark);
+    }
+
+    .patient-list-page .cms-btn-new-visit {
+      background: var(--primary);
+    }
+
+    .patient-list-page .cms-btn-new-visit:hover {
+      background: var(--primary-dark);
+    }
+
+    .patient-list-page .cms-visit-form-box {
+      border-color: #d5dfdb;
+      box-shadow: 0 4px 12px rgba(66, 100, 95, 0.08);
+    }
+  </style>
 </head>
-<body class="cms-root">
+<body class="cms-root patient-list-page">
   <div class="cms-layout">
     <main class="cms-main-container">
       <header class="cms-topbar">

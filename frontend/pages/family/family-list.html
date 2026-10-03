@@ -7,8 +7,87 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../css/style.css">
   <link rel="stylesheet" href="../../css/patient.css">
+  <style>
+    .family-list-page {
+      --primary: #42645f;
+      --primary-dark: #35544f;
+      --primary-light: #66817b;
+      --primary-soft: #eff3f1;
+      --primary-ring: rgba(66, 100, 95, 0.14);
+      --surface-alt: #f1f3f2;
+      --surface-hover: #e7ece9;
+      --danger: #a94f4f;
+      --danger-dark: #874040;
+      --danger-soft: #fbefee;
+      --success: #54756f;
+      --success-soft: #eff3f1;
+      --info: #687571;
+      --info-soft: #f1f3f2;
+      --warning: #94764c;
+      --warning-dark: #765e3d;
+      --warning-soft: #f4f0e8;
+    }
+
+    .family-list-page.dark {
+      --primary: #54756f;
+      --primary-dark: #66817b;
+      --primary-light: #8da49e;
+      --primary-soft: #24332f;
+      --primary-ring: rgba(84, 117, 111, 0.22);
+      --surface-alt: #293733;
+      --surface-hover: #34433e;
+      --danger: #c17b75;
+      --danger-dark: #d0938e;
+      --danger-soft: #3b2d2b;
+      --success: #8da49e;
+      --success-soft: #293733;
+      --info: #aab6b1;
+      --info-soft: #293733;
+      --warning: #c2a879;
+      --warning-dark: #d2bc96;
+      --warning-soft: #3c362b;
+    }
+
+    .family-list-page .cms-topbar-title {
+      color: var(--text) !important;
+    }
+
+    .family-list-page #page-family-container [style*="linear-gradient"] {
+      background: var(--primary-soft) !important;
+    }
+
+    .family-list-page #page-family-container #family-mode-badge {
+      background: var(--primary-soft) !important;
+      color: var(--primary-dark) !important;
+    }
+
+    .family-list-page #page-family-container [style*="rgba(37,99,235"],
+    .family-list-page #page-family-container [style*="rgba(59,130,246"] {
+      background: var(--primary-soft) !important;
+    }
+
+    .family-list-page #page-family-container [style*="#ea580c"] {
+      border-color: var(--warning) !important;
+      color: var(--warning-dark) !important;
+    }
+
+    .family-list-page #page-family-container [style*="rgba(234, 88, 12"],
+    .family-list-page #page-family-container [style*="rgba(234,88,12"] {
+      background: var(--warning-soft) !important;
+    }
+
+    .family-list-page #page-family-container .cms-badge-warning {
+      color: var(--warning-dark);
+      background: var(--warning-soft);
+    }
+
+    .family-list-page #page-family-container .cms-badge-paid {
+      background: var(--surface-alt);
+      color: var(--primary-dark);
+    }
+  </style>
 </head>
-<body class="cms-root">
+<body class="cms-root family-list-page">
   <div class="cms-layout">
     <main class="cms-main-container">
       <header class="cms-topbar">

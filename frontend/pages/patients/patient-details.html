@@ -7,8 +7,168 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../css/style.css">
   <link rel="stylesheet" href="../../css/patient.css">
+  <style>
+    .patient-details-page {
+      --primary: #42645f;
+      --primary-dark: #35544f;
+      --primary-light: #66817b;
+      --primary-soft: #eff3f1;
+      --primary-ring: rgba(66, 100, 95, 0.14);
+      --surface-alt: #f1f3f2;
+      --surface-hover: #e7ece9;
+      --danger: #a94f4f;
+      --danger-dark: #874040;
+      --danger-soft: #fbefee;
+      --success: #54756f;
+      --success-soft: #eff3f1;
+      --info: #687571;
+      --info-soft: #f1f3f2;
+      --warning: #94764c;
+      --warning-dark: #765e3d;
+      --treatment-surface: #f8f5f4;
+      --treatment-border: #e8d9d6;
+      --treatment-text: #9d5d57;
+    }
+
+    .patient-details-page.dark {
+      --primary: #54756f;
+      --primary-dark: #66817b;
+      --primary-light: #8da49e;
+      --primary-soft: #24332f;
+      --primary-ring: rgba(84, 117, 111, 0.22);
+      --surface-alt: #293733;
+      --surface-hover: #34433e;
+      --danger: #c17b75;
+      --danger-dark: #d0938e;
+      --danger-soft: #3b2d2b;
+      --success: #8da49e;
+      --success-soft: #293733;
+      --info: #aab6b1;
+      --info-soft: #293733;
+      --treatment-surface: #332d2b;
+      --treatment-border: #51413e;
+      --treatment-text: #d0938e;
+    }
+
+    .patient-details-page .cms-topbar-title {
+      color: var(--text) !important;
+    }
+
+    .patient-details-page .cms-patient-header-banner {
+      border-left-color: var(--primary);
+    }
+
+    .patient-details-page .cms-patient-header-title,
+    .patient-details-page .cms-link-view-detail,
+    .patient-details-page .cms-link-view-detail:hover {
+      color: var(--primary-dark);
+    }
+
+    .patient-details-page .cms-history-card-full:hover,
+    .patient-details-page .cms-history-row-compact:hover {
+      border-color: #d5dfdb;
+      box-shadow: 0 2px 8px rgba(66, 100, 95, 0.08);
+    }
+
+    .patient-details-page .cms-pill-bp,
+    .patient-details-page .cms-pill-ref,
+    .patient-details-page .cms-pill-complaint,
+    .patient-details-page .cms-pill-sugar,
+    .patient-details-page .cms-pill-investigation,
+    .patient-details-page .cms-pill-other {
+      background: var(--surface-alt);
+      color: var(--text-muted);
+      border-color: var(--border);
+    }
+
+    .patient-details-page .cms-history-card-full.cms-card-has-due,
+    .patient-details-page .cms-history-row-compact.cms-card-has-due {
+      border-color: var(--danger) !important;
+      background: var(--danger-soft) !important;
+      box-shadow: 0 0 0 1px rgba(169, 79, 79, 0.1), 0 3px 10px rgba(169, 79, 79, 0.08) !important;
+    }
+
+    .patient-details-page .cms-history-card-full.cms-card-has-due:hover,
+    .patient-details-page .cms-history-row-compact.cms-card-has-due:hover {
+      border-color: var(--danger-dark) !important;
+      background: var(--danger-soft) !important;
+      box-shadow: 0 0 0 1px rgba(169, 79, 79, 0.12), 0 4px 12px rgba(169, 79, 79, 0.1) !important;
+    }
+
+    .patient-details-page .cms-history-card-full.cms-card-has-due .cms-due-pill-btn,
+    .patient-details-page .cms-history-row-compact.cms-card-has-due .cms-due-pill-btn {
+      background: #a94f4f !important;
+      box-shadow: none !important;
+    }
+
+    .patient-details-page .cms-due-pill-btn,
+    .patient-details-page .cms-fam-due-btn {
+      background: var(--danger);
+      box-shadow: none;
+    }
+
+    .patient-details-page .cms-due-pill-btn:hover,
+    .patient-details-page .cms-fam-due-btn:hover {
+      background: var(--danger-dark);
+      box-shadow: none;
+    }
+
+    .patient-details-page .cms-due-alert-banner {
+      background: var(--danger-soft);
+      border-color: #d9b5b1;
+    }
+
+    .patient-details-page .cms-history-card-editable,
+    .patient-details-page .cms-visit-form-box {
+      border-color: #d5dfdb;
+      box-shadow: 0 4px 12px rgba(66, 100, 95, 0.08);
+    }
+
+    .patient-details-page .cms-vital-input-col input:focus,
+    .patient-details-page .cms-inline-edit-vitals-row .cms-vital-input-col input:focus {
+      border-color: var(--primary);
+    }
+
+    .patient-details-page .cms-multi-autocomplete-item:hover,
+    .patient-details-page .cms-multi-autocomplete-item.active,
+    .patient-details-page .cms-dietary-autocomplete-item:hover,
+    .patient-details-page .cms-dietary-autocomplete-item.active,
+    .patient-details-page .cms-medicine-autocomplete-item:hover,
+    .patient-details-page .cms-medicine-autocomplete-item.active {
+      background: var(--primary-soft) !important;
+      border-color: #d5dfdb;
+      color: var(--primary-dark) !important;
+    }
+
+    .patient-details-page .cms-dietary-autocomplete-box,
+    .patient-details-page .cms-medicine-autocomplete-box {
+      border-color: var(--primary-light);
+    }
+
+    .patient-details-page .cms-treatment-panel {
+      background: var(--treatment-surface);
+      border-color: var(--treatment-border);
+    }
+
+    .patient-details-page .cms-treatment-panel-title {
+      color: var(--treatment-text);
+    }
+
+    .patient-details-page .cms-prescription-panel {
+      background: var(--surface-alt);
+      border-color: #d5dfdb;
+    }
+
+    .patient-details-page .cms-prescription-panel-title {
+      color: var(--primary-dark);
+    }
+
+    .patient-details-page .cms-financial-row {
+      background: var(--surface-alt);
+    }
+  </style>
 </head>
-<body class="cms-root">
+<body class="cms-root patient-details-page">
   <div class="cms-layout">
     <main class="cms-main-container">
       <header class="cms-topbar">

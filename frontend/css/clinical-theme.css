@@ -1,0 +1,328 @@
+.clinical-muted-theme {
+  --primary: #42645f;
+  --primary-dark: #35544f;
+  --primary-light: #66817b;
+  --primary-soft: #eff3f1;
+  --primary-ring: rgba(66, 100, 95, 0.14);
+  --surface-alt: #f1f3f2;
+  --surface-hover: #e7ece9;
+  --danger: #a94f4f;
+  --danger-dark: #874040;
+  --danger-soft: #fbefee;
+  --success: #54756f;
+  --success-soft: #eff3f1;
+  --info: #687571;
+  --info-soft: #f1f3f2;
+  --warning: #94764c;
+  --warning-dark: #765e3d;
+  --warning-soft: #f4f0e8;
+  --queue-waiting: #a94f4f;
+  --queue-waiting-soft: #fbefee;
+  --queue-active: #42645f;
+  --queue-active-soft: #eff3f1;
+  --queue-complete: #687571;
+  --queue-complete-soft: #f1f3f2;
+}
+
+.clinical-muted-theme.dark {
+  --primary: #54756f;
+  --primary-dark: #66817b;
+  --primary-light: #8da49e;
+  --primary-soft: #24332f;
+  --primary-ring: rgba(84, 117, 111, 0.22);
+  --surface-alt: #293733;
+  --surface-hover: #34433e;
+  --danger: #c17b75;
+  --danger-dark: #d0938e;
+  --danger-soft: #3b2d2b;
+  --success: #8da49e;
+  --success-soft: #293733;
+  --info: #aab6b1;
+  --info-soft: #293733;
+  --warning: #c2a879;
+  --warning-dark: #d2bc96;
+  --warning-soft: #3c362b;
+  --queue-waiting: #c17b75;
+  --queue-waiting-soft: #3b2d2b;
+  --queue-active: #8da49e;
+  --queue-active-soft: #293733;
+  --queue-complete: #aab6b1;
+  --queue-complete-soft: #293733;
+}
+
+.clinical-muted-theme .cms-topbar-title {
+  color: var(--text) !important;
+}
+
+.clinical-muted-theme .cms-patient-header-banner {
+  border-left-color: var(--primary);
+}
+
+.clinical-muted-theme .cms-patient-header-title,
+.clinical-muted-theme .cms-link-view-detail,
+.clinical-muted-theme .cms-link-view-detail:hover {
+  color: var(--primary-dark);
+}
+
+.clinical-muted-theme .cms-visit-form-box,
+.clinical-muted-theme .cms-history-card-editable {
+  border-color: #d5dfdb;
+  box-shadow: 0 4px 12px rgba(66, 100, 95, 0.08);
+}
+
+.clinical-muted-theme .cms-vital-input-col input:focus,
+.clinical-muted-theme .cms-inline-edit-vitals-row .cms-vital-input-col input:focus {
+  border-color: var(--primary);
+}
+
+.clinical-muted-theme .cms-treatment-panel {
+  background: #f8f5f4;
+  border-color: #e8d9d6;
+}
+
+.clinical-muted-theme .cms-treatment-panel-title {
+  color: #9d5d57;
+}
+
+.clinical-muted-theme .cms-prescription-panel {
+  background: var(--surface-alt);
+  border-color: #d5dfdb;
+}
+
+.clinical-muted-theme .cms-prescription-panel-title {
+  color: var(--primary-dark);
+}
+
+.clinical-muted-theme .cms-financial-row {
+  background: var(--surface-alt);
+}
+
+.clinical-muted-theme .cms-history-card-full:hover,
+.clinical-muted-theme .cms-history-row-compact:hover {
+  border-color: #d5dfdb;
+  box-shadow: 0 2px 8px rgba(66, 100, 95, 0.08);
+}
+
+.clinical-muted-theme .cms-pill-bp,
+.clinical-muted-theme .cms-pill-ref,
+.clinical-muted-theme .cms-pill-complaint,
+.clinical-muted-theme .cms-pill-sugar,
+.clinical-muted-theme .cms-pill-investigation,
+.clinical-muted-theme .cms-pill-other {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.clinical-muted-theme .cms-history-card-full.cms-card-has-due,
+.clinical-muted-theme .cms-history-row-compact.cms-card-has-due {
+  border-color: var(--danger) !important;
+  background: var(--danger-soft) !important;
+  box-shadow: 0 0 0 1px rgba(169, 79, 79, 0.1), 0 3px 10px rgba(169, 79, 79, 0.08) !important;
+}
+
+.clinical-muted-theme .cms-history-card-full.cms-card-has-due:hover,
+.clinical-muted-theme .cms-history-row-compact.cms-card-has-due:hover {
+  border-color: var(--danger-dark) !important;
+  background: var(--danger-soft) !important;
+  box-shadow: 0 0 0 1px rgba(169, 79, 79, 0.12), 0 4px 12px rgba(169, 79, 79, 0.1) !important;
+}
+
+.clinical-muted-theme .cms-history-card-full.cms-card-has-due .cms-due-pill-btn,
+.clinical-muted-theme .cms-history-row-compact.cms-card-has-due .cms-due-pill-btn {
+  background: var(--danger) !important;
+  box-shadow: none !important;
+}
+
+.clinical-muted-theme .cms-due-pill-btn,
+.clinical-muted-theme .cms-fam-due-btn {
+  background: var(--danger);
+  box-shadow: none;
+}
+
+.clinical-muted-theme .cms-due-pill-btn:hover,
+.clinical-muted-theme .cms-fam-due-btn:hover {
+  background: var(--danger-dark);
+  box-shadow: none;
+}
+
+.clinical-muted-theme .cms-due-alert-banner {
+  background: var(--danger-soft);
+  border-color: #d9b5b1;
+}
+
+.clinical-muted-theme .cms-multi-autocomplete-item:hover,
+.clinical-muted-theme .cms-multi-autocomplete-item.active,
+.clinical-muted-theme .cms-dietary-autocomplete-item:hover,
+.clinical-muted-theme .cms-dietary-autocomplete-item.active,
+.clinical-muted-theme .cms-medicine-autocomplete-item:hover,
+.clinical-muted-theme .cms-medicine-autocomplete-item.active {
+  background: var(--primary-soft) !important;
+  border-color: #d5dfdb;
+  color: var(--primary-dark) !important;
+}
+
+.clinical-muted-theme .cms-dietary-autocomplete-box,
+.clinical-muted-theme .cms-medicine-autocomplete-box {
+  border-color: var(--primary-light);
+}
+
+.clinical-muted-theme .cms-treatment-autocomplete-box {
+  border-color: #d9b5b1;
+}
+
+.clinical-muted-theme .cms-dietary-autocomplete-box {
+  border-color: #d5dfdb;
+}
+
+.clinical-muted-theme .cms-prescription-scroll-viewport::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+}
+
+.clinical-muted-theme .cms-prescription-scroll-viewport::-webkit-scrollbar-thumb,
+.clinical-muted-theme .cms-prescription-scroll-viewport::-webkit-scrollbar-thumb:hover {
+  background: #aeb9b4;
+}
+
+.clinical-muted-theme #btn-attach-report,
+.clinical-muted-theme #badge-report-attached {
+  background: var(--primary-soft) !important;
+  border-color: #d5dfdb !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+}
+
+.clinical-muted-theme #visit-form-title {
+  color: var(--primary-dark) !important;
+}
+
+.clinical-muted-theme span[style*="#fee2e2"],
+.clinical-muted-theme span[style*="#b91c1c"] {
+  background: var(--danger-soft) !important;
+  color: var(--danger-dark) !important;
+}
+
+.clinical-muted-theme [style*="#e0f2fe"],
+.clinical-muted-theme [style*="#0369a1"],
+.clinical-muted-theme [style*="#0284c7"],
+.clinical-muted-theme [style*="#bae6fd"],
+.clinical-muted-theme [style*="rgba(37,99,235"],
+.clinical-muted-theme [style*="rgba(59,130,246"] {
+  background: var(--primary-soft) !important;
+  border-color: #d5dfdb !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+}
+
+.clinical-muted-theme [style*="#f0fdf4"],
+.clinical-muted-theme [style*="#bbf7d0"],
+.clinical-muted-theme [style*="#86efac"] {
+  background: var(--surface-alt) !important;
+  border-color: #d5dfdb !important;
+  color: var(--primary-dark) !important;
+}
+
+.clinical-muted-theme #cms-print-area [style*="#146B5C"],
+.clinical-muted-theme #cms-print-area [style*="#0f766e"],
+.clinical-muted-theme #cms-print-area [style*="#0d9488"] {
+  color: #42645f !important;
+  border-color: #d5dfdb !important;
+}
+
+.clinical-muted-theme #cms-print-area [style*="#bbf7d0"],
+.clinical-muted-theme #cms-print-area [style*="#dcfce7"],
+.clinical-muted-theme #cms-print-area [style*="#e0f2fe"],
+.clinical-muted-theme #cms-print-area [style*="#0369a1"] {
+  background: #f1f3f2 !important;
+  border-color: #d5dfdb !important;
+  color: #35544f !important;
+}
+
+.clinical-muted-theme #cms-print-area [style*="#10b981"],
+.clinical-muted-theme #cms-print-area [style*="#065f46"] {
+  color: #54756f !important;
+}
+
+.clinical-muted-theme #cms-print-area [style*="#fee2e2"],
+.clinical-muted-theme #cms-print-area [style*="#b91c1c"] {
+  color: #a94f4f !important;
+  border-color: #ead1ce !important;
+}
+
+.receptionist-muted-theme #rec-clinic-details {
+  background: var(--primary-soft) !important;
+}
+
+.receptionist-muted-theme .cms-kpi-card.tone-opd::before,
+.receptionist-muted-theme .cms-kpi-card.tone-revenue::before,
+.receptionist-muted-theme .cms-kpi-card.tone-apts::before,
+.receptionist-muted-theme .cms-kpi-card.tone-patients::before {
+  background: var(--primary-light) !important;
+}
+
+.receptionist-muted-theme .cms-kpi-card.tone-opd .cms-kpi-icon,
+.receptionist-muted-theme .cms-kpi-card.tone-revenue .cms-kpi-icon,
+.receptionist-muted-theme .cms-kpi-card.tone-apts .cms-kpi-icon,
+.receptionist-muted-theme .cms-kpi-card.tone-patients .cms-kpi-icon {
+  background: var(--primary-soft) !important;
+  color: var(--primary-dark) !important;
+}
+
+.receptionist-muted-theme .cms-kpi-card.tone-dues::before {
+  background: var(--danger) !important;
+}
+
+.receptionist-muted-theme .cms-kpi-card.tone-dues .cms-kpi-icon {
+  background: var(--danger-soft) !important;
+  color: var(--danger) !important;
+}
+
+.receptionist-muted-theme .cms-diag-progress-fill,
+.receptionist-muted-theme .cms-kpi-card [style*="linear-gradient"] {
+  background: var(--primary-light) !important;
+}
+
+.receptionist-muted-theme #rec-view-container [style*="linear-gradient(135deg,var(--primary)"] {
+  background: var(--primary) !important;
+}
+
+.receptionist-muted-theme #rec-view-container [style*="#059669"],
+.receptionist-muted-theme #rec-view-container [style*="#0f766e"] {
+  color: var(--primary-dark) !important;
+}
+
+.receptionist-muted-theme #rec-view-container [style*="#d32f2f"],
+.receptionist-muted-theme #rec-nav [style*="#d32f2f"] {
+  background: var(--danger) !important;
+}
+
+.receptionist-muted-theme #rec-nav [style*="rgba(20,107,92"] {
+  background: var(--primary-soft) !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#f8fafc"],
+.reports-muted-theme #rpt-content-box [style*="#f0fdf4"] {
+  background: var(--surface-alt) !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#bbf7d0"] {
+  border-color: #d5dfdb !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#166534"],
+.reports-muted-theme #rpt-content-box [style*="#15803d"] {
+  color: var(--primary-dark) !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#fef2f2"] {
+  background: var(--danger-soft) !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#fecaca"] {
+  border-color: #ead1ce !important;
+}
+
+.reports-muted-theme #rpt-content-box [style*="#991b1b"],
+.reports-muted-theme #rpt-content-box [style*="#dc2626"] {
+  color: var(--danger) !important;
+}

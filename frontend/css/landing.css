@@ -79,7 +79,7 @@ a {
 
 .brand-name,
 .footer-brand span {
-  color: #dc2626 !important;
+  color: var(--primary) !important;
 }
 
 .logo-icon {

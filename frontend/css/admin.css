@@ -7,7 +7,7 @@
   padding-left: 10px;
 }
 .admin-brand-logo { background: var(--primary-teal, #095c54); }
-.admin-brand-title { color: #dc2626 !important; }
+.admin-brand-title { color: var(--text-main) !important; }
 .sidebar.is-collapsed { width: 0; min-width: 0; overflow: hidden; border: 0; }
 .admin-subnav-link {
   color: var(--text-muted);
@@ -39,7 +39,7 @@
 .admin-stat-top { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 12px; font-weight: 600; }
 .admin-stat-icon { color: var(--primary-teal); background: var(--primary-teal-light); border-radius: 8px; padding: 8px; }
 .admin-stat strong { display: block; color: var(--text-main); font-size: 25px; margin-top: 8px; }
-.admin-stat small { color: #059669; font-size: 11px; }
+.admin-stat small { color: var(--primary-teal); font-size: 11px; }
 .admin-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; align-items: start; }
 .admin-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
 .admin-card-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -61,7 +61,7 @@
 .admin-table tbody tr[data-clinic-id]:hover, .admin-table tbody tr[data-doctor-name]:hover, .admin-table tbody tr[data-patient-id]:hover { background: var(--primary-teal-light); }
 .admin-table tr:last-child td { border-bottom: 0; }
 .status-pill { display: inline-flex; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 700; background: var(--primary-teal-light); color: var(--primary-teal); }
-.status-pill.paused { background: #fff7ed; color: #c2410c; }
+.status-pill.paused { background: var(--surface-alt, #f1f5f9); color: var(--text-muted); }
 .metric-bar { height: 7px; border-radius: 99px; background: var(--border-color); overflow: hidden; min-width: 90px; }
 .metric-bar i { display: block; height: 100%; background: var(--primary-teal); border-radius: inherit; }
 .empty-results { padding: 28px; text-align: center; color: var(--text-muted); }
@@ -93,8 +93,8 @@
 .clinic-modal-card .modal-header, .clinic-modal-card .modal-body, .clinic-modal-card .modal-footer { padding: 17px 20px; }
 .clinic-modal-card .modal-body { border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 9px; }
-.sidebar-logout { width: 100%; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-muted); border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer; text-align: left; font: inherit; font-size: 12px; font-weight: 700; }
-.sidebar-logout:hover { color: #b91c1c; border-color: #fecaca; background: #fff1f2; }
+.sidebar-logout { width: 100%; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-muted); border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer; text-align: left; font: inherit; font-size: 12px; font-weight: 700; transition: background .15s ease, color .15s ease; }
+.sidebar-logout:hover { color: var(--text-main); border-color: var(--border-color); background: var(--surface-alt, #f8fafc); }
 .detail-modal-card { width: min(900px, calc(100vw - 30px)); max-height: 90vh; overflow: auto; background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
 .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; }
 .detail-item { min-width: 0; }
@@ -105,9 +105,9 @@
 .detail-item.span-full { grid-column: 1 / -1; }
 .detail-section { padding: 16px 20px; border-top: 1px solid var(--border-color); }
 .detail-section h3 { color: var(--primary-teal); font-size: 13px; margin-bottom: 12px; }
-.suspend-button { color: #b91c1c; border-color: #fecaca; }
-.suspend-button:hover { background: #fff1f2; border-color: #fca5a5; }
-.account-status-suspended { background: #fff1f2; color: #b91c1c; }
+.suspend-button { color: var(--text-muted); border-color: var(--border-color); }
+.suspend-button:hover { background: rgba(220, 38, 38, 0.05); color: #dc2626; border-color: rgba(220, 38, 38, 0.2); }
+.account-status-suspended { background: var(--surface-alt, #f1f5f9); color: var(--text-muted); }
 .clinic-form-section { padding: 14px 0 4px; border-top: 1px solid var(--border-color); }
 .clinic-form-section:first-child { border-top: 0; padding-top: 0; }
 .clinic-form-section h3 { color: var(--primary-teal); font-size: 13px; margin-bottom: 12px; }
@@ -118,7 +118,8 @@
 .doctor-entry { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px; }
 .doctor-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .doctor-entry-header strong { color: var(--text-main); font-size: 12px; }
-.remove-doctor { color: #b91c1c; background: none; border: 0; cursor: pointer; font-size: 12px; }
+.remove-doctor { color: var(--text-muted); background: none; border: 0; cursor: pointer; font-size: 12px; transition: color 0.15s ease; }
+.remove-doctor:hover { color: #dc2626; }
 .file-input { font-size: 12px; width: 100%; }
 .quick-filter-bar { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
 .quick-filter { border: 1px solid var(--border-color); background: var(--surface-alt, #f8fafc); color: var(--text-muted); border-radius: 999px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 11px; }
@@ -180,8 +181,8 @@
   letter-spacing: .5px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted);
 }
 .service-badge-pill.primary {
   background: var(--primary-teal-light);
@@ -214,7 +215,7 @@
   gap: 7px;
 }
 .service-feature-list li i {
-  color: #059669;
+  color: var(--primary-teal);
   font-size: 10px;
 }
 .service-card-footer {
@@ -294,33 +295,33 @@
 
 /* Receptionist Staff Section */
 .receptionist-form-container {
-  background: #f0fdfa;
-  border: 1.5px solid #99f6e4;
+  background: var(--surface-alt, #f8fafc);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 14px;
   margin-top: 12px;
   transition: all .2s ease;
 }
 [data-theme="dark"] .receptionist-form-container {
-  background: rgba(13, 148, 136, 0.08);
-  border-color: rgba(13, 148, 136, 0.35);
+  background: var(--surface-alt);
+  border-color: var(--border-color);
 }
 .receptionist-form-header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  color: #0f766e;
+  color: var(--primary-teal);
   font-size: 13px;
   font-weight: 700;
 }
 .receptionist-notice-box {
-  background: #ffffff;
-  border: 1px solid #ccfbf1;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 11px;
-  color: #115e59;
+  color: var(--text-muted);
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -328,9 +329,9 @@
   line-height: 1.4;
 }
 [data-theme="dark"] .receptionist-notice-box {
-  background: #0f172a;
-  border-color: #134e4a;
-  color: #5eead4;
+  background: var(--surface-alt);
+  border-color: var(--border-color);
+  color: var(--text-muted);
 }
 
 /* Service Pills & Tags */
@@ -352,21 +353,14 @@
   color: var(--text-muted);
   border: 1px solid var(--border-color);
 }
-.service-pill-mini.active {
+.service-pill-mini.active,
+.service-pill-mini.receptionist-active,
+.service-pill-mini.prescription-active {
   background: var(--primary-teal-light);
   color: var(--primary-teal);
   border-color: var(--primary-teal-border);
 }
-.service-pill-mini.receptionist-active {
-  background: #f0fdf4;
-  color: #15803d;
-  border-color: #bbf7d0;
-}
-.service-pill-mini.prescription-active {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-}
+
 .role-badge {
   display: inline-flex;
   align-items: center;
@@ -377,17 +371,18 @@
   font-weight: 700;
 }
 .role-badge-doctor {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
 }
 .role-badge-receptionist {
-  background: #f0fdf4;
-  color: #15803d;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-main);
 }
 .role-badge-admin {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted);
 }
+
 /* ---- Form Select (Edit modal) ---- */
 .form-select {
   width: 100%;
@@ -408,11 +403,11 @@
 
 /* ---- Toast Error Variant ---- */
 .toast.error {
-  border-left: 3px solid #ef4444;
-  background: #fff1f2;
-  color: #b91c1c;
+  border-left: 3px solid #dc2626;
+  background: rgba(220, 38, 38, 0.04);
+  color: var(--text-main);
 }
-.toast.error i { color: #ef4444; }
+.toast.error i { color: #dc2626; }
 
 /* ---- Modal close button ---- */
 .modal-close-btn {
@@ -480,26 +475,14 @@
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  background: var(--surface-alt, #f8fafc);
+  color: var(--text-muted);
 }
 
-.feedback-kpi-icon.total {
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
-}
-
-.feedback-kpi-icon.pending {
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
-}
-
+.feedback-kpi-icon.total,
 .feedback-kpi-icon.progress {
-  background: rgba(217, 119, 6, 0.1);
-  color: #d97706;
-}
-
-.feedback-kpi-icon.resolved {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
 }
 
 .feedback-kpi-val {
@@ -560,26 +543,14 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: capitalize;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted);
 }
 
-.feedback-status-pill.pending {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.feedback-status-pill.in-progress {
-  background: #fef3c7;
-  color: #b45309;
-}
-
+.feedback-status-pill.in-progress,
 .feedback-status-pill.resolved {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.feedback-status-pill.closed {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
 }
 
 .feedback-source-tag {
@@ -590,16 +561,13 @@
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 6px;
-}
-
-.feedback-source-tag.landing {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--surface-alt, #f1f5f9);
+  color: var(--text-muted);
 }
 
 .feedback-source-tag.doctor {
-  background: #f3e8ff;
-  color: #7e22ce;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
 }
 
 .feedback-ticket-modal-card {
@@ -657,7 +625,7 @@
 .feedback-reply-bubble {
   background: rgba(15, 118, 110, 0.05);
   border: 1px solid rgba(15, 118, 110, 0.15);
-  border-left: 4px solid #10b981;
+  border-left: 4px solid var(--primary-teal, #0f766e);
   border-radius: 8px;
   padding: 12px 14px;
 }
@@ -743,7 +711,7 @@
   background: #ffffff;
   color: #0f172a;
   border: 1px solid #e2e8f0;
-  border-left: 5px solid #0f766e;
+  border-left: 5px solid var(--primary-teal, #0f766e);
   border-radius: 10px;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   font-size: 13px;
@@ -762,25 +730,25 @@ body.dark .admin-toast {
 
 .admin-toast i {
   font-size: 18px;
-  color: #0f766e;
+  color: var(--primary-teal, #0f766e);
   flex-shrink: 0;
 }
 
 .admin-toast.toast-error {
-  border-left-color: #ef4444;
-  background: #fff5f5;
-  color: #991b1b;
-  border-color: #fecaca;
+  border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.04);
+  color: var(--text-main);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 body.dark .admin-toast.toast-error {
-  background: #2c1517;
-  color: #fca5a5;
-  border-color: #7f1d1d;
+  background: rgba(220, 38, 38, 0.1);
+  color: #f87171;
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 .admin-toast.toast-error i {
-  color: #ef4444;
+  color: #dc2626;
 }
 
 @keyframes toastSlideIn {
@@ -825,7 +793,7 @@ body.dark .admin-toast.toast-error {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary-teal, #0f766e), #0284c7);
+  background: var(--primary-teal, #0f766e);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -873,8 +841,8 @@ body.dark .admin-toast.toast-error {
   letter-spacing: 0.4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(2, 132, 199, 0.1);
-  color: #0284c7;
+  background: var(--primary-teal-light);
+  color: var(--primary-teal);
   margin-bottom: 4px;
 }
 
@@ -929,7 +897,7 @@ body.dark .admin-toast.toast-error {
 }
 
 .service-admin-features li i {
-  color: #10b981;
+  color: var(--primary-teal);
   font-size: 11px;
 }
 
@@ -986,7 +954,7 @@ body.dark .admin-toast.toast-error {
   background: var(--primary-teal, #0f766e);
   border-color: var(--primary-teal, #0f766e);
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.3);
+  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.2);
 }
 
 .svc-toggle-btn.is-disabled,
@@ -1089,9 +1057,67 @@ body.dark .admin-toast.toast-error {
   gap: 10px;
   padding: 10px 14px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-card, #ffffff);
   font-size: 12px;
-  color: #475569;
+  color: var(--text-muted, #475569);
 }
 
+/* Keep teal for important actions while using neutral surfaces for decoration. */
+.app-container {
+  --primary-teal: #42645f;
+  --primary-teal-hover: #35544f;
+  --primary-teal-dark: #2f4b46;
+  --primary-teal-light: #eff3f1;
+  --primary-teal-border: #d5dfdb;
+  --admin-neutral-tint: #f1f3f2;
+}
+
+[data-theme="dark"] .app-container,
+body.dark .app-container {
+  --primary-teal: #54756f;
+  --primary-teal-hover: #45645e;
+  --primary-teal-dark: #395650;
+  --primary-teal-light: #24332f;
+  --primary-teal-border: #3e554f;
+  --admin-neutral-tint: #293733;
+}
+
+.admin-stat-icon,
+.admin-quick-link > i:first-child,
+.service-admin-icon {
+  background: var(--admin-neutral-tint);
+}
+
+.admin-quick-link:hover,
+.admin-table tbody tr[data-clinic-id]:hover,
+.admin-table tbody tr[data-doctor-name]:hover,
+.admin-table tbody tr[data-patient-id]:hover {
+  background: var(--admin-neutral-tint);
+}
+
+.status-pill,
+.service-admin-badge {
+  background: var(--admin-neutral-tint);
+}
+
+.receptionist-form-container {
+  background: var(--admin-neutral-tint);
+  border-color: var(--border-color, #e2e8f0);
+}
+
+.suspend-button:hover {
+  background: rgba(180, 91, 91, 0.06);
+  color: #a94f4f;
+  border-color: rgba(180, 91, 91, 0.22);
+}
+
+.remove-doctor:hover,
+.toast.error i,
+.admin-toast.toast-error i {
+  color: #a94f4f;
+}
+
+.admin-toast.toast-error {
+  border-left-color: #a94f4f;
+}

@@ -7,8 +7,79 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="../../css/style.css">
   <link rel="stylesheet" href="../../css/patient.css">
+  <style>
+    .patient-add-page {
+      --primary: #42645f;
+      --primary-dark: #35544f;
+      --primary-light: #66817b;
+      --primary-soft: #eff3f1;
+      --primary-ring: rgba(66, 100, 95, 0.14);
+      --surface-alt: #f1f3f2;
+      --surface-hover: #e7ece9;
+      --danger: #a94f4f;
+      --danger-dark: #874040;
+      --danger-soft: #fbefee;
+      --success: #54756f;
+      --success-soft: #eff3f1;
+      --info: #687571;
+      --info-soft: #f1f3f2;
+      --warning: #94764c;
+      --warning-dark: #765e3d;
+    }
+
+    .patient-add-page.dark {
+      --primary: #54756f;
+      --primary-dark: #66817b;
+      --primary-light: #8da49e;
+      --primary-soft: #24332f;
+      --primary-ring: rgba(84, 117, 111, 0.22);
+      --surface-alt: #293733;
+      --surface-hover: #34433e;
+      --danger: #c17b75;
+      --danger-dark: #d0938e;
+      --danger-soft: #3b2d2b;
+      --success: #8da49e;
+      --success-soft: #293733;
+      --info: #aab6b1;
+      --info-soft: #293733;
+      --warning: #c2a879;
+      --warning-dark: #d2bc96;
+    }
+
+    .patient-add-page .cms-topbar-title {
+      color: var(--text) !important;
+    }
+
+    .patient-add-page #page-patient-add-container > div > .cms-card {
+      border-top-color: var(--primary) !important;
+    }
+
+    .patient-add-page #page-patient-add-container .cms-card .cms-pill.font-mono:not(.cms-badge-paid) {
+      background: var(--primary-soft) !important;
+      color: var(--primary-dark) !important;
+    }
+
+    .patient-add-page #page-patient-add-container .cms-card > div[style*="linear-gradient"] {
+      background: var(--primary-soft) !important;
+      border-color: #d5dfdb !important;
+    }
+
+    .patient-add-page #page-patient-add-container .cms-badge-paid {
+      background: var(--surface-alt);
+      color: var(--primary-dark);
+    }
+
+    .patient-add-page #page-patient-add-container [style*="rgba(239,68,68"] {
+      background: var(--danger-soft) !important;
+      border-color: #d9b5b1 !important;
+    }
+
+    .patient-add-page #page-patient-add-container [style*="color: var(--danger)"] {
+      color: var(--danger) !important;
+    }
+  </style>
 </head>
-<body class="cms-root">
+<body class="cms-root patient-add-page">
   <div class="cms-layout">
     <main class="cms-main-container">
       <header class="cms-topbar">
