@@ -115,6 +115,21 @@ const clinicalStaffOnly = (req, res, next) => {
   next();
 };
 
+const requireRole = (...allowedRoles) => {
+  const roles = allowedRoles.flat();
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: 'FORBIDDEN',
+        message: `Access denied. This resource requires ${roles.join(' or ')} authorization.`,
+      });
+    }
+    next();
+  };
+};
+
 module.exports = authMiddleware;
 module.exports.adminOnly = adminOnly;
 module.exports.clinicalStaffOnly = clinicalStaffOnly;
+module.exports.requireRole = requireRole;

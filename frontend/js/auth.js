@@ -11,14 +11,17 @@ export function initAuth() {
   return session;
 }
 
-export async function loginUser(username, password) {
+export async function loginUser(username, password, expectedRole = '') {
   try {
     const res = await apiFetch('/auth/login', {
       method: 'POST',
-      body: { username, password },
+      body: { username, password, expectedRole },
     });
 
     if (res && res.success) {
+      if (expectedRole && res.user.role !== expectedRole) {
+        throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+      }
       const sessionData = {
         token: res.token,
         role: res.user.role,
@@ -32,15 +35,18 @@ export async function loginUser(username, password) {
     }
   } catch (err) {
     // Local Master DB Fallback for seamless offline experience
-    return fallbackLocalLogin(username, password);
+    return fallbackLocalLogin(username, password, expectedRole);
   }
 }
 
-function fallbackLocalLogin(username, password) {
+function fallbackLocalLogin(username, password, expectedRole = '') {
   const u = username.trim().toLowerCase();
   const p = password.trim();
 
   if (u === 'admin' && p === 'admin') {
+    if (expectedRole && expectedRole !== 'admin') {
+      throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+    }
     const adminSession = {
       role: 'admin',
       profile: { username: 'admin', name: 'System Administrator', role: 'admin' },
@@ -52,6 +58,9 @@ function fallbackLocalLogin(username, password) {
   }
 
   if (u === 'dhyey' && p === '123') {
+    if (expectedRole && expectedRole !== 'doctor') {
+      throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+    }
     const doctorSession = {
       role: 'doctor',
       profile: {
@@ -73,6 +82,9 @@ function fallbackLocalLogin(username, password) {
 
   // Receptionist Default Demo Login (Verified with Clinic Receptionist Service)
   if ((u === 'reception' || u === 'receptionist') && (p === '123' || p === 'reception' || p === '123456')) {
+    if (expectedRole && expectedRole !== 'receptionist') {
+      throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+    }
     const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
     const demoClinic = adminClinics.find(c => c.id === 'demo' || c.id === 'CLN-001') || {
       id: 'demo',
@@ -123,6 +135,9 @@ function fallbackLocalLogin(username, password) {
           if (rec.status === 'Suspended') {
             throw new Error('This receptionist account has been suspended by the administrator.');
           }
+          if (expectedRole && expectedRole !== 'receptionist') {
+            throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+          }
           const receptionistSession = {
             role: 'receptionist',
             profile: {
@@ -166,6 +181,9 @@ function fallbackLocalLogin(username, password) {
       if (doc.status === 'Suspended') {
         throw new Error('This doctor account has been suspended by the administrator.');
       }
+      if (expectedRole && expectedRole !== 'doctor') {
+        throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+      }
       const matchedClinic = adminClinics.find((c) => c.name === doc.clinic || c.id === doc.clinicId) || {
         id: doc.clinicId || ('CLN-' + (doc.clinic || 'custom').replace(/\s+/g, '_')),
         name: doc.clinic || 'Clinic',
@@ -206,6 +224,9 @@ function fallbackLocalLogin(username, password) {
       const masterDb = JSON.parse(stored);
       const doctor = masterDb.doctors.find((d) => d.username === u && d.password === p);
       if (doctor) {
+        if (expectedRole && expectedRole !== 'doctor') {
+          throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+        }
         const session = {
           role: 'doctor',
           profile: doctor,
