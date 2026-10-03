@@ -17,8 +17,13 @@
           window.location.replace('pages/login.html?auth=login_required');
           return;
         }
-        if (session.role === 'admin') {
-          window.location.replace('pages/admin/dashboard.html');
+        if (session.role === 'admin' || session.role === 'receptionist') {
+          window.location.replace(session.role === 'admin' ? 'pages/admin/dashboard.html' : 'pages/receptionist/dashboard.html');
+          return;
+        }
+        if (session.role !== 'doctor') {
+          localStorage.removeItem('clinic-auth-session');
+          window.location.replace('pages/login.html?auth=doctor_required');
           return;
         }
       } catch (e) {
