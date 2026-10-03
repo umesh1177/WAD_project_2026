@@ -47,6 +47,30 @@ const createAppointment = async (req, res) => {
     const patName = (patientName || name || 'Patient').trim();
     const finalComplaint = complaint || reason || 'General OPD Consultation';
 
+    // Prevent duplicate queue entry for the same patient today
+    const patIdClean = (patientId || '').trim();
+    const checkQuery = {
+      $and: [
+        { $or: [{ date: today }, { appointmentDate: today }] },
+        { status: { $in: ['Waiting', 'In-Consultation'] } },
+        clinicQuery
+      ]
+    };
+    if (patIdClean && !patIdClean.startsWith('PAT-')) {
+      checkQuery.$and.push({ patientId: patIdClean });
+    } else {
+      checkQuery.$and.push({ patientName: patName.toUpperCase() });
+    }
+
+    const existingQueueItem = await Appointment.findOne(checkQuery);
+    if (existingQueueItem) {
+      return res.status(200).json({
+        success: true,
+        message: `${patName} is already in today's active queue (Token ${existingQueueItem.token})`,
+        data: existingQueueItem
+      });
+    }
+
     let finalToken = token;
     if (!finalToken) {
       const count = await Appointment.countDocuments({

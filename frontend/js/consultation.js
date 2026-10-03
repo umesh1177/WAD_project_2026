@@ -267,6 +267,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
   // Form row models
   let treatmentRows = [{ name: '', qty: '1' }];
   let prescriptionRows = [{ name: '', qty: '1', mor: '1', noon: '0', eve: '1', ngt: '0', timing: 'AF' }];
+  let isSubmittingCase = false;
 
   // Restore draft case if returning from Edit Patient
   try {
@@ -1145,6 +1146,16 @@ export async function renderConsultationView(container, selection, onSelectPatie
     mount.querySelectorAll('.inline-rx-name').forEach((el) => {
       const idx = Number(el.dataset.idx);
       setupMedicineAutocomplete(el, db, (chosen) => {
+        // Prevent adding duplicate medicine twice
+        const duplicateIdx = inlineEditingPrescriptions.findIndex((r, rIdx) => rIdx !== idx && r.name && r.name.trim().toLowerCase() === chosen.name.trim().toLowerCase());
+        if (duplicateIdx !== -1) {
+          showToast(`⚠️ Medicine "${chosen.name}" is already added in row #${duplicateIdx + 1}! Duplicate medicine cannot be given twice.`, 'warning');
+          el.value = '';
+          inlineEditingPrescriptions[idx].name = '';
+          renderInlinePrescriptionInputs();
+          return;
+        }
+
         inlineEditingPrescriptions[idx].name = chosen.name;
         if (chosen.defaultDosage) {
           const parsed = parseDosageString(chosen.defaultDosage);
@@ -1172,6 +1183,19 @@ export async function renderConsultationView(container, selection, onSelectPatie
         if (idx === inlineEditingPrescriptions.length - 1 && e.target.value.trim().length > 0) {
           inlineEditingPrescriptions.push({ name: '', qty: '1', mor: '1', noon: '0', eve: '1', ngt: '0', timing: 'AF' });
           renderInlinePrescriptionInputs(idx);
+        }
+      });
+
+      el.addEventListener('blur', (e) => {
+        const val = e.target.value.trim().toLowerCase();
+        if (val) {
+          const duplicateIdx = inlineEditingPrescriptions.findIndex((r, rIdx) => rIdx !== idx && r.name && r.name.trim().toLowerCase() === val);
+          if (duplicateIdx !== -1) {
+            showToast(`⚠️ Medicine "${e.target.value.trim()}" is already prescribed in row #${duplicateIdx + 1}! Duplicate medicine cannot be given twice.`, 'warning');
+            e.target.value = '';
+            inlineEditingPrescriptions[idx].name = '';
+            renderInlinePrescriptionInputs();
+          }
         }
       });
     });
@@ -1942,56 +1966,151 @@ export async function renderConsultationView(container, selection, onSelectPatie
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const visitDate = container.querySelector('#visit-date-input')?.value || todayISO();
-        const bp = container.querySelector('#input-bp')?.value.trim() || '';
-        const sugar = container.querySelector('#input-sugar')?.value.trim() || '';
-        const other = container.querySelector('#input-other')?.value.trim() || '';
-        const reference = container.querySelector('#input-reference')?.value.trim() || '';
-        const investigation = container.querySelector('#input-investigation')?.value.trim() || '';
-        const complaint = container.querySelector('#input-complaint')?.value.trim() || '';
-        const dietary = container.querySelector('#input-dietary')?.value.trim() || '';
-
-        const charge = Number(chargeInput?.value || 0);
-        const received = Number(paidInput?.value || 0);
-        const due = Math.max(0, charge - received);
-
-        // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
-        if (complaint) {
-          const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
-          complaintTokens.forEach(cName => {
-            if (cName.length > 1) {
-              addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
-            }
-          });
+        // 1. Prevent double clicks / concurrent submits
+        if (isSubmittingCase) {
+          showToast('⏳ Save in progress, please wait...', 'warning');
+          return;
         }
 
-        if (investigation) {
-          const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
-          investigationTokens.forEach(invName => {
-            if (invName.length > 1) {
-              addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
-            }
-          });
-        }
-
+        // 2. Validate duplicate medicines in prescription
         const cleanPrescription = prescriptionRows.filter((p) => p.name && p.name.trim());
-        cleanPrescription.forEach(p => {
-          const mName = p.name.trim();
-          if (mName.length > 1) {
-            addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() });
+        const seenMeds = new Set();
+        let duplicateMedName = null;
+        for (const p of cleanPrescription) {
+          const norm = p.name.trim().toLowerCase();
+          if (seenMeds.has(norm)) {
+            duplicateMedName = p.name.trim();
+            break;
           }
-        });
+          seenMeds.add(norm);
+        }
+        if (duplicateMedName) {
+          showToast(`⚠️ Medicine "${duplicateMedName}" is added twice in this prescription! Please adjust dosages into a single row or remove the duplicate.`, 'warning');
+          return;
+        }
 
-        if (!patient.visits) patient.visits = [];
+        // 3. Validate duplicate treatments
+        const cleanTreatments = treatmentRows.filter((t) => t.name && t.name.trim());
+        const seenTreatments = new Set();
+        let duplicateTreatmentName = null;
+        for (const t of cleanTreatments) {
+          const norm = t.name.trim().toLowerCase();
+          if (seenTreatments.has(norm)) {
+            duplicateTreatmentName = t.name.trim();
+            break;
+          }
+          seenTreatments.add(norm);
+        }
+        if (duplicateTreatmentName) {
+          showToast(`⚠️ Treatment "${duplicateTreatmentName}" is added twice! Please remove duplicate.`, 'warning');
+          return;
+        }
 
-        let targetVisitToPrint = null;
-        if (editingVisitId) {
-          // Update existing visit
-          const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId || v._id === editingVisitId));
-          if (vIdx !== -1) {
-            const updatedVisit = {
-              ...patient.visits[vIdx],
+        isSubmittingCase = true;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnHTML = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.7';
+          submitBtn.style.pointerEvents = 'none';
+          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
+
+        try {
+          const visitDate = container.querySelector('#visit-date-input')?.value || todayISO();
+          const bp = container.querySelector('#input-bp')?.value.trim() || '';
+          const sugar = container.querySelector('#input-sugar')?.value.trim() || '';
+          const other = container.querySelector('#input-other')?.value.trim() || '';
+          const reference = container.querySelector('#input-reference')?.value.trim() || '';
+          const investigation = container.querySelector('#input-investigation')?.value.trim() || '';
+          const complaint = container.querySelector('#input-complaint')?.value.trim() || '';
+          const dietary = container.querySelector('#input-dietary')?.value.trim() || '';
+
+          const charge = Number(chargeInput?.value || 0);
+          const received = Number(paidInput?.value || 0);
+          const due = Math.max(0, charge - received);
+
+          // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
+          if (complaint) {
+            const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
+            complaintTokens.forEach(cName => {
+              if (cName.length > 1) {
+                addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() });
+              }
+            });
+          }
+
+          if (investigation) {
+            const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
+            investigationTokens.forEach(invName => {
+              if (invName.length > 1) {
+                addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() });
+              }
+            });
+          }
+
+          cleanPrescription.forEach(p => {
+            const mName = p.name.trim();
+            if (mName.length > 1) {
+              addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() });
+            }
+          });
+
+          if (!patient.visits) patient.visits = [];
+
+          let targetVisitToPrint = null;
+          if (editingVisitId) {
+            // Update existing visit
+            const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId || v._id === editingVisitId));
+            if (vIdx !== -1) {
+              const updatedVisit = {
+                ...patient.visits[vIdx],
+                date: visitDate,
+                bp,
+                sugar,
+                other,
+                reference,
+                refDr: reference,
+                investigation,
+                complaint,
+                dietary,
+                treatment: cleanTreatments,
+                prescription: cleanPrescription,
+                labReport: attachedLabReport,
+                charge,
+                received,
+                paid: received,
+                due,
+              };
+              patient.visits[vIdx] = updatedVisit;
+              targetVisitToPrint = updatedVisit;
+
+              const targetId = updatedVisit._id || updatedVisit.caseId || editingVisitId;
+              try {
+                const uRes = await apiFetch('/consultations/' + targetId, {
+                  method: 'PUT',
+                  body: updatedVisit
+                });
+                if (uRes.success && uRes.data?._id) {
+                  patient.visits[vIdx]._id = uRes.data._id;
+                }
+              } catch(e) {
+                console.warn('Update consultation error:', e);
+              }
+
+              showToast(`✨ Case #${editingVisitId} updated successfully!`);
+            }
+          } else {
+            // Create New Visit
+            const nextVisitNum = patient.visits.length + 1;
+            const newCaseId = `${patient.id}${pad(nextVisitNum, 2)}`;
+
+            const newVisit = {
+              id: `v_${Date.now()}`,
+              caseId: newCaseId,
+              visitNum: nextVisitNum,
               date: visitDate,
+              time: nowTime(),
               bp,
               sugar,
               other,
@@ -2000,99 +2119,63 @@ export async function renderConsultationView(container, selection, onSelectPatie
               investigation,
               complaint,
               dietary,
-              treatment: treatmentRows.filter((t) => t.name && t.name.trim()),
-              prescription: prescriptionRows.filter((p) => p.name && p.name.trim()),
+              treatment: cleanTreatments,
+              prescription: cleanPrescription,
               labReport: attachedLabReport,
               charge,
               received,
               paid: received,
               due,
             };
-            patient.visits[vIdx] = updatedVisit;
-            targetVisitToPrint = updatedVisit;
 
-            const targetId = updatedVisit._id || updatedVisit.caseId || editingVisitId;
             try {
-              const uRes = await apiFetch('/consultations/' + targetId, {
-                method: 'PUT',
-                body: updatedVisit
+              const cRes = await apiFetch('/consultations', {
+                method: 'POST',
+                body: {
+                  ...newVisit,
+                  patientId: patient.patId || patient._id || patient.id,
+                  familyId: family?.famId || family?._id || patient.familyId || '',
+                  clinicId
+                }
               });
-              if (uRes.success && uRes.data?._id) {
-                patient.visits[vIdx]._id = uRes.data._id;
+              if (cRes.success && cRes.data) {
+                newVisit._id = cRes.data._id;
+                newVisit.id = cRes.data._id;
+                newVisit.caseId = cRes.data.caseId || newVisit.caseId;
               }
             } catch(e) {
-              console.warn('Update consultation error:', e);
+              console.warn('Create consultation error:', e);
             }
 
-            showToast(`✨ Case #${editingVisitId} updated successfully!`);
+            patient.visits.unshift(newVisit);
+            targetVisitToPrint = newVisit;
+            showToast(`✨ Visit #${nextVisitNum} saved!`);
           }
-        } else {
-          // Create New Visit
-          const nextVisitNum = patient.visits.length + 1;
-          const newCaseId = `${patient.id}${pad(nextVisitNum, 2)}`;
 
-          const newVisit = {
-            id: `v_${Date.now()}`,
-            caseId: newCaseId,
-            visitNum: nextVisitNum,
-            date: visitDate,
-            time: nowTime(),
-            bp,
-            sugar,
-            other,
-            reference,
-            refDr: reference,
-            investigation,
-            complaint,
-            dietary,
-            treatment: treatmentRows.filter((t) => t.name && t.name.trim()),
-            prescription: prescriptionRows.filter((p) => p.name && p.name.trim()),
-            labReport: attachedLabReport,
-            charge,
-            received,
-            paid: received,
-            due,
-          };
+          await window.syncVisitsToDB();
+          isNewVisitOpen = false;
+          editingVisitId = null;
+          attachedLabReport = null;
+          renderView();
 
-          try {
-            const cRes = await apiFetch('/consultations', {
-              method: 'POST',
-              body: {
-                ...newVisit,
-                patientId: patient.patId || patient._id || patient.id,
-                familyId: family?.famId || family?._id || patient.familyId || '',
-                clinicId
+          // Open Prescription Print Preview modal
+          if (targetVisitToPrint && hasDigitalRx) {
+            setTimeout(() => {
+              if (onPrintRequested) {
+                onPrintRequested(patient, targetVisitToPrint);
+              } else {
+                openPrescriptionModal(patient, targetVisitToPrint);
               }
-            });
-            if (cRes.success && cRes.data) {
-              newVisit._id = cRes.data._id;
-              newVisit.id = cRes.data._id;
-              newVisit.caseId = cRes.data.caseId || newVisit.caseId;
-            }
-          } catch(e) {
-            console.warn('Create consultation error:', e);
+            }, 50);
           }
-
-          patient.visits.unshift(newVisit);
-          targetVisitToPrint = newVisit;
-          showToast(`✨ Visit #${nextVisitNum} saved!`);
-        }
-
-        await window.syncVisitsToDB();
-        isNewVisitOpen = false;
-        editingVisitId = null;
-        attachedLabReport = null;
-        renderView();
-
-        // Open Prescription Print Preview modal
-        if (targetVisitToPrint && hasDigitalRx) {
-          setTimeout(() => {
-            if (onPrintRequested) {
-              onPrintRequested(patient, targetVisitToPrint);
-            } else {
-              openPrescriptionModal(patient, targetVisitToPrint);
-            }
-          }, 50);
+        } finally {
+          isSubmittingCase = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.pointerEvents = 'auto';
+            submitBtn.innerHTML = originalBtnHTML;
+          }
         }
       });
     }
@@ -2303,78 +2386,104 @@ export async function renderConsultationView(container, selection, onSelectPatie
           const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId);
           if (!v) return;
 
-          const date = container.querySelector('.inline-edit-date')?.value || todayISO();
-          const bp = container.querySelector('.inline-edit-bp')?.value.trim() || '';
-          const sugar = container.querySelector('.inline-edit-sugar')?.value.trim() || '';
-          const other = container.querySelector('.inline-edit-other')?.value.trim() || '';
-          const reference = container.querySelector('.inline-edit-ref')?.value.trim() || '';
-          const investigation = container.querySelector('.inline-edit-investigation')?.value.trim() || '';
-          const complaint = container.querySelector('.inline-edit-complaint')?.value.trim() || '';
-          const dietary = container.querySelector('.inline-edit-dietary')?.value.trim() || '';
-          const charge = Number(container.querySelector('.inline-edit-charge')?.value || 0);
-          const received = Number(container.querySelector('.inline-edit-paid')?.value || 0);
-          const due = Math.max(0, charge - received);
-
-          // Update visit object
-          v.date = date;
-          v.bp = bp;
-          v.sugar = sugar;
-          v.other = other;
-          v.reference = reference;
-          v.refDr = reference;
-          v.investigation = investigation;
-          v.complaint = complaint;
-          v.dietary = dietary;
-          v.treatment = inlineEditingTreatments.filter(t => t.name && t.name.trim());
-          v.prescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
-          v.charge = charge;
-          v.received = received;
-          v.due = due;
-
-          // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
-          if (complaint) {
-            const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
-            complaintTokens.forEach(cName => {
-              if (cName.length > 1) {
-                addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() }, db);
-              }
-            });
-          }
-
-          if (investigation) {
-            const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
-            investigationTokens.forEach(invName => {
-              if (invName.length > 1) {
-                addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() }, db);
-              }
-            });
-          }
-
+          // Prevent duplicate medicines
           const cleanInlinePrescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
-          cleanInlinePrescription.forEach(p => {
-            const mName = p.name.trim();
-            if (mName.length > 1) {
-              addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() }, db);
+          const seenInlineMeds = new Set();
+          let dupMed = null;
+          for (const p of cleanInlinePrescription) {
+            const norm = p.name.trim().toLowerCase();
+            if (seenInlineMeds.has(norm)) {
+              dupMed = p.name.trim();
+              break;
             }
-          });
-
-          const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
-          try {
-            const uRes = await apiFetch('/consultations/' + targetId, {
-              method: 'PUT',
-              body: v
-            });
-            if (uRes.success && uRes.data?._id) {
-              v._id = uRes.data._id;
-            }
-          } catch(e) {
-            console.warn('Inline update error:', e);
+            seenInlineMeds.add(norm);
+          }
+          if (dupMed) {
+            showToast(`⚠️ Medicine "${dupMed}" is added twice in this prescription! Please adjust dosages into a single row or remove duplicate.`, 'warning');
+            return;
           }
 
-          await window.syncVisitsToDB();
-          showToast(`✨ Case #${v.caseId || targetId} updated successfully!`);
-          inlineEditingVisitId = null;
-          renderView();
+          const saveBtn = inlineForm.querySelector('button[type="submit"]');
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.7';
+          }
+
+          try {
+            const date = container.querySelector('.inline-edit-date')?.value || todayISO();
+            const bp = container.querySelector('.inline-edit-bp')?.value.trim() || '';
+            const sugar = container.querySelector('.inline-edit-sugar')?.value.trim() || '';
+            const other = container.querySelector('.inline-edit-other')?.value.trim() || '';
+            const reference = container.querySelector('.inline-edit-ref')?.value.trim() || '';
+            const investigation = container.querySelector('.inline-edit-investigation')?.value.trim() || '';
+            const complaint = container.querySelector('.inline-edit-complaint')?.value.trim() || '';
+            const dietary = container.querySelector('.inline-edit-dietary')?.value.trim() || '';
+            const charge = Number(container.querySelector('.inline-edit-charge')?.value || 0);
+            const received = Number(container.querySelector('.inline-edit-paid')?.value || 0);
+            const due = Math.max(0, charge - received);
+
+            // Update visit object
+            v.date = date;
+            v.bp = bp;
+            v.sugar = sugar;
+            v.other = other;
+            v.reference = reference;
+            v.refDr = reference;
+            v.investigation = investigation;
+            v.complaint = complaint;
+            v.dietary = dietary;
+            v.treatment = inlineEditingTreatments.filter(t => t.name && t.name.trim());
+            v.prescription = cleanInlinePrescription;
+            v.charge = charge;
+            v.received = received;
+            v.due = due;
+
+            // Auto-learn newly typed complaints, investigations, and medicines into shared master catalogue
+            if (complaint) {
+              const complaintTokens = complaint.split(',').map(c => c.trim()).filter(Boolean);
+              complaintTokens.forEach(cName => {
+                if (cName.length > 1) {
+                  addSharedMasterItem('complaints', { id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: cName, code: '', category: 'General', createdAt: todayISO() }, db);
+                }
+              });
+            }
+
+            if (investigation) {
+              const investigationTokens = investigation.split(',').map(i => i.trim()).filter(Boolean);
+              investigationTokens.forEach(invName => {
+                if (invName.length > 1) {
+                  addSharedMasterItem('investigations', { id: `inv_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: invName, code: '', category: 'General', createdAt: todayISO() }, db);
+                }
+              });
+            }
+
+            cleanInlinePrescription.forEach(p => {
+              const mName = p.name.trim();
+              if (mName.length > 1) {
+                addSharedMasterItem('medicines', { id: `m_${Date.now()}_${Math.floor(Math.random() * 1000)}`, name: mName, createdAt: todayISO() }, db);
+              }
+            });
+
+            const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
+            try {
+              const uRes = await apiFetch('/consultations/' + targetId, {
+                method: 'PUT',
+                body: v
+              });
+              if (uRes.success && uRes.data?._id) {
+                v._id = uRes.data._id;
+              }
+            } catch(e) {
+              console.warn('Inline update error:', e);
+            }
+
+            await window.syncVisitsToDB();
+            showToast(`✨ Case #${v.caseId || targetId} updated successfully!`);
+            inlineEditingVisitId = null;
+            renderView();
+          } finally {
+            if (saveBtn) saveBtn.disabled = false;
+          }
         });
       }
 
@@ -2385,56 +2494,81 @@ export async function renderConsultationView(container, selection, onSelectPatie
           const v = (patient?.visits || []).find(item => item.id === inlineEditingVisitId || item.caseId === inlineEditingVisitId);
           if (!v) return;
 
-          const date = container.querySelector('.inline-edit-date')?.value || todayISO();
-          const bp = container.querySelector('.inline-edit-bp')?.value.trim() || '';
-          const sugar = container.querySelector('.inline-edit-sugar')?.value.trim() || '';
-          const other = container.querySelector('.inline-edit-other')?.value.trim() || '';
-          const reference = container.querySelector('.inline-edit-ref')?.value.trim() || '';
-          const investigation = container.querySelector('.inline-edit-investigation')?.value.trim() || '';
-          const complaint = container.querySelector('.inline-edit-complaint')?.value.trim() || '';
-          const dietary = container.querySelector('.inline-edit-dietary')?.value.trim() || '';
-          const charge = Number(container.querySelector('.inline-edit-charge')?.value || 0);
-          const received = Number(container.querySelector('.inline-edit-paid')?.value || 0);
-          const due = Math.max(0, charge - received);
-
-          // Update visit object
-          v.date = date;
-          v.bp = bp;
-          v.sugar = sugar;
-          v.other = other;
-          v.reference = reference;
-          v.refDr = reference;
-          v.investigation = investigation;
-          v.complaint = complaint;
-          v.dietary = dietary;
-          v.treatment = inlineEditingTreatments.filter(t => t.name && t.name.trim());
-          v.prescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
-          v.charge = charge;
-          v.received = received;
-          v.paid = received;
-          v.due = due;
-
-          const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
-          try {
-            const uRes = await apiFetch('/consultations/' + targetId, {
-              method: 'PUT',
-              body: v
-            });
-            if (uRes.success && uRes.data?._id) {
-              v._id = uRes.data._id;
+          // Prevent duplicate medicines
+          const cleanInlinePrescription = inlineEditingPrescriptions.filter(p => p.name && p.name.trim());
+          const seenInlineMeds = new Set();
+          let dupMed = null;
+          for (const p of cleanInlinePrescription) {
+            const norm = p.name.trim().toLowerCase();
+            if (seenInlineMeds.has(norm)) {
+              dupMed = p.name.trim();
+              break;
             }
-          } catch(e) {
-            console.warn('Inline update error:', e);
+            seenInlineMeds.add(norm);
+          }
+          if (dupMed) {
+            showToast(`⚠️ Medicine "${dupMed}" is added twice in this prescription! Please adjust dosages into a single row or remove duplicate.`, 'warning');
+            return;
           }
 
-          await window.syncVisitsToDB();
-          showToast(`✨ Case #${v.caseId || targetId} saved! Opening prescription...`);
-          inlineEditingVisitId = null;
-          renderView();
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
 
-          // Open Prescription Print Preview Modal
-          if (onPrintRequested) onPrintRequested(patient, v);
-          else openPrescriptionModal(patient, v);
+          try {
+            const date = container.querySelector('.inline-edit-date')?.value || todayISO();
+            const bp = container.querySelector('.inline-edit-bp')?.value.trim() || '';
+            const sugar = container.querySelector('.inline-edit-sugar')?.value.trim() || '';
+            const other = container.querySelector('.inline-edit-other')?.value.trim() || '';
+            const reference = container.querySelector('.inline-edit-ref')?.value.trim() || '';
+            const investigation = container.querySelector('.inline-edit-investigation')?.value.trim() || '';
+            const complaint = container.querySelector('.inline-edit-complaint')?.value.trim() || '';
+            const dietary = container.querySelector('.inline-edit-dietary')?.value.trim() || '';
+            const charge = Number(container.querySelector('.inline-edit-charge')?.value || 0);
+            const received = Number(container.querySelector('.inline-edit-paid')?.value || 0);
+            const due = Math.max(0, charge - received);
+
+            // Update visit object
+            v.date = date;
+            v.bp = bp;
+            v.sugar = sugar;
+            v.other = other;
+            v.reference = reference;
+            v.refDr = reference;
+            v.investigation = investigation;
+            v.complaint = complaint;
+            v.dietary = dietary;
+            v.treatment = inlineEditingTreatments.filter(t => t.name && t.name.trim());
+            v.prescription = cleanInlinePrescription;
+            v.charge = charge;
+            v.received = received;
+            v.paid = received;
+            v.due = due;
+
+            const targetId = v._id || v.caseId || v.id || inlineEditingVisitId;
+            try {
+              const uRes = await apiFetch('/consultations/' + targetId, {
+                method: 'PUT',
+                body: v
+              });
+              if (uRes.success && uRes.data?._id) {
+                v._id = uRes.data._id;
+              }
+            } catch(e) {
+              console.warn('Inline update error:', e);
+            }
+
+            await window.syncVisitsToDB();
+            showToast(`✨ Case #${v.caseId || targetId} saved! Opening prescription...`);
+            inlineEditingVisitId = null;
+            renderView();
+
+            // Open Prescription Print Preview Modal
+            if (onPrintRequested) onPrintRequested(patient, v);
+            else openPrescriptionModal(patient, v);
+          } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          }
         });
       });
 
@@ -2729,6 +2863,16 @@ export async function renderConsultationView(container, selection, onSelectPatie
     mount.querySelectorAll('.rx-input-name').forEach((el) => {
       const idx = Number(el.dataset.idx);
       setupMedicineAutocomplete(el, db, (chosen) => {
+        // Prevent adding duplicate medicine twice
+        const duplicateIdx = prescriptionRows.findIndex((r, rIdx) => rIdx !== idx && r.name && r.name.trim().toLowerCase() === chosen.name.trim().toLowerCase());
+        if (duplicateIdx !== -1) {
+          showToast(`⚠️ Medicine "${chosen.name}" is already added in row #${duplicateIdx + 1}! Duplicate medicine cannot be given twice.`, 'warning');
+          el.value = '';
+          prescriptionRows[idx].name = '';
+          renderPrescriptionInputs();
+          return;
+        }
+
         prescriptionRows[idx].name = chosen.name;
         if (chosen.defaultDosage) {
           const parsed = parseDosageString(chosen.defaultDosage);
@@ -2757,6 +2901,19 @@ export async function renderConsultationView(container, selection, onSelectPatie
         if (idx === prescriptionRows.length - 1 && e.target.value.trim().length > 0) {
           prescriptionRows.push({ name: '', qty: '1', mor: '1', noon: '0', eve: '1', ngt: '0', timing: 'AF' });
           renderPrescriptionInputs(idx);
+        }
+      });
+
+      el.addEventListener('blur', (e) => {
+        const val = e.target.value.trim().toLowerCase();
+        if (val) {
+          const duplicateIdx = prescriptionRows.findIndex((r, rIdx) => rIdx !== idx && r.name && r.name.trim().toLowerCase() === val);
+          if (duplicateIdx !== -1) {
+            showToast(`⚠️ Medicine "${e.target.value.trim()}" is already prescribed in row #${duplicateIdx + 1}! Duplicate medicine cannot be given twice.`, 'warning');
+            e.target.value = '';
+            prescriptionRows[idx].name = '';
+            renderPrescriptionInputs();
+          }
         }
       });
     });

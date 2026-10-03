@@ -85,7 +85,20 @@ const createFamily = async (req, res) => {
       finalFamId = `FAM-${String(count + 1).padStart(4, '0')}`;
     }
 
-    // Check if family already exists in this clinic
+    // Check if family already exists by phone number in this clinic
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      const existingByPhone = await Family.findOne({ phone: cleanPhone, ...clinicQuery });
+      if (existingByPhone && (!famId || existingByPhone.famId !== famId)) {
+        return res.status(409).json({
+          success: false,
+          message: `A family with mobile number ${cleanPhone} is already registered (Head: ${existingByPhone.headName}, FAM ID: ${existingByPhone.famId})`,
+          data: existingByPhone
+        });
+      }
+    }
+
+    // Check if family already exists by famId in this clinic
     let existingFam = await Family.findOne({ famId: finalFamId, ...clinicQuery });
     if (existingFam) {
       existingFam.headName = headName || existingFam.headName;
