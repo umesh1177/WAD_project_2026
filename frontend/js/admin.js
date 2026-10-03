@@ -2468,7 +2468,7 @@ document.addEventListener('click', async event => {
     sessionStorage.clear();
     showToast('Signed out from Admin Workspace');
     setTimeout(() => {
-      window.location.href = '../login.html';
+      window.location.replace('../login.html?logout=true');
     }, 200);
   }
   if (!event.target.closest('.admin-account')) closeAccountMenu();
@@ -2477,7 +2477,7 @@ document.addEventListener('click', async event => {
 function handleAdminLogout() {
   localStorage.removeItem('clinic-auth-session');
   sessionStorage.clear();
-  window.location.href = '../login.html';
+  window.location.replace('../login.html?logout=true');
 }
 window.handleAdminLogout = handleAdminLogout;
 

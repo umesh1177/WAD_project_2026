@@ -249,7 +249,7 @@ export function logoutUser() {
   showToast('Signed out successfully');
   const isInsidePages = window.location.pathname.includes('/pages/');
   setTimeout(() => {
-    window.location.href = isInsidePages ? 'login.html?logout=true' : 'pages/login.html?logout=true';
+    window.location.replace(isInsidePages ? 'login.html?logout=true' : 'pages/login.html?logout=true');
   }, 150);
 }
 

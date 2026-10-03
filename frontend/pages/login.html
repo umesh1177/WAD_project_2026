@@ -4,6 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In &middot; Dhyey Clinic Management System</title>
+    <script>
+        (function() {
+            if (window.location.search.includes('logout=true')) {
+                try {
+                    localStorage.removeItem('clinic-auth-session');
+                    sessionStorage.clear();
+                } catch (e) {}
+                return;
+            }
+            function redirectIfActiveSession() {
+                try {
+                    const raw = localStorage.getItem('clinic-auth-session');
+                    if (!raw) return;
+                    const session = JSON.parse(raw);
+                    if (session && session.token) {
+                        if (session.role === 'admin') {
+                            window.location.replace('admin/dashboard.html');
+                        } else if (session.role === 'receptionist') {
+                            window.location.replace('receptionist/dashboard.html');
+                        } else {
+                            window.location.replace('../index.html');
+                        }
+                    }
+                } catch (e) {}
+            }
+            redirectIfActiveSession();
+            window.addEventListener('pageshow', redirectIfActiveSession);
+        })();
+    </script>
     <!-- PWA Meta Tags & Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#42645f" />
@@ -524,16 +553,10 @@
         }
 
         .toast-item {
-<<<<<<< Updated upstream
-            background: #1e293b;
-            color: #ffffff;
-            width: min(100%, 620px);
-            padding: 14px 18px;
-=======
             background: #ffffff;
             color: var(--text-main);
+            width: min(100%, 620px);
             padding: 12px 18px;
->>>>>>> Stashed changes
             border-radius: 10px;
             font-size: 13px;
             font-weight: 700;
@@ -798,13 +821,13 @@
 
         // Check if user is already signed in
         const existingSession = initAuth();
-        if (existingSession && !window.location.search.includes('logout=true') && !window.location.search.includes('auth=')) {
+        if (existingSession && !window.location.search.includes('logout=true')) {
             if (existingSession.role === 'admin') {
-                window.location.href = 'admin/dashboard.html';
+                window.location.replace('admin/dashboard.html');
             } else if (existingSession.role === 'receptionist') {
-                window.location.href = 'receptionist/dashboard.html';
+                window.location.replace('receptionist/dashboard.html');
             } else {
-                window.location.href = '../index.html';
+                window.location.replace('../index.html');
             }
         }
 
@@ -944,11 +967,11 @@
 
                 setTimeout(() => {
                     if (sessionData.role === 'admin') {
-                        window.location.href = 'admin/dashboard.html';
+                        window.location.replace('admin/dashboard.html');
                     } else if (sessionData.role === 'receptionist') {
-                        window.location.href = 'receptionist/dashboard.html';
+                        window.location.replace('receptionist/dashboard.html');
                     } else {
-                        window.location.href = '../index.html';
+                        window.location.replace('../index.html');
                     }
                 }, 500);
             } catch (err) {
