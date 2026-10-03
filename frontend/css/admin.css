@@ -7,7 +7,7 @@
   padding-left: 10px;
 }
 .admin-brand-logo { background: var(--primary-teal, #095c54); }
-.admin-brand-title { color: var(--text-main) !important; }
+.admin-brand-title { color: var(--primary-teal, #095c54); }
 .sidebar.is-collapsed { width: 0; min-width: 0; overflow: hidden; border: 0; }
 .admin-subnav-link {
   color: var(--text-muted);

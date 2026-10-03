@@ -122,7 +122,7 @@ body {
 .brand-title {
   font-weight: 800;
   font-size: 17px;
-  color: #dc2626 !important;
+  color: var(--primary-teal);
   letter-spacing: -0.3px;
 }
 
