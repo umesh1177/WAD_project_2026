@@ -308,20 +308,26 @@ app.get('/api/reports/stats', authMiddleware, async (req, res, next) => {
   }
 });
 
-// Clinic info endpoint — used by receptionist portal for dynamic clinic branding
-app.get('/api/clinic/info', authMiddleware, async (req, res, next) => {
+// Clinic info endpoint — used by receptionist and doctor portals for dynamic clinic branding & active services
+app.get('/api/clinic/info', async (req, res, next) => {
   try {
     const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.query.clinicId || 'demo';
-    // Try fetching from Family model's clinic info (since we don't have a Clinic model yet)
+    const Clinic = require('./models/Clinic');
+    let clinicDoc = await Clinic.findOne({ clinicId }).lean();
+    if (!clinicDoc && (clinicId === 'demo' || !clinicDoc)) {
+      clinicDoc = await Clinic.findOne({ clinicId: 'CLN-001' }).lean() || await Clinic.findOne().lean();
+    }
     const familyDoc = await Family.findOne({ clinicId }).lean();
-    // Build minimal clinic info from what we have
+    
     const clinicInfo = {
-      id: clinicId,
-      name: familyDoc?.clinicName || 'Dhyey Clinic & Nursing Home',
-      address: familyDoc?.clinicAddress || '',
-      phone: familyDoc?.clinicPhone || '',
-      city: familyDoc?.clinicCity || '',
-      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates']
+      id: clinicDoc?.clinicId || clinicId,
+      name: clinicDoc?.name || familyDoc?.clinicName || 'Dhyey Clinic & Nursing Home',
+      address: clinicDoc?.address || familyDoc?.clinicAddress || '',
+      phone: clinicDoc?.phone || familyDoc?.clinicPhone || '',
+      city: clinicDoc?.city || familyDoc?.clinicCity || '',
+      services: clinicDoc?.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
+      receptionist: clinicDoc?.receptionist || null,
+      status: clinicDoc?.status || 'Active'
     };
     res.json({ success: true, data: clinicInfo });
   } catch (err) {

@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   boot();
 });
 
-function boot() {
+async function boot() {
   session = getAuthSession();
   if (!session || !session.profile) {
     window.location.replace('../login.html');
@@ -45,35 +45,60 @@ function boot() {
 
   clinicId = session.profile.activeClinicId || 'demo';
 
-  // Resolve full clinic object from admin store (merging with session profile data)
-  const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-  const adminClinic = adminClinics.find(c => c.id === clinicId || c.name === session.profile.clinicName);
-  clinicData = {
-    id: clinicId,
-    name: session.profile.clinicName || adminClinic?.name || 'Dhyey Clinic',
-    address: adminClinic?.address || adminClinic?.location || session.profile.clinicAddress || '',
-    phone: adminClinic?.phone || adminClinic?.contact || session.profile.clinicPhone || '',
-    city: adminClinic?.city || adminClinic?.district || session.profile.clinicCity || '',
-    services: adminClinic?.services || session.profile.services || []
-  };
+  // Fetch real-time clinic info from database API
+  try {
+    const res = await fetch(`/api/clinic/info?clinicId=${encodeURIComponent(clinicId)}`, {
+      headers: {
+        'x-clinic-id': clinicId,
+        ...(session.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+      }
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        clinicData = {
+          id: json.data.id || clinicId,
+          name: json.data.name || session.profile.clinicName || 'Dhyey Clinic',
+          address: json.data.address || '',
+          phone: json.data.phone || '',
+          city: json.data.city || '',
+          services: json.data.services || []
+        };
+      }
+    }
+  } catch (e) {}
 
-  // Guard: receptionist service must be enabled
-  const services = clinicData.services || [];
-  if (!services.includes('receptionist')) {
-    alert('This clinic has not enabled the Receptionist Service. Contact your administrator.');
-    window.location.replace('../login.html');
-    return;
+  if (!clinicData) {
+    clinicData = {
+      id: clinicId,
+      name: session.profile.clinicName || 'Dhyey Clinic',
+      services: session.profile.services || []
+    };
   }
 
-  // db load stripped
+  // Guard: receptionist service MUST be enabled in the database for this clinic
+  const services = clinicData.services || [];
+  if (!services.includes('receptionist')) {
+    document.body.innerHTML = `
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; font-family: sans-serif; padding: 20px;">
+        <div style="max-width: 480px; width: 100%; background: #ffffff; border: 1.5px solid #fecaca; border-radius: 12px; padding: 32px 24px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.08);">
+          <div style="font-size: 42px; color: #dc2626; margin-bottom: 12px;"><i class="fa-solid fa-lock"></i></div>
+          <h2 style="margin: 0 0 8px; color: #1e293b; font-size: 20px;">Receptionist Desk Service Disabled</h2>
+          <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+            The administrator has turned off Receptionist Service for <strong>${clinicData.name}</strong>. In Doctor-Only mode, consultations and patient registration are handled directly by the doctor.
+          </p>
+          <a href="../login.html" style="display: inline-block; padding: 10px 22px; background: #0f766e; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13.5px;">Return to Sign In</a>
+        </div>
+      </div>
+    `;
+    return;
+  }
 
   setupHeader();
   setupInteractions();
   applyTheme();
   startClock();
   navigateTo('dashboard');
-
-  // Storage sync stripped
 }
 
 // ---- Clinic Header Setup ----
@@ -345,33 +370,75 @@ function setupReceptionistMemberForm(container) {
 
 // ---- Direct Queue Push (No popup required) ----
 async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation') {
+  const curSession = getAuthSession();
+  const cId = curSession?.profile?.activeClinicId || clinicId || 'demo';
+  const localDb = getLocalDB(cId);
+
+  let patName = 'Patient';
+  let famHead = 'Self';
+  let phone = '';
+  let area = '';
+  let age = '';
+  let gender = 'Male';
+
+  // Check local database
+  const fam = localDb?.families?.[familyId];
+  if (fam) {
+    famHead = fam.headName || '';
+    phone = fam.phone || '';
+    area = fam.area || fam.society || '';
+    const pat = fam.patients?.[patientId] || Object.values(fam.patients || {}).find(p => p.patId === patientId || p.id === patientId || p._id === patientId);
+    if (pat) {
+      patName = pat.name || patName;
+      age = pat.age || age;
+      gender = pat.gender || gender;
+      if (pat.phone) phone = pat.phone;
+    }
+  }
+
+  // Check API
   try {
     const pRes = await apiFetch('/patients');
     const allPats = pRes.data || [];
-    const patient = allPats.find(p => p._id === patientId || p.patId === patientId);
+    const patient = allPats.find(p => p._id === patientId || p.patId === patientId || p.id === patientId || (fam && p.name === patName));
+    if (patient) {
+      patName = patient.name || patName;
+      age = patient.age || age;
+      gender = patient.gender || gender;
+      if (patient.phone) phone = patient.phone;
+      if (patient.area) area = patient.area;
+      if (patient.familyId?.headName) famHead = patient.familyId.headName;
+    }
+  } catch (err) {}
 
-    const token = 'T-' + pad(Math.floor(Math.random() * 99), 2);
-    await apiFetch('/appointments', {
+  try {
+    const res = await apiFetch('/appointments', {
       method: 'POST',
       body: {
-        token: token,
-        patientId: patient ? (patient._id || patientId) : patientId,
-        patientName: patient?.name || 'Patient',
-        name: patient?.name || 'Patient',
-        familyId: patient?.familyId ? (patient.familyId._id || familyId) : familyId,
-        familyHead: patient?.familyId?.headName || patient?.name,
-        age: patient?.age || '',
-        gender: patient?.gender || '',
-        phone: patient?.phone || '',
-        area: patient?.area || '',
+        patientId: patientId || 'PAT-0001',
+        patientName: patName,
+        name: patName,
+        familyId: familyId || 'FAM-0001',
+        familyHead: famHead || patName,
+        age,
+        gender,
+        phone,
+        area,
         complaint,
         vitals: {},
-        date: todayISO()
+        date: todayISO(),
+        status: 'Waiting',
+        clinicId: cId
       }
     });
-    showToast(`✅ Added to Patient Queue`);
+    if (res && res.data?.token) {
+      showToast(`✅ Token ${res.data.token} generated: ${patName} added to Patient Queue!`);
+    } else {
+      showToast(`✅ ${patName} added to Patient Queue`);
+    }
   } catch (err) {
     console.warn('Backend queue push sync note:', err);
+    showToast('Failed to add to patient queue', 'error');
   }
   navigateTo('queue');
 }

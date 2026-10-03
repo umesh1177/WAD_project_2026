@@ -22,7 +22,14 @@ const API_BASE_URL = window.location.origin.includes('5000')
   ? ''
   : 'http://localhost:5000';
 
-const STORAGE_KEY = 'dhyey-admin-clinics';
+function getAuthHeader() {
+  try {
+    const session = JSON.parse(localStorage.getItem('clinic-auth-session') || '{}');
+    return session.token ? { Authorization: `Bearer ${session.token}` } : {};
+  } catch (e) {
+    return {};
+  }
+}
 
 const PLATFORM_SERVICES = [
   {
@@ -92,233 +99,197 @@ const PLATFORM_SERVICES = [
   }
 ];
 
-const defaultClinics = [
-  {
-    id: 'CLN-001',
-    name: 'Dhyey Main Clinic',
-    city: 'Ahmedabad',
-    doctors: 12,
-    patients: 1840,
-    visits: 428,
-    status: 'Active',
-    updated: 'Today',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
-    receptionist: {
-      name: 'Pooja Sharma',
-      email: 'pooja.reception@dhyeyclinic.com',
-      phone: '9876543210',
-      shift: 'Morning Shift (08:00 AM - 03:00 PM)',
-      status: 'Active'
-    },
-    specialties: 'General Medicine, Cardiology, Pediatrics',
-    facilities: 'Pharmacy, Pathology Lab, ECG, Emergency Care',
-    phone: '9876543210',
-    email: 'contact@dhyeyclinic.com',
-    registration: 'GUJ-MED-2026-001',
-    address: '101, Medical Enclave, CG Road, Navrangpura, Ahmedabad, Gujarat - 380009',
-    days: 'Monday - Saturday',
-    hours: '08:30 AM - 08:30 PM',
-    verifiedDocuments: 13
-  },
-  {
-    id: 'CLN-002',
-    name: 'Satellite Wellness Centre',
-    city: 'Ahmedabad',
-    doctors: 7,
-    patients: 920,
-    visits: 216,
-    status: 'Active',
-    updated: 'Yesterday',
-    services: ['receptionist', 'appointment', 'digitalPrescription', 'billing'],
-    receptionist: {
-      name: 'Kavita Dave',
-      email: 'kavita.reception@satelliteclinic.com',
-      phone: '9876543222',
-      shift: 'Full Day (09:00 AM - 07:00 PM)',
-      status: 'Active'
-    },
-    specialties: 'Dermatology, Cosmetology, Trichology',
-    facilities: 'Laser Suite, Minor Procedure Room',
-    phone: '9876543222',
-    email: 'help@satelliteclinic.com',
-    registration: 'GUJ-MED-2026-002',
-    address: '304, Titanium City Centre, Anandnagar Road, Satellite, Ahmedabad, Gujarat - 380015',
-    days: 'Monday - Saturday',
-    hours: '09:00 AM - 08:00 PM',
-    verifiedDocuments: 8
-  },
-  {
-    id: 'CLN-003',
-    name: 'Riverside Family Care',
-    city: 'Gandhinagar',
-    doctors: 4,
-    patients: 380,
-    visits: 92,
-    status: 'Paused',
-    updated: '28 Sep 2026',
-    services: ['digitalPrescription', 'billing'], // Doctor-only direct access mode
-    receptionist: null,
-    specialties: 'Family Medicine, Gynecology, Geriatrics',
-    facilities: 'Vaccination Centre, Ultrasound',
-    phone: '9876543233',
-    email: 'info@riversidecare.com',
-    registration: 'GUJ-MED-2026-003',
-    address: '12, Riverside Arcades, Sector 11, Gandhinagar, Gujarat - 382010',
-    days: 'Monday - Friday',
-    hours: '10:00 AM - 06:00 PM',
-    verifiedDocuments: 5
-  }
-];
-
-const doctors = [
-  { name: 'Dr. Mehul Shah', specialty: 'General Medicine', clinic: 'Dhyey Main Clinic', patients: 218, visits: 86, rating: 94 },
-  { name: 'Dr. Riya Patel', specialty: 'Dermatology', clinic: 'Satellite Wellness Centre', patients: 164, visits: 71, rating: 91 },
-  { name: 'Dr. Harsh Trivedi', specialty: 'Pediatrics', clinic: 'Dhyey Main Clinic', patients: 143, visits: 63, rating: 88 },
-  { name: 'Dr. Neha Desai', specialty: 'Gynecology', clinic: 'Riverside Family Care', patients: 98, visits: 42, rating: 86 }
-];
-
-const patients = [
-  { name: 'Aarav Mehta', id: 'PAT-1042', clinic: 'Dhyey Main Clinic', doctor: 'Dr. Mehul Shah', visits: 8, lastVisit: '01 Oct 2026', status: 'Active' },
-  { name: 'Kavya Shah', id: 'PAT-1038', clinic: 'Satellite Wellness Centre', doctor: 'Dr. Riya Patel', visits: 5, lastVisit: '30 Sep 2026', status: 'Active' },
-  { name: 'Ishaan Patel', id: 'PAT-1024', clinic: 'Dhyey Main Clinic', doctor: 'Dr. Harsh Trivedi', visits: 3, lastVisit: '29 Sep 2026', status: 'Follow-up' },
-  { name: 'Mira Joshi', id: 'PAT-1019', clinic: 'Riverside Family Care', doctor: 'Dr. Neha Desai', visits: 6, lastVisit: '25 Sep 2026', status: 'Active' }
-];
-
-let clinics = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || defaultClinics;
-// Ensure older cached data removes reports and enforces consistency
-clinics.forEach(c => {
-  if (Array.isArray(c.services)) {
-    c.services = c.services.filter(s => s !== 'reports');
-    // If receptionist is off, ensure appointment queue is off
-    if (!c.services.includes('receptionist')) {
-      c.services = c.services.filter(s => s !== 'appointment');
-    }
-  } else {
-    c.services = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
-  }
-});
-
-let clinicDoctors = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || 'null') || doctors.map(doctor => ({
-  ...doctor,
-  email: `${doctor.name.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`,
-  status: 'Active'
-}));
-
-const STORAGE_KEY_REQUESTS = 'dhyey-clinic-requests';
-const defaultClinicRequests = [
-  {
-    id: 'REQ-101',
-    clinicId: 'CLN-004',
-    name: 'Apollo City Clinic & Diagnostics',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-9021',
-    registration: 'REG-GJ-2026-9021',
-    phone: '+91 98250 12345',
-    email: 'info@apollocityclinic.com',
-    address: 'GF-04, Shivalik Plaza, IIM Road, Panjrapole, Ahmedabad - 380015',
-    days: 'Monday - Saturday',
-    hours: '09:00 - 21:00',
-    specialties: 'General Medicine, Cardiology, Orthopedics',
-    facilities: 'Pharmacy, Path Lab, Minor OT, ECG',
-    applicantName: 'Dr. Ramesh S. Parikh',
-    applicantRole: 'Medical Director',
-    doctorsCount: 2,
-    doctors: [
-      { name: 'Dr. Ramesh S. Parikh', specialty: 'Cardiology', registration: 'MCI-88291', email: 'ramesh.parikh@apollocityclinic.com', phone: '+91 98250 12345' },
-      { name: 'Dr. Sunita K. Sharma', specialty: 'General Medicine', registration: 'MCI-91024', email: 'sunita.sharma@apollocityclinic.com', phone: '+91 98250 54321' }
-    ],
-    status: 'Pending',
-    submittedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-    formattedDate: 'Today, 09:30 AM',
-    submittedFrom: 'Landing Page'
-  },
-  {
-    id: 'REQ-102',
-    clinicId: 'CLN-005',
-    name: 'Aura Health & Skin Clinic',
-    city: 'Ahmedabad',
-    registrationNumber: 'REG-GJ-2026-7841',
-    registration: 'REG-GJ-2026-7841',
-    phone: '+91 98790 54321',
-    email: 'contact@auraskinclinic.com',
-    address: '2nd Floor, Safal Pegasuss, Prahlad Nagar, Ahmedabad',
-    days: 'Monday - Saturday',
-    hours: '10:00 - 19:00',
-    specialties: 'Dermatology, Cosmetology',
-    facilities: 'Laser Treatment, Minor OT',
-    applicantName: 'Dr. Ananya Roy',
-    applicantRole: 'Clinic Owner',
-    doctorsCount: 1,
-    doctors: [
-      { name: 'Dr. Ananya Roy', specialty: 'Dermatology', registration: 'MCI-76543', email: 'ananya.roy@auraskinclinic.com', phone: '+91 98790 54321' }
-    ],
-    status: 'Approved',
-    submittedAt: new Date(Date.now() - 86400000).toISOString(),
-    formattedDate: 'Yesterday, 04:15 PM',
-    submittedFrom: 'Landing Page'
-  }
-];
-
-let clinicRequests = JSON.parse(localStorage.getItem(STORAGE_KEY_REQUESTS) || 'null') || defaultClinicRequests;
+// In-memory application state - populated live from MongoDB Database
+let clinics = [];
+let clinicDoctors = [];
+let clinicRequests = [];
+let activityLogs = [];
+let adminAccounts = [];
+let patients = [];
+let activeFeedbackTickets = [];
 let currentClinicTab = 'active';
-const STORAGE_KEY_LOGS = 'dhyey-admin-activity-logs';
-let activityLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS) || '[]');
-const STORAGE_KEY_ADMINS = 'dhyey-admin-accounts';
-let adminAccounts = JSON.parse(localStorage.getItem(STORAGE_KEY_ADMINS) || '[]');
 
-function saveClinicRequests() {
-  localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(clinicRequests));
+// Toast Notification
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `admin-toast ${type === 'error' ? 'toast-error' : ''}`;
+  toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
 }
+window.showToast = showToast;
 
-function saveActivityLogs() {
-  localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(activityLogs.slice(0, 500)));
-}
-
-function logActivity(action, entity, entityId, result = 'Success', details = '') {
-  activityLogs.unshift({
-    id: `LOG-${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    admin: 'Administrator',
-    action,
-    entity,
-    entityId,
-    result,
-    details,
-  });
-  saveActivityLogs();
-}
-
-async function syncClinicRequestsFromAPI() {
+// Real-time Database Synchronization Functions
+async function fetchClinicsFromDB() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`);
+    const res = await fetch(`${API_BASE_URL}/api/clinics`, { headers: getAuthHeader() });
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        const localMap = new Map(clinicRequests.map(r => [r.id, r]));
-        json.data.forEach(apiReq => {
-          if (!localMap.has(apiReq.id)) {
-            clinicRequests.unshift(apiReq);
-          } else {
-            const existing = localMap.get(apiReq.id);
-            if (existing.status !== 'Pending') {
-              apiReq.status = existing.status;
-            }
-          }
-        });
-        saveClinicRequests();
+        clinics = json.data.map(c => ({
+          ...c,
+          id: c.clinicId || c._id,
+          doctors: c.doctorsCount || c.doctors || 1,
+          patients: c.patientsCount || c.patients || 0,
+          visits: c.visitsCount || c.visits || 0,
+          services: Array.isArray(c.services) ? c.services : ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
+        }));
       }
     }
-  } catch (err) {
-    // API server fallback to local storage
+  } catch (e) {
+    console.error('Error fetching clinics from DB:', e);
   }
 }
-syncClinicRequestsFromAPI();
+
+async function fetchDoctorsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/doctors`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.doctors)) {
+        clinicDoctors = json.doctors.map(d => ({
+          ...d,
+          name: d.name || `Dr. ${d.username}`,
+          specialty: d.specialty || 'General Medicine',
+          clinic: d.clinic || (clinics.find(c => c.id === d.clinicId)?.name) || 'Dhyey Main Clinic',
+          clinicId: d.clinicId || 'CLN-001',
+          email: d.email || d.username || '',
+          status: d.status || 'Active'
+        }));
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching doctors from DB:', e);
+  }
+}
+
+async function fetchRequestsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/clinics/requests`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        clinicRequests = json.data;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching requests from DB:', e);
+  }
+}
+
+async function fetchAdminsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/admins`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.admins)) {
+        adminAccounts = json.admins;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching admins from DB:', e);
+  }
+}
+
+async function fetchLogsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/logs`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.logs)) {
+        activityLogs = json.logs;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching logs from DB:', e);
+  }
+}
+
+async function fetchFeedbackFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/feedback`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        activeFeedbackTickets = json.data;
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching feedback from DB:', e);
+  }
+}
+
+async function fetchPatientsFromDB() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/patients`, { headers: getAuthHeader() });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        patients = json.data.map(p => ({
+          id: p.patId || p._id,
+          name: p.name,
+          clinic: p.clinicName || 'Dhyey Main Clinic',
+          doctor: 'Dr. Mehul Shah',
+          visits: p.visits ? p.visits.length : 1,
+          lastVisit: p.lastVisit || 'Recent',
+          status: 'Active',
+          phone: p.phone || '',
+          address: p.address || '',
+          bloodGroup: p.bloodGroup || 'O+'
+        }));
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching patients from DB:', e);
+  }
+}
+
+async function logActivity(action, entity, entityId, result = 'Success', details = '') {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ action, entity, entityId, result, details, admin: 'Administrator' })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.log) activityLogs.unshift(json.log);
+    }
+  } catch (e) {
+    activityLogs.unshift({
+      id: `LOG-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      admin: 'Administrator',
+      action,
+      entity,
+      entityId,
+      result,
+      details,
+    });
+  }
+}
+
+async function reloadAllAdminData() {
+  await Promise.all([
+    fetchClinicsFromDB(),
+    fetchDoctorsFromDB(),
+    fetchRequestsFromDB(),
+    fetchAdminsFromDB(),
+    fetchLogsFromDB(),
+    fetchFeedbackFromDB(),
+    fetchPatientsFromDB()
+  ]);
+}
 
 const content = document.getElementById('adminContent');
 
-function money(value) { return `₹${value.toLocaleString('en-IN')}`; }
-function saveClinics() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clinics)); }
-function saveDoctors() { localStorage.setItem('dhyey-admin-doctors', JSON.stringify(clinicDoctors)); }
+function money(value) { return `₹${Number(value || 0).toLocaleString('en-IN')}`; }
 function clinicOptions() { return clinics.map(c => `<option value="${c.name}">${c.name}</option>`).join(''); }
 
 function page(title, subtitle, body, actions = '') {
@@ -353,7 +324,7 @@ function stats() {
     <div class="admin-stat"><div class="admin-stat-top"><span>Total clinics</span><span class="admin-stat-icon"><i class="fa-solid fa-hospital"></i></span></div><strong>${clinics.length}</strong><small>${active} active locations</small></div>
     <div class="admin-stat"><div class="admin-stat-top"><span>Receptionist Desks</span><span class="admin-stat-icon"><i class="fa-solid fa-user-nurse"></i></span></div><strong>${withReception}</strong><small>Dual-role enabled clinics</small></div>
     <div class="admin-stat"><div class="admin-stat-top"><span>Doctor-Only Mode</span><span class="admin-stat-icon"><i class="fa-solid fa-user-doctor"></i></span></div><strong>${doctorOnly}</strong><small>Direct registration clinics</small></div>
-    <div class="admin-stat"><div class="admin-stat-top"><span>Visits this month</span><span class="admin-stat-icon"><i class="fa-solid fa-calendar-check"></i></span></div><strong>${clinics.reduce((s, c) => s + (c.visits || 0), 0).toLocaleString()}</strong><small>+12.2% growth</small></div>
+    <div class="admin-stat"><div class="admin-stat-top"><span>Visits this month</span><span class="admin-stat-icon"><i class="fa-solid fa-calendar-check"></i></span></div><strong>${clinics.reduce((s, c) => s + (c.visits || 0), 0).toLocaleString()}</strong><small>Live MongoDB sync</small></div>
   </div>`;
 }
 
@@ -363,10 +334,10 @@ function renderOverview() {
     <tr data-clinic-id="${c.id}">
       <td><strong>${c.name}</strong><br><small>${c.id} · ${c.city}</small></td>
       <td>${c.doctors}</td>
-      <td>${c.patients.toLocaleString()}</td>
-      <td>${c.visits}</td>
+      <td>${(c.patients || 0).toLocaleString()}</td>
+      <td>${c.visits || 0}</td>
       <td>${(c.services || []).includes('receptionist') ? '<span class="role-badge role-badge-receptionist"><i class="fa-solid fa-user-nurse"></i> Doctor + Receptionist</span>' : '<span class="role-badge role-badge-doctor"><i class="fa-solid fa-user-doctor"></i> Doctor Only (Direct)</span>'}</td>
-      <td><span class="status-pill ${c.status === 'Paused' ? 'paused' : ''}">${c.status}</span></td>
+      <td><span class="status-pill ${c.status === 'Paused' ? 'paused' : c.status === 'Suspended' ? 'account-status-suspended' : ''}">${c.status}</span></td>
     </tr>
   `).join('');
 
@@ -509,23 +480,23 @@ function renderClinics(tab = currentClinicTab) {
         if (r.status === 'Pending') {
           actionBtns = `
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn-action-approve" data-action="approve-request" data-req-id="${r.id}" title="Approve and add clinic to network"><i class="fa-solid fa-check"></i> Approve</button>
-              <button class="btn-action-reject" data-action="reject-request" data-req-id="${r.id}" title="Reject application"><i class="fa-solid fa-xmark"></i> Reject</button>
-              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}" title="Review complete application packet"><i class="fa-solid fa-eye"></i> Details</button>
+              <button class="btn-action-approve" data-action="approve-request" data-req-id="${r.id || r.clinicId}" title="Approve and add clinic to network"><i class="fa-solid fa-check"></i> Approve</button>
+              <button class="btn-action-reject" data-action="reject-request" data-req-id="${r.id || r.clinicId}" title="Reject application"><i class="fa-solid fa-xmark"></i> Reject</button>
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id || r.clinicId}" title="Review complete application packet"><i class="fa-solid fa-eye"></i> Details</button>
             </div>
           `;
         } else if (r.status === 'Approved') {
           actionBtns = `
             <div style="display:flex;gap:6px;align-items:center">
-              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}"><i class="fa-solid fa-eye"></i> View</button>
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id || r.clinicId}"><i class="fa-solid fa-eye"></i> View</button>
               <span style="font-size:11px;color:#059669;font-weight:600"><i class="fa-solid fa-check-double"></i> In Network</span>
             </div>
           `;
         } else {
           actionBtns = `
             <div style="display:flex;gap:6px;align-items:center">
-              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id}"><i class="fa-solid fa-eye"></i> View</button>
-              <button class="btn-action-approve" style="background:#64748b;border-color:#64748b" data-action="approve-request" data-req-id="${r.id}" title="Re-evaluate & approve"><i class="fa-solid fa-rotate-left"></i> Re-Approve</button>
+              <button class="btn-action-details" data-action="view-request" data-req-id="${r.id || r.clinicId}"><i class="fa-solid fa-eye"></i> View</button>
+              <button class="btn-action-approve" style="background:#64748b;border-color:#64748b" data-action="approve-request" data-req-id="${r.id || r.clinicId}" title="Re-evaluate & approve"><i class="fa-solid fa-rotate-left"></i> Re-Approve</button>
             </div>
           `;
         }
@@ -533,8 +504,8 @@ function renderClinics(tab = currentClinicTab) {
         const docCount = (r.doctors && r.doctors.length) ? r.doctors.length : Number(r.doctorsCount || 1);
 
         return `
-          <tr data-request-id="${r.id}">
-            <td><strong>${r.id}</strong><br><small style="color:var(--text-muted)">${r.formattedDate || r.submittedAt?.slice(0, 10) || 'Recent'}</small></td>
+          <tr data-request-id="${r.id || r.clinicId}">
+            <td><strong>${r.id || r.clinicId}</strong><br><small style="color:var(--text-muted)">${r.formattedDate || r.submittedAt?.slice(0, 10) || 'Recent'}</small></td>
             <td><strong>${r.name}</strong><br><small><i class="fa-solid fa-location-dot" style="color:#0284c7"></i> ${r.city}</small></td>
             <td><strong>${r.applicantName || 'Applicant'}</strong><br><small style="color:var(--text-muted)">${r.phone || r.email || 'N/A'}</small></td>
             <td>
@@ -614,7 +585,7 @@ function renderClinics(tab = currentClinicTab) {
           <td>${(c.services || []).includes('receptionist') ? '<span class="role-badge role-badge-receptionist"><i class="fa-solid fa-user-nurse"></i> Doctor + Receptionist</span>' : '<span class="role-badge role-badge-doctor"><i class="fa-solid fa-user-doctor"></i> Doctor Only (Direct)</span>'}</td>
           <td>${renderServiceTagsMini(c.services)}</td>
           <td>${c.doctors}</td>
-          <td>${c.patients.toLocaleString()}</td>
+          <td>${(c.patients || 0).toLocaleString()}</td>
           <td><span class="status-pill ${c.status === 'Paused' ? 'paused' : c.status === 'Suspended' ? 'account-status-suspended' : ''}">${c.status}</span></td>
         </tr>
       `).join('')
@@ -634,7 +605,7 @@ function renderDoctorManagement() {
   pageRoot.insertAdjacentHTML('beforeend', `
     <section class="admin-card" id="doctorManagement">
       <div class="admin-card-header">
-        <div><h2>Doctor management</h2><span>Every doctor account is mapped to a registered clinic and tailored service dashboard.</span></div>
+        <div><h2>Doctor management</h2><span>Every doctor account is mapped to a registered clinic in MongoDB.</span></div>
         <div style="display:flex;align-items:center;gap:10px">
           <span>${clinicDoctors.length} accounts</span>
           <button class="btn-primary" data-action="open-add-doctor-global" style="padding:5px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
@@ -649,1343 +620,448 @@ function renderDoctorManagement() {
           <td>${doctor.email || 'Not provided'}</td>
           <td>${doctor.specialty}</td>
           <td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td>
-          <td><button class="btn-secondary suspend-button" data-action="toggle-doctor" data-doctor="${doctor.name}">${doctor.status === 'Suspended' ? 'Restore account' : 'Suspend account'}</button></td>
+          <td>
+            <div style="display:flex;gap:6px">
+              <button class="btn-secondary suspend-button" style="font-size:11px;padding:4px 8px" data-action="toggle-doctor" data-doctor="${doctor.name}" data-clinic="${doctor.clinicId || ''}">${doctor.status === 'Suspended' ? 'Restore' : 'Suspend'}</button>
+              <button class="btn-secondary" style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#dc2626" data-action="delete-doctor" data-doctor-id="${doctor._id || doctor.id || doctor.name}"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
         </tr>
       `).join(''))}
     </section>
   `);
 }
 
-function openRequestDetailsModal(reqId) {
-  const req = clinicRequests.find(r => r.id === reqId);
-  if (!req) return;
-
-  const modal = document.getElementById('detailsModal');
-  const docs = Array.isArray(req.doctors) ? req.doctors : [];
-
-  let statusBadge = '';
-  if (req.status === 'Pending') {
-    statusBadge = `<span class="status-pill status-pending"><i class="fa-solid fa-clock"></i> Pending Review</span>`;
-  } else if (req.status === 'Approved') {
-    statusBadge = `<span class="status-pill" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0"><i class="fa-solid fa-circle-check"></i> Approved</span>`;
-  } else {
-    statusBadge = `<span class="status-pill" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><i class="fa-solid fa-circle-xmark"></i> Rejected</span>`;
-  }
-
-  const doctorsListHtml = docs.length ? table(
-    ['Doctor Name', 'Specialty', 'MCI / Registration', 'Email', 'Phone'],
-    docs.map(d => `
-      <tr>
-        <td><strong>${d.name || 'Doctor'}</strong></td>
-        <td>${d.specialty || 'General Medicine'}</td>
-        <td>${d.registration || 'Document verified'}</td>
-        <td>${d.email || req.email || 'N/A'}</td>
-        <td>${d.phone || req.phone || 'N/A'}</td>
-      </tr>
-    `).join('')
-  ) : '<div class="empty-results">No individual doctor entries were attached with this application.</div>';
-
-  modal.innerHTML = `
-    <div class="detail-modal-card" style="max-width:760px">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title">${req.name}</h2>
-          <small style="color:var(--text-muted)">Application: <strong>${req.id}</strong> · Submitted: ${req.formattedDate || req.submittedAt?.slice(0, 10) || 'Recent'}</small>
-        </div>
-        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
-      </div>
-
-      <div class="detail-section">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3 style="margin:0"><i class="fa-solid fa-hospital"></i> Clinic Application Packet</h3>
-          <div>${statusBadge}</div>
-        </div>
-
-        <div class="request-detail-grid">
-          <div class="request-detail-item"><small>Legal Clinic Name</small><strong>${req.name}</strong></div>
-          <div class="request-detail-item"><small>Registration Number</small><strong>${req.registration || req.registrationNumber || 'Pending verification'}</strong></div>
-          <div class="request-detail-item"><small>City / District</small><strong>${req.city || 'Ahmedabad'}</strong></div>
-          <div class="request-detail-item"><small>Applicant Name & Role</small><strong>${req.applicantName || 'Applicant'} (${req.applicantRole || 'Director'})</strong></div>
-          <div class="request-detail-item"><small>Official Phone</small><strong>${req.phone || 'N/A'}</strong></div>
-          <div class="request-detail-item"><small>Official Email</small><strong>${req.email || 'N/A'}</strong></div>
-          <div class="request-detail-item"><small>Operating Days</small><strong>${req.days || req.operatingDays || 'Monday - Saturday'}</strong></div>
-          <div class="request-detail-item"><small>Working Hours</small><strong>${req.hours || req.workingHours || '09:00 - 20:00'}</strong></div>
-        </div>
-
-        <div class="request-detail-item" style="margin-bottom:12px">
-          <small>Premises Address</small>
-          <strong>${req.address || 'Address on record'}</strong>
-        </div>
-
-        <div class="request-detail-grid">
-          <div class="request-detail-item"><small>Specialties Offered</small><strong>${req.specialties || 'General Medicine'}</strong></div>
-          <div class="request-detail-item"><small>Available Facilities</small><strong>${req.facilities || 'Consultation, Pharmacy, Diagnostics'}</strong></div>
-        </div>
-      </div>
-
-      <div class="detail-section">
-        <h3><i class="fa-solid fa-user-doctor"></i> Registered Doctors (${docs.length || req.doctorsCount || 1})</h3>
-        ${doctorsListHtml}
-      </div>
-
-      <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
-        <button class="btn-secondary" data-action="close-details">Close</button>
-        ${req.status === 'Pending' ? `
-          <button class="btn-action-reject" style="padding:7px 16px;font-size:13px" data-action="reject-request" data-req-id="${req.id}">
-            <i class="fa-solid fa-ban"></i> Reject Request
-          </button>
-          <button class="btn-action-approve" style="padding:7px 16px;font-size:13px" data-action="approve-request" data-req-id="${req.id}">
-            <i class="fa-solid fa-circle-check"></i> Approve & Activate Clinic
-          </button>
-        ` : req.status === 'Rejected' ? `
-          <button class="btn-action-approve" style="padding:7px 16px;font-size:13px" data-action="approve-request" data-req-id="${req.id}">
-            <i class="fa-solid fa-rotate-left"></i> Re-Approve Clinic
-          </button>
-        ` : `
-          <button class="btn-primary" style="padding:7px 16px;font-size:13px" onclick="closeDetails(); renderClinics('active');">
-            <i class="fa-solid fa-arrow-right"></i> View in Active Clinics
-          </button>
-        `}
-      </div>
-    </div>
-  `;
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
-}
-
-async function approveClinicRequest(reqId) {
-  const req = clinicRequests.find(r => r.id === reqId);
-  if (!req) return;
-
-  req.status = 'Approved';
-  req.approvedAt = new Date().toISOString();
-  saveClinicRequests();
-
-  // Find or create clinic
-  const existingClinic = clinics.find(c => c.name.toLowerCase() === req.name.toLowerCase() || (req.clinicId && c.id === req.clinicId));
-  const newClinicId = req.clinicId || `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
-  const docCount = (req.doctors && req.doctors.length) ? req.doctors.length : Number(req.doctorsCount || 1);
-
-  if (!existingClinic) {
-    const newClinic = {
-      id: newClinicId,
-      name: req.name,
-      city: req.city || 'Ahmedabad',
-      doctors: docCount,
-      patients: 0,
-      visits: 0,
-      status: 'Active',
-      updated: 'Just now (Approved)',
-      services: ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'],
-      receptionist: {
-        name: `${req.name.split(' ')[0]} Front Desk`,
-        email: `reception.${req.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@dhyeyclinic.com`,
-        phone: req.phone || '9876543210',
-        shift: 'General Shift (08:30 AM - 08:30 PM)',
-        status: 'Active'
-      },
-      specialties: req.specialties || 'General Medicine',
-      facilities: req.facilities || 'Consultation, Pharmacy, Diagnostics',
-      phone: req.phone || '',
-      email: req.email || '',
-      registration: req.registration || req.registrationNumber || 'REG-PENDING',
-      address: req.address || '',
-      days: req.days || req.operatingDays || 'Monday - Saturday',
-      hours: req.hours || req.workingHours || '09:00 AM - 08:00 PM',
-      verifiedDocuments: docCount + 1
-    };
-    clinics.unshift(newClinic);
-    saveClinics();
-
-    // Initialize clinic database
-    const cleanClinicKey = `clinic-db-${newClinicId}`;
-    if (!localStorage.getItem(cleanClinicKey)) {
-      const cleanDB = {
-        counters: { family: 0, patient: 0, visit: 0 },
-        families: {},
-        appointments: [],
-        certificates: [],
-        bills: [],
-        feedbacks: [],
-        dietary: {},
-        clinicShortcuts: {
-          medicines: {},
-          complaints: {},
-          investigations: {},
-          allergies: {},
-          relations: {},
-          areas: {},
-          societies: {},
-        },
-        _shortcutsCleanedV2: true,
-        customShortcuts: [],
-        masterMedicines: [],
-        masterComplaints: [],
-        masterInvestigations: [],
-        masterAreas: [],
-        masterSocieties: [],
-        masterAllergies: [],
-        masterRelations: []
-      };
-      localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
-    }
-  }
-
-  // Add submitted doctors
-  if (Array.isArray(req.doctors) && req.doctors.length) {
-    req.doctors.forEach(doc => {
-      const docName = doc.name ? (doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`) : 'Dr. Medical Officer';
-      const exists = clinicDoctors.some(d => d.name.toLowerCase() === docName.toLowerCase() && d.clinic === req.name);
-      if (!exists) {
-        clinicDoctors.push({
-          name: docName,
-          specialty: doc.specialty || 'General Medicine',
-          clinic: req.name,
-          email: doc.email || `${docName.toLowerCase().replace(/[^a-z]+/g, '.')}@dhyeyclinic.com`,
-          phone: doc.phone || req.phone || '',
-          registration: doc.registration || 'MCI-PENDING',
-          patients: 0,
-          visits: 0,
-          rating: 95,
-          status: 'Active'
-        });
-      }
-    });
-    saveDoctors();
-  }
-
-  // Update backend API
-  try {
-    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Approved' })
-    });
-  } catch (err) {
-    console.warn('Backend API update skipped:', err);
-  }
-
-  closeDetails();
-  logActivity('Approved clinic application', 'Clinic application', req.id, 'Success', `${req.name} added to the clinic network.`);
-  showToast(`Clinic "${req.name}" approved and activated into the network!`);
-  renderClinics(currentClinicTab);
-}
-
-async function rejectClinicRequest(reqId) {
-  const req = clinicRequests.find(r => r.id === reqId);
-  if (!req) return;
-
-  req.status = 'Rejected';
-  req.rejectedAt = new Date().toISOString();
-  saveClinicRequests();
-
-  // Update backend API
-  try {
-    await fetch(`${API_BASE_URL}/api/clinics/requests/${encodeURIComponent(reqId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Rejected' })
-    });
-  } catch (err) {
-    console.warn('Backend API update skipped:', err);
-  }
-
-  closeDetails();
-  logActivity('Rejected clinic application', 'Clinic application', req.id, 'Warning', req.name);
-  showToast(`Registration request for "${req.name}" rejected.`);
-  renderClinics(currentClinicTab);
-}
-
 function renderServices() {
-  const withReception = clinics.filter(c => (c.services || []).includes('receptionist')).length;
-  const withPrescription = clinics.filter(c => (c.services || []).includes('digitalPrescription')).length;
-  const doctorOnlyCount = clinics.filter(c => !(c.services || []).includes('receptionist')).length;
-
-  const statsHtml = `
-    <div class="admin-stats">
-      <div class="admin-stat">
-        <div class="admin-stat-top"><span>Available Modules</span><span class="admin-stat-icon"><i class="fa-solid fa-cubes"></i></span></div>
-        <strong>${PLATFORM_SERVICES.length} Services</strong>
-        <small>Modular clinic features</small>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-top"><span>Receptionist Desks</span><span class="admin-stat-icon"><i class="fa-solid fa-user-nurse"></i></span></div>
-        <strong>${withReception} Clinics</strong>
-        <small>Dual login: Reception + Doctor</small>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-top"><span>Doctor-Only Mode</span><span class="admin-stat-icon"><i class="fa-solid fa-user-doctor"></i></span></div>
-        <strong>${doctorOnlyCount} Clinics</strong>
-        <small>Single direct doctor workflow</small>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-top"><span>Digital Prescription</span><span class="admin-stat-icon"><i class="fa-solid fa-file-prescription"></i></span></div>
-        <strong>${withPrescription} Clinics</strong>
-        <small>Multi-language customized Rx</small>
-      </div>
-    </div>
-  `;
-
-  const catalogCards = PLATFORM_SERVICES.map(service => {
-    const subscribedCount = clinics.filter(c => (c.services || []).includes(service.id)).length;
-    return `
-      <div class="service-catalog-card">
-        <div>
-          <div class="service-card-top">
-            <div class="service-card-icon"><i class="${service.icon}"></i></div>
-            <span class="service-badge-pill ${service.id === 'receptionist' ? 'primary' : ''}">${service.badge}</span>
-          </div>
-          <div class="service-card-body">
-            <h3>${service.name}</h3>
-            <p>${service.desc}</p>
-            <ul class="service-feature-list">
-              ${service.features.map(f => `<li><i class="fa-solid fa-circle-check"></i> ${f}</li>`).join('')}
-            </ul>
-          </div>
-        </div>
-        <div class="service-card-footer">
-          <span>Active Subscriptions:</span>
-          <strong>${subscribedCount} / ${clinics.length} Clinics</strong>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  const matrixRows = clinics.map(clinic => {
-    const s = clinic.services || [];
-    const hasReception = s.includes('receptionist');
-    const hasPrescription = s.includes('digitalPrescription');
-    const hasAppt = s.includes('appointment');
-    const hasCert = s.includes('certificates');
-    const hasBill = s.includes('billing');
-
-    return `
-      <tr data-clinic-id="${clinic.id}">
-        <td><strong>${clinic.name}</strong><br><small>${clinic.id} · ${clinic.city}</small></td>
-        <td>${hasReception ? '<span class="role-badge role-badge-receptionist"><i class="fa-solid fa-user-nurse"></i> Receptionist + Doctor</span>' : '<span class="role-badge role-badge-doctor"><i class="fa-solid fa-user-doctor"></i> Doctor Only (Direct)</span>'}</td>
-        <td>${hasReception ? '<span class="status-pill"><i class="fa-solid fa-check"></i> Active</span>' : '<span class="status-pill paused">Off</span>'}</td>
-        <td>${hasAppt ? '<span class="status-pill"><i class="fa-solid fa-check"></i> Active</span>' : '<span class="status-pill paused" title="Disabled in Doctor-Only Mode">Off (Auto)</span>'}</td>
-        <td>${hasPrescription ? '<span class="status-pill"><i class="fa-solid fa-check"></i> Active</span>' : '<span class="status-pill paused">Off</span>'}</td>
-        <td>${hasCert ? '<span class="status-pill"><i class="fa-solid fa-check"></i> Active</span>' : '<span class="status-pill paused">Off</span>'}</td>
-        <td>${hasBill ? '<span class="status-pill"><i class="fa-solid fa-check"></i> Active</span>' : '<span class="status-pill paused">Off</span>'}</td>
-        <td><button class="btn-secondary" style="padding:4px 9px; font-size:11px" onclick="event.stopPropagation(); openClinicDetails('${clinic.id}')"><i class="fa-solid fa-sliders"></i> Configure</button></td>
-      </tr>
-    `;
-  }).join('');
-
   page(
-    'Platform Services & Feature Catalog',
-    'Manage modular services provisioned for each clinic. Clinics with Receptionist enabled use Queue Dispatch, while Doctor-Only clinics manage family registration and visits directly.',
-    statsHtml,
-    `<button class="btn-primary" data-action="add-clinic"><i class="fa-solid fa-plus"></i> Add clinic with services</button>`
+    'Platform Services & Clinic Feature Modules',
+    'Manage modular capabilities per clinic. Services can be enabled or disabled anytime and sync live to the database.',
+    `
+      <div class="services-admin-grid">
+        ${PLATFORM_SERVICES.map(svc => `
+          <div class="service-admin-card">
+            <div class="service-admin-card-header">
+              <div class="service-admin-icon"><i class="${svc.icon}"></i></div>
+              <div class="service-admin-title-group">
+                <span class="service-admin-badge">${svc.badge}</span>
+                <h3>${svc.name}</h3>
+              </div>
+            </div>
+            <p class="service-admin-desc">${svc.desc}</p>
+            <div class="service-admin-features">
+              <strong>Key Capabilities:</strong>
+              <ul>
+                ${svc.features.map(f => `<li><i class="fa-solid fa-check"></i> ${f}</li>`).join('')}
+              </ul>
+            </div>
+            <div class="service-admin-usage">
+              <span>Active in <strong>${clinics.filter(c => (c.services || []).includes(svc.id)).length} of ${clinics.length}</strong> clinics</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <section class="admin-card" style="margin-top:20px">
+        <div class="admin-card-header">
+          <div>
+            <h2>Clinic Service Provisioning Matrix</h2>
+            <span>Toggle modular services on or off per clinic. Changes are instantly saved to MongoDB.</span>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table services-matrix-table">
+            <thead>
+              <tr>
+                <th style="width:200px">Clinic</th>
+                <th>Role Access</th>
+                <th style="text-align:center"><i class="fa-solid fa-user-nurse" style="color:#0f766e"></i> Reception Desk</th>
+                <th style="text-align:center"><i class="fa-solid fa-users-line" style="color:#0284c7"></i> Patient Queue</th>
+                <th style="text-align:center"><i class="fa-solid fa-file-prescription" style="color:#2563eb"></i> Digital Rx</th>
+                <th style="text-align:center"><i class="fa-solid fa-certificate" style="color:#d97706"></i> Certificates</th>
+                <th style="text-align:center"><i class="fa-solid fa-file-invoice-dollar" style="color:#16a34a"></i> Billing</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${clinics.map(c => {
+                const s = c.services || [];
+                const isRec = s.includes('receptionist');
+                const isAppt = s.includes('appointment');
+                const isRx = s.includes('digitalPrescription');
+                const isCert = s.includes('certificates');
+                const isBill = s.includes('billing');
+
+                return `
+                  <tr data-clinic-id="${c.id}">
+                    <td><strong>${c.name}</strong><br><small>${c.city} · ${c.id}</small></td>
+                    <td>${isRec ? '<span class="role-badge role-badge-receptionist"><i class="fa-solid fa-user-nurse"></i> Doctor + Receptionist</span>' : '<span class="role-badge role-badge-doctor"><i class="fa-solid fa-user-doctor"></i> Doctor Only (Direct)</span>'}</td>
+                    <td style="text-align:center">
+                      <button class="svc-toggle-btn ${isRec ? 'is-active' : ''}" data-action="toggle-service" data-clinic="${c.id}" data-service="receptionist" title="${isRec ? 'Disable Receptionist' : 'Enable Receptionist'}">
+                        <i class="fa-solid ${isRec ? 'fa-check' : 'fa-xmark'}"></i>
+                      </button>
+                    </td>
+                    <td style="text-align:center">
+                      <button class="svc-toggle-btn ${isAppt ? 'is-active' : ''} ${!isRec ? 'is-disabled' : ''}" data-action="toggle-service" data-clinic="${c.id}" data-service="appointment" title="${!isRec ? 'Requires Receptionist Service' : isAppt ? 'Disable Queue' : 'Enable Queue'}" ${!isRec ? 'disabled' : ''}>
+                        <i class="fa-solid ${isAppt ? 'fa-check' : 'fa-xmark'}"></i>
+                      </button>
+                    </td>
+                    <td style="text-align:center">
+                      <button class="svc-toggle-btn ${isRx ? 'is-active' : ''}" data-action="toggle-service" data-clinic="${c.id}" data-service="digitalPrescription" title="${isRx ? 'Disable Digital Rx' : 'Enable Digital Rx'}">
+                        <i class="fa-solid ${isRx ? 'fa-check' : 'fa-xmark'}"></i>
+                      </button>
+                    </td>
+                    <td style="text-align:center">
+                      <button class="svc-toggle-btn ${isCert ? 'is-active' : ''}" data-action="toggle-service" data-clinic="${c.id}" data-service="certificates" title="${isCert ? 'Disable Certificates' : 'Enable Certificates'}">
+                        <i class="fa-solid ${isCert ? 'fa-check' : 'fa-xmark'}"></i>
+                      </button>
+                    </td>
+                    <td style="text-align:center">
+                      <button class="svc-toggle-btn ${isBill ? 'is-active' : ''}" data-action="toggle-service" data-clinic="${c.id}" data-service="billing" title="${isBill ? 'Disable Billing' : 'Enable Billing'}">
+                        <i class="fa-solid ${isBill ? 'fa-check' : 'fa-xmark'}"></i>
+                      </button>
+                    </td>
+                    <td style="text-align:right">
+                      <button class="btn-secondary" data-action="edit-clinic" data-clinic="${c.id}" style="padding:4px 10px;font-size:12px">
+                        <i class="fa-solid fa-pen"></i> Edit
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `
   );
-
-  content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
-    <section class="admin-card">
-      <div class="admin-card-header">
-        <div><h2>Available Service Modules</h2><span>Clinics can subscribe to any combination of these services</span></div>
-      </div>
-      <div class="services-catalog-grid">${catalogCards}</div>
-    </section>
-
-    <section class="admin-card" style="margin-top:16px">
-      <div class="admin-card-header">
-        <div><h2>Clinic Service Subscription Matrix</h2><span>Live breakdown of active modules across each registered clinic</span></div>
-        <span>${clinics.length} locations</span>
-      </div>
-      ${table(['Clinic', 'Roles Provisioned', 'Receptionist Desk', 'Queue Dispatch', 'Digital Rx', 'Certificates', 'Billing', 'Action'], matrixRows)}
-    </section>
-  `);
 }
 
 function renderLogs() {
-  page(
-    'Log management',
-    'Review administrator activity across clinic onboarding, services, accounts, and requests.',
-    '',
-    '<button class="btn-secondary" data-action="clear-logs"><i class="fa-solid fa-trash"></i> Clear logs</button>'
-  );
+  page('Log management', 'Filter, inspect, and export administrator and system audit events from MongoDB database.', '', `<button class="btn-secondary" data-action="clear-logs"><i class="fa-solid fa-trash-can"></i> Clear logs</button><button class="btn-primary" data-action="export"><i class="fa-solid fa-download"></i> Export CSV</button>`);
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
     <section class="admin-card">
       <div class="admin-filter-row">
-        <input class="form-input" id="logSearch" placeholder="Search action, entity, ID, or details" style="flex:1;min-width:240px">
-        <select class="form-select" id="logResult"><option value="">All results</option><option>Success</option><option>Info</option><option>Warning</option></select>
-        <select class="form-select" id="logEntity"><option value="">All entities</option><option>Clinic</option><option>Clinic application</option><option>Doctor</option><option>Service</option><option>Account</option></select>
+        <div class="form-group" style="flex:1;min-width:220px;margin:0">
+          <input class="form-input" id="logSearch" placeholder="Search by admin, action, or entity">
+        </div>
+        <select class="form-select" id="logResult">
+          <option value="">All results</option>
+          <option>Success</option>
+          <option>Warning</option>
+          <option>Failed</option>
+        </select>
+        <select class="form-select" id="logEntity">
+          <option value="">All entities</option>
+          <option>Clinic</option>
+          <option>Doctor</option>
+          <option>Service</option>
+          <option>Account</option>
+          <option>Billing</option>
+        </select>
       </div>
       <div id="logTable" style="margin-top:16px"></div>
     </section>
   `);
+
   const update = () => {
-    const term = document.getElementById('logSearch').value.toLowerCase().trim();
+    const term = document.getElementById('logSearch').value.toLowerCase();
     const result = document.getElementById('logResult').value;
     const entity = document.getElementById('logEntity').value;
-    const rows = activityLogs
-      .filter((log) => (!result || log.result === result) && (!entity || log.entity === entity))
-      .filter((log) => `${log.action} ${log.entity} ${log.entityId} ${log.admin} ${log.details}`.toLowerCase().includes(term))
-      .map((log) => `<tr><td>${new Date(log.timestamp).toLocaleString('en-IN')}</td><td>${log.admin}</td><td><strong>${log.action}</strong></td><td>${log.entity}<br><small>${log.entityId}</small></td><td><span class="status-pill">${log.result}</span></td><td>${log.details || '—'}</td></tr>`)
-      .join('');
-    document.getElementById('logTable').innerHTML = table(['Timestamp', 'Admin', 'Action', 'Entity', 'Result', 'Details'], rows, 'No activity matches these filters.');
+    const filtered = activityLogs.filter(log => {
+      const matchesTerm = `${log.action} ${log.entity} ${log.entityId || ''} ${log.admin || ''}`.toLowerCase().includes(term);
+      const matchesResult = !result || log.result === result;
+      const matchesEntity = !entity || log.entity === entity;
+      return matchesTerm && matchesResult && matchesEntity;
+    });
+
+    document.getElementById('logTable').innerHTML = table(
+      ['Timestamp', 'Administrator', 'Action', 'Entity', 'Details', 'Result'],
+      filtered.map(l => `
+        <tr>
+          <td><small>${new Date(l.timestamp || l.createdAt || Date.now()).toLocaleString('en-IN')}</small></td>
+          <td><strong>${l.admin || 'Administrator'}</strong></td>
+          <td>${l.action}</td>
+          <td><span class="role-badge role-badge-doctor">${l.entity}: ${l.entityId || 'N/A'}</span></td>
+          <td><small>${l.details || '—'}</small></td>
+          <td><span class="status-pill ${l.result === 'Failed' ? 'account-status-suspended' : l.result === 'Warning' ? 'paused' : ''}">${l.result}</span></td>
+        </tr>
+      `).join(''),
+      'No audit log entries recorded yet.'
+    );
   };
+
   document.getElementById('logSearch').addEventListener('input', update);
   document.getElementById('logResult').addEventListener('change', update);
   document.getElementById('logEntity').addEventListener('change', update);
   update();
 }
 
+// Admin Accounts Tab - Clean and Simple without Complex Regex Errors
 function renderAdmins() {
-  page('Admin account management', 'Create verified administrator accounts with strong credentials and an auditable identity.', '', '');
+  page('Admin Account Management', 'Create verified administrator accounts stored directly in MongoDB database.', '', '');
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
     <div class="admin-grid">
       <section class="admin-card">
-        <div class="admin-card-header"><div><h2>Add administrator</h2><span>New accounts are created on the authenticated server.</span></div><i class="fa-solid fa-user-shield"></i></div>
+        <div class="admin-card-header">
+          <div><h2>Add Administrator</h2><span>New accounts are created directly in MongoDB.</span></div>
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
         <form id="adminForm" class="clinic-form-grid">
-          <div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input" name="name" required minlength="3" autocomplete="name"></div>
-          <div class="form-group"><label class="form-label">Work email <span class="req">*</span></label><input class="form-input" name="email" type="email" required autocomplete="email"></div>
-          <div class="form-group"><label class="form-label">Username <span class="req">*</span></label><input class="form-input" name="username" required pattern="[A-Za-z][A-Za-z0-9._-]{4,29}" minlength="5" maxlength="30" autocomplete="username"><small class="clinic-form-help">5-30 characters; letters, numbers, dots, underscores, or hyphens.</small></div>
-          <div class="form-group"><label class="form-label">Employee ID <span class="req">*</span></label><input class="form-input" name="employeeId" required pattern="[A-Za-z]{2,6}-[0-9]{4,12}" placeholder="ADM-20260001"><small class="clinic-form-help">Format: ADM-20260001</small></div>
-          <div class="form-group"><label class="form-label">Password <span class="req">*</span></label><input class="form-input" name="password" type="password" required minlength="12" autocomplete="new-password"><small class="clinic-form-help">At least 12 characters with uppercase, lowercase, number, and symbol.</small></div>
-          <div class="form-group"><label class="form-label">Confirm password <span class="req">*</span></label><input class="form-input" name="confirmPassword" type="password" required minlength="12" autocomplete="new-password"></div>
-          <div class="form-group full-width"><label class="form-check-label"><input type="checkbox" name="attestation" required> I confirm this person is an authorized administrator.</label></div>
-          <div class="full-width"><button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Create admin account</button></div>
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="req">*</span></label>
+            <input class="form-input" name="name" required minlength="2" placeholder="e.g. John Doe" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Work Email <span class="req">*</span></label>
+            <input class="form-input" name="email" type="email" required placeholder="admin@dhyeyclinic.com" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username <span class="req">*</span></label>
+            <input class="form-input" name="username" required minlength="3" maxlength="30" placeholder="e.g. admin_john" autocomplete="username">
+            <small class="clinic-form-help">Enter a username (at least 3 characters).</small>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Employee ID</label>
+            <input class="form-input" name="employeeId" placeholder="e.g. ADM-002">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password <span class="req">*</span></label>
+            <input class="form-input" name="password" type="password" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password <span class="req">*</span></label>
+            <input class="form-input" name="confirmPassword" type="password" required minlength="6" placeholder="Repeat password" autocomplete="new-password">
+          </div>
+          <div class="form-group full-width">
+            <label class="form-check-label"><input type="checkbox" name="attestation" required checked> I confirm this person is an authorized administrator.</label>
+          </div>
+          <div class="full-width">
+            <button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Create Admin Account</button>
+          </div>
         </form>
       </section>
+      
       <section class="admin-card">
-        <div class="admin-card-header"><div><h2>Accounts created this session</h2><span>Passwords are never stored or displayed in this panel.</span></div></div>
+        <div class="admin-card-header">
+          <div><h2>Registered Administrators</h2><span>Fetched directly from MongoDB.</span></div>
+          <span class="badge-count">${adminAccounts.length}</span>
+        </div>
         <div id="adminAccountsTable"></div>
       </section>
     </div>
   `);
+
   const accountTable = document.getElementById('adminAccountsTable');
   const renderAccountTable = () => {
-    accountTable.innerHTML = table(['Name', 'Username', 'Email', 'Employee ID', 'Created'], adminAccounts.map((admin) => `<tr><td>${admin.name}</td><td>${admin.username}</td><td>${admin.email}</td><td>${admin.employeeId}</td><td>${new Date(admin.createdAt).toLocaleString('en-IN')}</td></tr>`).join(''), 'No new accounts created in this session.');
+    accountTable.innerHTML = table(
+      ['Name', 'Username', 'Email', 'Employee ID', 'Created', 'Action'],
+      adminAccounts.map(admin => `
+        <tr>
+          <td><strong>${admin.name}</strong></td>
+          <td>${admin.username}</td>
+          <td>${admin.email || 'N/A'}</td>
+          <td>${admin.employeeId || 'ADM'}</td>
+          <td>${admin.createdAt ? new Date(admin.createdAt).toLocaleString('en-IN') : 'Active'}</td>
+          <td>
+            ${admin.username !== 'admin' ? `
+              <button class="btn-secondary" style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#dc2626" data-action="delete-admin" data-admin-id="${admin._id || admin.id}"><i class="fa-solid fa-trash"></i></button>
+            ` : '<span style="font-size:11px;color:var(--text-muted)">Master Admin</span>'}
+          </td>
+        </tr>
+      `).join(''),
+      'No administrator accounts found in database.'
+    );
   };
   renderAccountTable();
-  document.getElementById('adminForm').addEventListener('submit', async (event) => {
+
+  document.getElementById('adminForm').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
     const password = String(data.get('password'));
-    if (password !== String(data.get('confirmPassword'))) return showToast('Passwords do not match.', 'error');
-    if (!data.get('attestation')) return showToast('Confirm that the administrator is authorized.', 'error');
-    const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
+    const confirmPassword = String(data.get('confirmPassword'));
+
+    if (password !== confirmPassword) {
+      showToast('Passwords do not match.', 'error');
+      return;
+    }
+
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/register-admin`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.token || ''}` },
-        body: JSON.stringify({ name: data.get('name'), email: data.get('email'), username: data.get('username'), employeeId: data.get('employeeId'), password })
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({
+          name: data.get('name').trim(),
+          email: data.get('email').trim(),
+          username: data.get('username').trim(),
+          employeeId: (data.get('employeeId') || '').trim(),
+          password
+        })
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.success) throw new Error(result.message || 'The server could not create this administrator.');
-      adminAccounts.unshift({ ...result.admin, createdAt: new Date().toISOString() });
-      localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(adminAccounts));
-      logActivity('Created administrator account', 'Account', result.admin.username, 'Success', result.admin.employeeId);
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'The server could not create this administrator.');
+      }
+
+      await fetchAdminsFromDB();
+      await logActivity('Created administrator account', 'Account', result.admin.username, 'Success', result.admin.employeeId);
       form.reset();
       renderAccountTable();
-      showToast('Administrator account created and validated successfully.');
+      showToast('Administrator account created successfully in MongoDB database!');
     } catch (error) {
       showToast(error.message, 'error');
     } finally {
       submit.disabled = false;
     }
-
   });
 }
 
+// Feedback & Complaints
 function escapeFeedbackHtml(value) {
   return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 }
 
-let activeFeedbackTickets = [];
-
-async function renderFeedbackInbox() {
-  page(
-    'Complaints & Feedback Helpdesk',
-    'Monitor, triage, and reply to landing-page contact inquiries and clinic doctor support tickets in real-time.',
-    '',
-    `<button type="button" class="btn-secondary" id="btnRefreshFeedback"><i class="fa-solid fa-rotate"></i> Refresh Tickets</button>`
-  );
-
+function renderFeedbackInbox() {
+  page('Complaints & Feedback Inbox', 'Monitor and resolve patient/staff inquiries, complaints, and service reviews from MongoDB.', '', '');
   content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
-    <!-- Top KPI Stats Banner -->
-    <div class="feedback-kpi-grid" id="feedbackKpiStats">
-      <div class="feedback-kpi-card">
-        <div class="feedback-kpi-icon total"><i class="fa-solid fa-comments"></i></div>
-        <div>
-          <div class="feedback-kpi-val" id="kpiTotalTickets">0</div>
-          <div class="feedback-kpi-label">Total Inquiries</div>
-        </div>
-      </div>
-      <div class="feedback-kpi-card">
-        <div class="feedback-kpi-icon pending"><i class="fa-solid fa-clock"></i></div>
-        <div>
-          <div class="feedback-kpi-val" id="kpiPendingTickets" style="color:#dc2626">0</div>
-          <div class="feedback-kpi-label">Pending / Action Needed</div>
-        </div>
-      </div>
-      <div class="feedback-kpi-card">
-        <div class="feedback-kpi-icon progress"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
-        <div>
-          <div class="feedback-kpi-val" id="kpiProgressTickets" style="color:#d97706">0</div>
-          <div class="feedback-kpi-label">In Progress</div>
-        </div>
-      </div>
-      <div class="feedback-kpi-card">
-        <div class="feedback-kpi-icon resolved"><i class="fa-solid fa-circle-check"></i></div>
-        <div>
-          <div class="feedback-kpi-val" id="kpiResolvedTickets" style="color:#059669">0</div>
-          <div class="feedback-kpi-label">Resolved / Closed</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Card & Filter Toolbar -->
     <section class="admin-card">
-      <div class="feedback-filter-toolbar">
-        <div class="feedback-search-wrapper">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input class="form-input feedback-search-input" id="feedbackSearch" placeholder="Search ticket #, doctor, clinic, email, subject, or message...">
+      <div class="admin-filter-row">
+        <div class="form-group" style="flex:1;min-width:220px;margin:0">
+          <input class="form-input" id="feedbackSearch" placeholder="Search by name, contact, category, or ticket ID">
         </div>
-        <select class="form-select" id="feedbackStatus" style="max-width:160px">
+        <select class="form-select" id="feedbackStatus">
           <option value="">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Resolved">Resolved</option>
-          <option value="Closed">Closed</option>
+          <option>Open</option>
+          <option>In-Progress</option>
+          <option>Resolved</option>
         </select>
-        <select class="form-select" id="feedbackCategory" style="max-width:170px">
-          <option value="">All Sources</option>
-          <option value="landing">Landing Page Visitor</option>
-          <option value="doctor">Doctor Support Desk</option>
+        <select class="form-select" id="feedbackCategory">
+          <option value="">All Categories</option>
+          <option>Prescription</option>
+          <option>Billing</option>
+          <option>Reception</option>
+          <option>Doctor Care</option>
+          <option>Other</option>
         </select>
       </div>
-
-      <div id="feedbackTable" style="margin-top:10px">
-        <div class="empty-results" style="padding:32px;text-align:center">
-          <i class="fa-solid fa-spinner fa-spin" style="font-size:24px;color:var(--primary-teal);margin-bottom:8px"></i>
-          <div>Loading support requests...</div>
-        </div>
-      </div>
+      <div id="feedbackTable" style="margin-top:16px"></div>
     </section>
-
-    <!-- Modal Mount Container -->
     <div id="feedbackModalMount"></div>
   `);
 
-  const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
-  let serverTickets = [];
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/feedback/admin/all`, {
-      headers: { Authorization: `Bearer ${session?.token || 'mock-admin-token'}` },
-    });
-    const result = await response.json().catch(() => ({}));
-    if (response.ok && result.success && Array.isArray(result.data)) {
-      serverTickets = result.data;
-    }
-  } catch (error) {
-    console.warn('[Admin Feedback Notice]: Fetching local fallback tickets', error);
-  }
-
-  // Collect and merge ALL local clinic storage tickets (both clinic_db_*, clinic-db-*, and public storage)
-  const localTickets = [];
-  try {
-    const publicSaved = JSON.parse(localStorage.getItem('dhyey-public-feedback') || '[]');
-    if (Array.isArray(publicSaved)) localTickets.push(...publicSaved);
-  } catch (e) {}
-
-  try {
-    const globalSaved = JSON.parse(localStorage.getItem('dhyey-feedback-tickets') || '[]');
-    if (Array.isArray(globalSaved)) localTickets.push(...globalSaved);
-  } catch (e) {}
-
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('clinic_db_') || key.startsWith('clinic-db-') || key.startsWith('clinic_db')) {
-      try {
-        const store = JSON.parse(localStorage.getItem(key) || '{}');
-        if (Array.isArray(store.feedbacks)) {
-          localTickets.push(...store.feedbacks);
-        }
-      } catch (e) {}
-    }
-  });
-
-  // Deduplicate and merge tickets
-  const ticketMap = new Map();
-  serverTickets.forEach((t) => {
-    const k = t.ticketNo || t._id || t.id;
-    if (k) {
-      ticketMap.set(k, {
-        ...t,
-        id: t._id || t.id || t.ticketNo,
-        replies: Array.isArray(t.replies) ? t.replies : [],
-      });
-    }
-  });
-
-  localTickets.forEach((t) => {
-    const k = t.ticketNo || t._id || t.id;
-    if (k) {
-      if (!ticketMap.has(k)) {
-        ticketMap.set(k, {
-          ...t,
-          id: t._id || t.id || t.ticketNo,
-          replies: Array.isArray(t.replies) ? t.replies : [],
-        });
-      } else {
-        const existing = ticketMap.get(k);
-        const localReplies = Array.isArray(t.replies) ? t.replies : [];
-        if (localReplies.length > (existing.replies || []).length) {
-          existing.replies = localReplies;
-        }
-        if (t.status && !existing.status) existing.status = t.status;
-      }
-    }
-  });
-
-  activeFeedbackTickets = Array.from(ticketMap.values());
-  activeFeedbackTickets.sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()));
-
-  // Update KPI counters
-  const updateKpis = () => {
-    const total = activeFeedbackTickets.length;
-    const pending = activeFeedbackTickets.filter((t) => (t.status || 'Pending') === 'Pending').length;
-    const inProgress = activeFeedbackTickets.filter((t) => t.status === 'In Progress').length;
-    const resolved = activeFeedbackTickets.filter((t) => t.status === 'Resolved' || t.status === 'Closed').length;
-
-    const setVal = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = val;
-    };
-    setVal('kpiTotalTickets', total);
-    setVal('kpiPendingTickets', pending);
-    setVal('kpiProgressTickets', inProgress);
-    setVal('kpiResolvedTickets', resolved);
-  };
-  updateKpis();
-
-  const renderTable = () => {
-    const term = (document.getElementById('feedbackSearch')?.value || '').toLowerCase().trim();
+  const update = () => {
+    const term = (document.getElementById('feedbackSearch')?.value || '').toLowerCase();
     const status = document.getElementById('feedbackStatus')?.value || '';
     const category = document.getElementById('feedbackCategory')?.value || '';
 
-    const filtered = activeFeedbackTickets.filter((ticket) => {
-      const isLanding =
-        ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
-      const source = isLanding ? 'landing' : 'doctor';
-
-      const matchStatus = !status || ticket.status === status;
-      const matchSource = !category || source === category;
-      const matchText = `${ticket.ticketNo || ''} ${ticket.doctorName || ''} ${ticket.clinicName || ''} ${ticket.subject || ''} ${ticket.message || ''} ${ticket.categoryLabel || ''} ${ticket.category || ''} ${ticket.metaDetails?.email || ''} ${ticket.metaDetails?.phone || ''} ${ticket.metaDetails?.requestedClinicName || ''}`
-        .toLowerCase()
-        .includes(term);
-
-      return matchStatus && matchSource && matchText;
+    const filtered = activeFeedbackTickets.filter(item => {
+      const matchesTerm = `${item.ticketId || item._id || ''} ${item.name || ''} ${item.phone || ''} ${item.message || ''} ${item.clinicName || ''}`.toLowerCase().includes(term);
+      const matchesStatus = !status || item.status === status;
+      const matchesCat = !category || item.category === category;
+      return matchesTerm && matchesStatus && matchesCat;
     });
 
-    if (filtered.length === 0) {
-      document.getElementById('feedbackTable').innerHTML = `
-        <div class="empty-results" style="padding:48px 20px;text-align:center">
-          <i class="fa-solid fa-folder-open" style="font-size:36px;color:var(--text-muted);opacity:0.4;margin-bottom:12px;display:block"></i>
-          <div style="font-weight:700;font-size:15px;color:var(--text-main);margin-bottom:4px">No support requests match your criteria</div>
-          <div style="font-size:12px;color:var(--text-muted)">Try adjusting your search terms or filter selection.</div>
-        </div>
-      `;
-      return;
-    }
-
-    const rows = filtered
-      .map((ticket) => {
-        const id = ticket.id || ticket._id || ticket.ticketNo;
-        const isLanding =
-          ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
-        const sourceLabel = isLanding ? 'Landing Page' : 'Doctor Panel';
-        const sourceClass = isLanding ? 'landing' : 'doctor';
-        const sourceIcon = isLanding ? 'fa-globe' : 'fa-user-doctor';
-
-        const st = ticket.status || 'Pending';
-        const stClass = st.toLowerCase().replace(/\s+/g, '-');
-        const repliesCount = (ticket.replies || []).length;
-        const submitterName = ticket.doctorName || ticket.senderName || ticket.metaDetails?.email || 'Anonymous';
-        const submitterSub = ticket.clinicName || ticket.metaDetails?.email || ticket.metaDetails?.phone || 'General Visitor';
-
-        return `
-        <tr data-ticket-id="${escapeFeedbackHtml(id)}" style="cursor:pointer">
-          <td style="width:130px">
-            <span class="font-mono" style="font-weight:800;color:var(--primary-teal);font-size:12.5px">${escapeFeedbackHtml(ticket.ticketNo || id)}</span>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-              ${new Date(ticket.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </td>
+    document.getElementById('feedbackTable').innerHTML = table(
+      ['Ticket ID', 'Submitted By', 'Category', 'Clinic', 'Message', 'Status', 'Action'],
+      filtered.map(f => `
+        <tr data-feedback-id="${f._id || f.ticketId}">
+          <td><strong>${f.ticketId || f._id?.slice(-6) || 'TKT'}</strong><br><small>${new Date(f.createdAt || Date.now()).toLocaleDateString('en-IN')}</small></td>
+          <td><strong>${f.name || 'Anonymous'}</strong><br><small>${f.phone || f.email || 'N/A'}</small></td>
+          <td><span class="role-badge role-badge-doctor">${f.category || 'General'}</span></td>
+          <td>${f.clinicName || 'Dhyey Main Clinic'}</td>
+          <td><small style="max-width:250px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeFeedbackHtml(f.message || f.feedback || '')}</small></td>
+          <td><span class="status-pill ${f.status === 'Resolved' ? '' : f.status === 'In-Progress' ? 'paused' : 'account-status-suspended'}">${f.status || 'Open'}</span></td>
           <td>
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-              <span class="feedback-source-tag ${sourceClass}">
-                <i class="fa-solid ${sourceIcon}"></i> ${sourceLabel}
-              </span>
-            </div>
-            <div style="font-weight:700;color:var(--text-main);font-size:13px">${escapeFeedbackHtml(submitterName)}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${escapeFeedbackHtml(submitterSub)}</div>
-          </td>
-          <td style="max-width:320px">
-            <div style="font-weight:700;color:var(--text-main);font-size:13px;margin-bottom:2px">
-              ${escapeFeedbackHtml(ticket.subject || 'General Inquiry')}
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-              ${escapeFeedbackHtml(ticket.message || '')}
-            </div>
-            ${
-              repliesCount > 0
-                ? `<div style="margin-top:4px"><span style="font-size:10.5px;background:rgba(15,118,110,0.1);color:var(--primary-teal);padding:2px 7px;border-radius:999px;font-weight:700"><i class="fa-solid fa-reply"></i> ${repliesCount} ${repliesCount === 1 ? 'Reply' : 'Replies'}</span></div>`
-                : ''
-            }
-          </td>
-          <td>
-            <span class="feedback-status-pill ${stClass}">${st}</span>
-          </td>
-          <td>
-            <div style="display:flex;gap:6px;align-items:center;justify-content:flex-end" onclick="event.stopPropagation()">
-              <button type="button" class="btn-secondary btn-open-feedback-modal" data-ticket-id="${escapeFeedbackHtml(id)}" style="padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--primary-teal);border-color:var(--primary-teal-border);display:inline-flex;align-items:center;gap:5px">
-                <i class="fa-solid fa-reply"></i> Respond
-              </button>
-              <select class="form-select feedback-status-dropdown" data-ticket-id="${escapeFeedbackHtml(id)}" style="font-size:11.5px;padding:4px 8px;max-width:115px">
-                <option value="Pending" ${st === 'Pending' ? 'selected' : ''}>Pending</option>
-                <option value="In Progress" ${st === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                <option value="Resolved" ${st === 'Resolved' ? 'selected' : ''}>Resolved</option>
-                <option value="Closed" ${st === 'Closed' ? 'selected' : ''}>Closed</option>
-              </select>
-            </div>
+            <button class="btn-secondary" data-action="view-feedback" data-feedback-id="${f._id || f.ticketId}" style="padding:4px 8px;font-size:11px"><i class="fa-solid fa-eye"></i> View</button>
           </td>
         </tr>
-      `;
-      })
-      .join('');
-
-    document.getElementById('feedbackTable').innerHTML = table(
-      ['Ticket & Date', 'Source & Submitter', 'Subject & Inquiry Details', 'Status', 'Actions'],
-      rows
+      `).join(''),
+      'No complaints or feedback found.'
     );
   };
 
-  // Wire filter events
-  ['feedbackSearch', 'feedbackStatus', 'feedbackCategory'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(id === 'feedbackSearch' ? 'input' : 'change', renderTable);
-  });
-
-  // Refresh button
-  document.getElementById('btnRefreshFeedback')?.addEventListener('click', () => {
-    showToast('Refreshing feedback tickets...');
-    renderFeedbackInbox();
-  });
-
-  // Wire Table click events
-  const tableRoot = content.querySelector('#feedbackTable');
-  tableRoot.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-open-feedback-modal');
-    if (btn) {
-      openFeedbackTicketModal(btn.dataset.ticketId);
-      return;
-    }
-    const row = e.target.closest('tr[data-ticket-id]');
-    if (row && !e.target.closest('select') && !e.target.closest('button')) {
-      openFeedbackTicketModal(row.dataset.ticketId);
-    }
-  });
-
-  // Status Quick-Dropdown change
-  tableRoot.addEventListener('change', async (e) => {
-    if (!e.target.matches('.feedback-status-dropdown')) return;
-    const ticketId = e.target.dataset.ticketId;
-    const newStatus = e.target.value;
-    await updateFeedbackTicket(ticketId, { status: newStatus });
-    const ticket = activeFeedbackTickets.find((t) => (t.id || t._id || t.ticketNo) === ticketId);
-    if (ticket) ticket.status = newStatus;
-    updateKpis();
-    renderTable();
-    showToast(`Ticket status updated to ${newStatus}`);
-  });
-
-  renderTable();
-}
-
-function openFeedbackTicketModal(ticketId) {
-  const ticket = activeFeedbackTickets.find((t) => (t.id || t._id || t.ticketNo) === ticketId);
-  const mount = document.getElementById('feedbackModalMount');
-  if (!ticket || !mount) return;
-
-  const isLanding = ticket.metaDetails?.source === 'Landing Page Contact' || ticket.doctorName === 'Landing Page Visitor';
-  const sourceLabel = isLanding ? 'Landing Page Inquirer' : 'Doctor Helpdesk';
-  const sourceIcon = isLanding ? 'fa-globe' : 'fa-user-doctor';
-  const st = ticket.status || 'Pending';
-  const stClass = st.toLowerCase().replace(/\s+/g, '-');
-  const replies = ticket.replies || [];
-
-  mount.innerHTML = `
-    <div class="cms-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px);">
-      <div class="feedback-ticket-modal-card">
-        
-        <!-- Header -->
-        <div class="feedback-modal-header">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="font-mono" style="background:var(--primary-teal);color:#fff;font-weight:900;font-size:13px;padding:3px 9px;border-radius:6px">
-              ${escapeFeedbackHtml(ticket.ticketNo || ticket.id)}
-            </span>
-            <div>
-              <h2 style="margin:0;font-size:15px;font-weight:800;color:var(--text-main)">
-                ${escapeFeedbackHtml(ticket.subject || 'Support Ticket Thread')}
-              </h2>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:1px">
-                <i class="fa-solid ${sourceIcon}"></i> ${sourceLabel} &bull; Created ${new Date(ticket.createdAt || Date.now()).toLocaleString('en-IN')}
-              </div>
-            </div>
-          </div>
-          <button type="button" id="btnCloseFeedbackModal" class="btn-secondary" style="border:none;padding:5px 9px;font-size:16px"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-
-        <!-- Body -->
-        <div class="feedback-modal-body">
-          
-          <!-- Submitter Card -->
-          <div class="feedback-sender-card">
-            <div>
-              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Sender Name</span>
-              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.doctorName || ticket.senderName || 'Anonymous Visitor')}</strong>
-            </div>
-            <div>
-              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Clinic / Organization</span>
-              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.clinicName || 'Landing Page Visitor')}</strong>
-            </div>
-            <div>
-              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Email Address</span>
-              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.metaDetails?.email || 'Not provided')}</strong>
-            </div>
-            <div>
-              <span style="color:var(--text-muted);display:block;font-size:10.5px;text-transform:uppercase;font-weight:700">Phone Number</span>
-              <strong style="color:var(--text-main);font-size:13px">${escapeFeedbackHtml(ticket.metaDetails?.phone || 'Not provided')}</strong>
-            </div>
-          </div>
-
-          <!-- Original Message Card -->
-          <div class="feedback-original-bubble">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span style="font-size:11.5px;font-weight:800;color:var(--primary-teal);text-transform:uppercase;display:flex;align-items:center;gap:5px">
-                <i class="fa-solid fa-message"></i> Inquirer Message
-              </span>
-              <span class="feedback-status-pill ${stClass}">${st}</span>
-            </div>
-            <div style="font-size:13.5px;color:var(--text-main);line-height:1.6;white-space:pre-wrap">
-              ${escapeFeedbackHtml(ticket.message || '')}
-            </div>
-          </div>
-
-          <!-- Replies Conversation Thread -->
-          ${
-            replies.length > 0
-              ? `
-            <div style="display:flex;flex-direction:column;gap:10px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
-                <i class="fa-solid fa-comments"></i> Admin Responses (${replies.length})
-              </div>
-              ${replies
-                .map(
-                  (r) => `
-                <div class="feedback-reply-bubble">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                    <strong style="font-size:12px;color:var(--primary-teal);display:flex;align-items:center;gap:6px">
-                      <i class="fa-solid fa-shield-halved"></i> ${escapeFeedbackHtml(r.senderName || 'System Administrator')}
-                    </strong>
-                    <span style="font-size:11px;color:var(--text-muted)">
-                      ${new Date(r.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div style="font-size:13px;color:var(--text-main);white-space:pre-wrap;line-height:1.5">${escapeFeedbackHtml(r.message)}</div>
-                </div>
-              `
-                )
-                .join('')}
-            </div>
-          `
-              : ''
-          }
-
-          <!-- Quick Templates & Reply Composer -->
-          <div style="background:var(--surface-alt);border:1px solid var(--border-color);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
-            <div style="font-size:12px;font-weight:700;color:var(--text-main);display:flex;align-items:center;gap:6px">
-              <i class="fa-solid fa-reply"></i> Write Official Reply
-            </div>
-
-            <!-- Predefined Template Pills -->
-            <div class="feedback-template-pills">
-              <button type="button" class="feedback-template-btn" data-tmpl="Thank you for reaching out to Dhyey Clinic. We have reviewed your inquiry and will be glad to assist you.">
-                + Greeting &amp; Acknowledgment
-              </button>
-              <button type="button" class="feedback-template-btn" data-tmpl="Your clinic account credentials have been verified and activated. You can now log in securely.">
-                + Account Activated
-              </button>
-              <button type="button" class="feedback-template-btn" data-tmpl="The reported issue has been resolved by our technical team. Please verify and let us know if you need further help.">
-                + Issue Resolved
-              </button>
-              <button type="button" class="feedback-template-btn" data-tmpl="Our support representative will call you shortly on your provided contact number to assist with onboarding.">
-                + Call Follow-up
-              </button>
-            </div>
-
-            <textarea id="modalFeedbackReplyText" class="form-textarea" rows="3" placeholder="Type your detailed reply to the customer or doctor..." style="width:100%;font-size:13px;padding:10px;border-radius:8px"></textarea>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:4px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Set Ticket Status:</label>
-                <select id="modalFeedbackStatusSelect" class="form-select" style="font-size:12px;padding:5px 10px;max-width:140px">
-                  <option value="Resolved" selected>Resolved</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Closed">Closed</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-
-              <div style="display:flex;gap:8px">
-                <button type="button" id="btnCancelFeedbackModal" class="btn-secondary" style="padding:7px 16px;font-size:12px">Close</button>
-                <button type="button" id="btnSubmitFeedbackReply" class="btn-primary" style="padding:7px 20px;font-size:12px;font-weight:700">
-                  <i class="fa-solid fa-paper-plane"></i> Send Reply
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-    </div>
-  `;
-
-  const closeModal = () => (mount.innerHTML = '');
-  mount.querySelector('#btnCloseFeedbackModal')?.addEventListener('click', closeModal);
-  mount.querySelector('#btnCancelFeedbackModal')?.addEventListener('click', closeModal);
-
-  // Template button inserts text
-  mount.querySelectorAll('.feedback-template-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const textarea = mount.querySelector('#modalFeedbackReplyText');
-      if (textarea) {
-        textarea.value = btn.dataset.tmpl;
-        textarea.focus();
-      }
-    });
-  });
-
-  // Submit reply
-  mount.querySelector('#btnSubmitFeedbackReply')?.addEventListener('click', async (e) => {
-    const btn = e.currentTarget;
-    const message = mount.querySelector('#modalFeedbackReplyText')?.value?.trim();
-    const newStatus = mount.querySelector('#modalFeedbackStatusSelect')?.value || 'Resolved';
-
-    if (!message) {
-      showToast('Please type a reply before sending.', 'error');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending...`;
-
-    try {
-      const id = ticket.id || ticket._id || ticket.ticketNo;
-      await updateFeedbackTicket(id, { message, status: newStatus });
-
-      ticket.status = newStatus;
-      ticket.replies = [
-        ...(ticket.replies || []),
-        {
-          senderName: 'System Administrator',
-          message,
-          senderRole: 'admin',
-          createdAt: new Date().toISOString(),
-        },
-      ];
-
-      logActivity('Replied to support ticket', 'Feedback', id, 'Success', ticket.subject);
-      showToast(`Reply dispatched and ticket marked as ${newStatus}!`);
-      closeModal();
-      renderFeedbackInbox();
-    } catch (err) {
-      showToast(err.message || 'Failed to send reply', 'error');
-      btn.disabled = false;
-      btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send Reply`;
-    }
-  });
-}
-
-async function updateFeedbackTicket(id, payload) {
-  const session = JSON.parse(localStorage.getItem('clinic-auth-session') || 'null');
-  try {
-    const endpoint = payload.message
-      ? `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/reply`
-      : `${API_BASE_URL}/api/feedback/${encodeURIComponent(id)}/status`;
-    const response = await fetch(endpoint, {
-      method: payload.message ? 'POST' : 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.token || 'mock-admin-token'}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json().catch(() => ({}));
-    if (response.ok && result.success) return result;
-  } catch (error) {
-    console.warn('[Admin Feedback Notice]: Falling back to local clinic db update');
-  }
-
-  // Always mirror updates to local clinic databases so doctor sees admin replies immediately
-  const localKeys = [
-    'dhyey-public-feedback',
-    'dhyey-feedback-tickets',
-    ...Object.keys(localStorage).filter(
-      (k) => k.startsWith('clinic_db_') || k.startsWith('clinic-db-') || k.startsWith('clinic_db')
-    ),
-  ];
-
-  let updated = false;
-  localKeys.forEach((key) => {
-    try {
-      const store = JSON.parse(localStorage.getItem(key) || (key.startsWith('dhyey-') ? '[]' : '{}'));
-      const list = Array.isArray(store) ? store : store.feedbacks;
-      if (!Array.isArray(list)) return;
-
-      const ticket = list.find((item) => (item.id || item._id || item.ticketNo) === id);
-      if (!ticket) return;
-
-      if (payload.status) ticket.status = payload.status;
-      if (payload.message) {
-        if (!ticket.replies) ticket.replies = [];
-        ticket.replies.push({
-          senderRole: 'admin',
-          senderName: 'System Administrator',
-          message: payload.message,
-          createdAt: new Date().toISOString(),
-        });
-        ticket.lastReplyAt = new Date().toISOString();
-        ticket.status = payload.status || 'Resolved';
-      }
-      localStorage.setItem(key, JSON.stringify(store));
-      updated = true;
-    } catch (e) {}
-  });
-
-  try {
-    localStorage.setItem('dhyey-feedback-last-updated', String(Date.now()));
-  } catch (e) {}
-
-  return updated;
-}
-function renderAnalysis(type) {
-  const isClinic = type === 'clinic';
-  const isDoctor = type === 'doctor';
-  const title = isClinic ? 'Clinic wise analysis' : isDoctor ? 'Doctor wise analysis' : 'Patient wise analysis';
-  const subtitle = isClinic ? 'Compare patient volume, visits, and collections by location.' : isDoctor ? 'Track doctor workload and patient engagement.' : 'Find visit patterns and follow-up needs for individual patients.';
-  page(title, subtitle, '', `<button class="btn-secondary" data-action="export"><i class="fa-solid fa-download"></i> Export CSV</button>`);
-  const filter = `<div class="analysis-toolbar"><div class="form-group" style="flex:1;min-width:220px"><label class="form-label">Search everything</label><input class="form-input" id="analysisSearch" placeholder="Search by name, ID, doctor or clinic"></div><div class="form-group"><label class="form-label">Clinic</label><select class="form-select" id="analysisClinic"><option value="">All clinics</option>${clinicOptions()}</select></div><div class="form-group"><label class="form-label">Date range</label><select class="form-select" id="analysisRange"><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">This year</option></select></div><div class="form-group"><label class="form-label">Activity</label><select class="form-select" id="analysisActivity"><option value="">Any activity</option><option value="high">High activity</option><option value="low">Needs attention</option></select></div><div class="form-group"><label class="form-label">Sort by</label><select class="form-select" id="analysisSort"><option value="default">Default</option><option value="high">Highest first</option><option value="low">Lowest first</option></select></div></div><div class="quick-filter-bar"><span class="clinic-form-help">Frequent filters:</span><button type="button" class="quick-filter active" data-quick-filter="">All records</button><button type="button" class="quick-filter" data-quick-filter="today">Updated recently</button><button type="button" class="quick-filter" data-quick-filter="high">High performers</button><button type="button" class="quick-filter" data-quick-filter="attention">Needs attention</button></div>`;
-  const card = `<section class="admin-card">${filter}<div id="analysisTable" style="margin-top:18px"></div></section>`; content.querySelector('.admin-page').insertAdjacentHTML('beforeend', card);
-  let quickFilter = '';
-  const update = () => {
-    const selected = document.getElementById('analysisClinic').value;
-    const term = document.getElementById('analysisSearch').value.toLowerCase();
-    const activity = document.getElementById('analysisActivity').value || quickFilter;
-    const sort = document.getElementById('analysisSort').value;
-    let rows;
-
-    if (isClinic) {
-      let records = clinics.filter(c => (!selected || c.name === selected) && `${c.name} ${c.city} ${c.specialties || ''}`.toLowerCase().includes(term));
-      if (activity === 'high' || activity === 'today') records = records.filter(c => c.visits >= 200);
-      if (activity === 'low' || activity === 'attention') records = records.filter(c => c.visits < 200);
-      if (sort !== 'default') records.sort((a, b) => sort === 'high' ? b.visits - a.visits : a.visits - b.visits);
-      rows = records.map(c => `
-        <tr data-clinic-id="${c.id}">
-          <td><strong>${c.name}</strong><br><small>${c.city}</small></td>
-          <td>${c.doctors}</td>
-          <td>${c.patients.toLocaleString()}</td>
-          <td>${c.visits}</td>
-          <td>${money(c.visits * 650)}</td>
-          <td><div class="metric-bar"><i style="width:${Math.min(c.visits / 5, 100)}%"></i></div></td>
-        </tr>
-      `);
-    } else if (isDoctor) {
-      let records = clinicDoctors.filter(d => (!selected || d.clinic === selected) && `${d.name} ${d.specialty} ${d.clinic}`.toLowerCase().includes(term));
-      if (activity === 'high' || activity === 'today') records = records.filter(d => (d.rating || 0) >= 90);
-      if (activity === 'low' || activity === 'attention') records = records.filter(d => (d.rating || 0) < 90);
-      if (sort !== 'default') records.sort((a, b) => sort === 'high' ? (b.rating || 0) - (a.rating || 0) : (a.rating || 0) - (b.rating || 0));
-      rows = records.map(d => `
-        <tr data-doctor-name="${d.name}">
-          <td><strong>${d.name}</strong><br><small>${d.specialty}</small></td>
-          <td>${d.clinic}</td>
-          <td>${d.patients || 0}</td>
-          <td>${d.visits || 0}</td>
-          <td>${d.rating || 0}%</td>
-          <td><div class="metric-bar"><i style="width:${d.rating || 0}%"></i></div></td>
-        </tr>
-      `);
-    } else {
-      let records = patients.filter(p => (!selected || p.clinic === selected) && `${p.name} ${p.id} ${p.doctor} ${p.status}`.toLowerCase().includes(term));
-      if (activity === 'high' || activity === 'today') records = records.filter(p => p.visits >= 5);
-      if (activity === 'low' || activity === 'attention') records = records.filter(p => p.status === 'Follow-up');
-      if (sort !== 'default') records.sort((a, b) => sort === 'high' ? b.visits - a.visits : a.visits - b.visits);
-      rows = records.map(p => `
-        <tr data-patient-id="${p.id}">
-          <td><strong>${p.name}</strong><br><small>${p.id}</small></td>
-          <td>${p.clinic}</td>
-          <td>${p.doctor}</td>
-          <td>${p.visits}</td>
-          <td>${p.lastVisit}</td>
-          <td><span class="status-pill">${p.status}</span></td>
-        </tr>
-      `);
-    }
-
-    const headers = isClinic
-      ? ['Clinic', 'Doctors', 'Patients', 'Visits', 'Collection', 'Volume']
-      : isDoctor
-      ? ['Doctor', 'Clinic', 'Patients', 'Visits', 'Satisfaction', 'Score']
-      : ['Patient', 'Clinic', 'Doctor', 'Visits', 'Last visit', 'Status'];
-
-    document.getElementById('analysisTable').innerHTML = table(headers, rows.join(''));
-  };
-
-  ['analysisClinic', 'analysisRange', 'analysisActivity', 'analysisSort', 'analysisSearch'].forEach(id => {
-    document.getElementById(id).addEventListener(id === 'analysisSearch' ? 'input' : 'change', update);
-  });
-
-  content.querySelectorAll('[data-quick-filter]').forEach(button => {
-    button.addEventListener('click', () => {
-      quickFilter = button.dataset.quickFilter;
-      content.querySelectorAll('[data-quick-filter]').forEach(item => item.classList.toggle('active', item === button));
-      update();
-    });
-  });
-
+  document.getElementById('feedbackSearch')?.addEventListener('input', update);
+  document.getElementById('feedbackStatus')?.addEventListener('change', update);
+  document.getElementById('feedbackCategory')?.addEventListener('change', update);
   update();
 }
-function openClinicDetails(clinicId) {
-  const clinic = clinics.find(item => item.id === clinicId);
-  if (!clinic) return;
-  const assignedDoctors = clinicDoctors.filter(doctor => doctor.clinic === clinic.name || (doctor.clinicId && doctor.clinicId === clinic.id));
-  const modal = document.getElementById('detailsModal');
-  const services = clinic.services || ['digitalPrescription', 'billing'];
-  const hasReception = services.includes('receptionist');
 
-  // Service toggle rows for the detail view
-  const allServiceDefs = [
-    { id: 'receptionist', label: 'Receptionist Service', icon: 'fa-user-nurse' },
-    { id: 'appointment', label: 'Patient Queue Service', icon: 'fa-users-line' },
-    { id: 'digitalPrescription', label: 'Digital Prescription', icon: 'fa-file-prescription' },
-    { id: 'certificates', label: 'Medical Certificates', icon: 'fa-certificate' },
-    { id: 'billing', label: 'Billing & Invoicing', icon: 'fa-file-invoice-dollar' },
-  ];
+// Analysis Views
+function renderAnalysis(type) {
+  const titles = {
+    clinic: ['Clinic-wise Performance Analysis', 'Patient traffic, consultations, and revenue distribution by facility.'],
+    doctor: ['Doctor-wise Clinical Performance', 'Consultation volumes, follow-ups, and patient ratings by doctor.'],
+    patient: ['Patient Population & Demographics Analysis', 'Registered patient demographics, visit frequency, and loyalty records.']
+  };
 
-  const serviceToggleRows = allServiceDefs.map(svc => {
-    const isOn = services.includes(svc.id);
-    const isAutoManaged = svc.id === 'appointment'; // appointment auto-follows receptionist
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px"><i class="fa-solid ${svc.icon}" style="width:16px;opacity:.7"></i> ${svc.label}${isAutoManaged ? ' <small style="opacity:.6">(follows Receptionist)</small>' : ''}</span>
-      <button class="btn-secondary" style="padding:4px 10px;font-size:11px;min-width:72px" 
-        data-action="toggle-service" data-clinic="${clinic.id}" data-service="${svc.id}">
-        ${isOn ? '<i class="fa-solid fa-toggle-on" style="color:#16a34a"></i> ON' : '<i class="fa-solid fa-toggle-off" style="color:#94a3b8"></i> OFF'}
-      </button>
-    </div>`;
-  }).join('');
+  const [title, subtitle] = titles[type] || titles.clinic;
+  page(title, subtitle, '', `<button class="btn-primary" data-action="export"><i class="fa-solid fa-download"></i> Export CSV</button>`);
 
-  modal.innerHTML = `
-    <div class="detail-modal-card">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title">${clinic.name}</h2>
-          <small style="color:var(--text-muted)">${clinic.id} · ${clinic.city}</small>
-        </div>
-        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
-      </div>
-
-      <div class="detail-section">
-        <h3><i class="fa-solid fa-cubes"></i> Services — Toggle On / Off</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Changes apply immediately and are reflected in the doctor's dashboard on next login.</p>
-        ${serviceToggleRows}
-      </div>
-
-      ${hasReception ? `
-        <div class="detail-section">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-            <h3 style="margin-bottom:0;display:flex;align-items:center;gap:8px">
-              <i class="fa-solid fa-user-nurse"></i> Receptionist Staff Account
-            </h3>
-            <div style="display:flex;gap:6px;align-items:center">
-              <button class="btn-primary" data-action="open-add-receptionist" data-clinic="${clinic.id}" style="padding:5px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-                <i class="fa-solid ${clinic.receptionist ? 'fa-user-pen' : 'fa-user-plus'}"></i> ${clinic.receptionist ? 'Edit Receptionist' : 'Add Receptionist'}
-              </button>
-              ${clinic.receptionist ? `
-                <button class="btn-secondary" data-action="remove-receptionist" data-clinic="${clinic.id}" style="padding:5px 10px;font-size:12px;color:#dc2626;border-color:#dc2626;display:inline-flex;align-items:center;gap:5px" title="Remove Receptionist">
-                  <i class="fa-solid fa-user-xmark"></i> Remove
-                </button>
-              ` : ''}
-            </div>
-          </div>
-
-          ${clinic.receptionist ? `
-            <div class="receptionist-notice-box">
-              <i class="fa-solid fa-shield-check"></i>
-              <div><strong>Front-Desk Operations Active:</strong> Receptionist registers Family Heads and pushes patients to the doctor queue.</div>
-            </div>
-            <div class="detail-grid">
-              <div class="detail-item"><small>Name</small><strong>${clinic.receptionist.name}</strong></div>
-              <div class="detail-item"><small>Phone</small><strong>${clinic.receptionist.phone || 'N/A'}</strong></div>
-              <div class="detail-item"><small>Shift</small><strong>${clinic.receptionist.shift || 'General Shift'}</strong></div>
-              <div class="detail-item span-2"><small>Email (Login)</small><strong>${clinic.receptionist.email}</strong></div>
-              <div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.receptionist.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.receptionist.status || 'Active'}</span></strong></div>
-            </div>
-          ` : `
-            <div style="background:var(--primary-teal-light);border:1px dashed var(--primary-teal-border);border-radius:var(--radius-md);padding:18px;text-align:center">
-              <i class="fa-solid fa-user-nurse" style="font-size:26px;color:var(--primary-teal);margin-bottom:8px;display:inline-block"></i>
-              <div style="font-weight:700;color:var(--text-main);font-size:13px;margin-bottom:4px">No Receptionist Account Configured</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Receptionist Service is enabled for this clinic. Assign a staff member to handle front-desk operations and doctor queues.</div>
-              <button class="btn-primary" data-action="open-add-receptionist" data-clinic="${clinic.id}" style="padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-                <i class="fa-solid fa-user-plus"></i> Add Receptionist
-              </button>
-            </div>
-          `}
-        </div>
-      ` : ''}
-
-      <div class="detail-section">
-        <h3><i class="fa-solid fa-hospital"></i> Clinic Information</h3>
-        <div class="detail-grid">
-          <div class="detail-item"><small>Clinic ID</small><strong>${clinic.id}</strong></div>
-          <div class="detail-item"><small>Registration</small><strong>${clinic.registration || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.status}</span></strong></div>
-          <div class="detail-item"><small>City</small><strong>${clinic.city}</strong></div>
-          <div class="detail-item"><small>Phone</small><strong>${clinic.phone || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Email</small><strong>${clinic.email || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Operating days</small><strong>${clinic.days || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Working hours</small><strong>${clinic.hours || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Specialties</small><strong>${clinic.specialties || 'N/A'}</strong></div>
-          <div class="detail-item"><small>Facilities</small><strong>${clinic.facilities || 'N/A'}</strong></div>
-        </div>
-        <div style="margin-top:8px"><small style="color:var(--text-muted)">Address:</small><br><strong>${clinic.address || 'N/A'}</strong></div>
-      </div>
-
-      <div class="detail-section">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-          <h3 style="margin-bottom:0;display:flex;align-items:center;gap:8px">
-            <i class="fa-solid fa-user-doctor"></i> Doctors mapped to this clinic
-          </h3>
-          <button class="btn-primary" data-action="open-add-doctor" data-clinic="${clinic.id}" style="padding:5px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-            <i class="fa-solid fa-user-plus"></i> Add Doctor
-          </button>
-        </div>
-        ${assignedDoctors.length ? table(
-          ['Doctor', 'Specialty', 'Status', 'Suspend', 'Remove'],
-          assignedDoctors.map(doctor => `
-            <tr data-doctor-name="${doctor.name}">
-              <td><strong>${doctor.name}</strong><br><small>${doctor.email || ''}</small></td>
-              <td>${doctor.specialty}</td>
-              <td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td>
-              <td><button class="btn-secondary suspend-button" style="font-size:11px;padding:4px 8px" data-action="toggle-doctor" data-doctor="${doctor.name}" data-clinic="${clinic.id}">${doctor.status === 'Suspended' ? 'Restore' : 'Suspend'}</button></td>
-              <td><button class="btn-secondary" style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#dc2626" data-action="remove-doctor-from-clinic" data-doctor="${doctor.name}" data-clinic="${clinic.id}"><i class="fa-solid fa-user-minus"></i> Remove</button></td>
+  if (type === 'doctor') {
+    content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+      <section class="admin-card">
+        ${table(
+          ['Doctor Name', 'Clinic', 'Specialty', 'Patients Treated', 'Visits Logged', 'Quality Rating'],
+          clinicDoctors.map(d => `
+            <tr>
+              <td><strong>${d.name}</strong><br><small>${d.registration || 'Reg on file'}</small></td>
+              <td>${d.clinic}</td>
+              <td>${d.specialty}</td>
+              <td>${d.patients || 0}</td>
+              <td>${d.visits || 0}</td>
+              <td><span class="status-pill">${d.rating || 92}% Positive</span></td>
             </tr>
           `).join('')
-        ) : `
-          <div class="empty-results" style="padding:22px;text-align:center">
-            <p style="margin-bottom:10px;color:var(--text-muted)">No doctor accounts are mapped yet.</p>
-            <button class="btn-primary" data-action="open-add-doctor" data-clinic="${clinic.id}" style="padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
-              <i class="fa-solid fa-user-plus"></i> Add Doctor
-            </button>
-          </div>
-        `}
-      </div>
-
-      <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
-        <button class="btn-secondary" data-action="close-details">Close</button>
-        <button class="btn-secondary" data-action="edit-clinic" data-clinic="${clinic.id}" style="color:#2563eb;border-color:#2563eb"><i class="fa-solid fa-pen"></i> Edit Details</button>
-        <button class="btn-secondary suspend-button" data-action="toggle-clinic" data-clinic="${clinic.id}">${clinic.status === 'Suspended' ? '<i class="fa-solid fa-check-circle"></i> Restore' : '<i class="fa-solid fa-ban"></i> Suspend'}</button>
-        <button class="btn-secondary" data-action="delete-clinic" data-clinic="${clinic.id}" style="color:#dc2626;border-color:#dc2626"><i class="fa-solid fa-trash"></i> Delete Clinic</button>
-      </div>
-    </div>
-  `;
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
+        )}
+      </section>
+    `);
+  } else if (type === 'patient') {
+    content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+      <section class="admin-card">
+        ${table(
+          ['Patient ID', 'Full Name', 'Primary Clinic', 'Doctor', 'Visits', 'Contact', 'Status'],
+          patients.map(p => `
+            <tr data-patient-id="${p.id}">
+              <td><strong>${p.id}</strong></td>
+              <td><strong>${p.name}</strong></td>
+              <td>${p.clinic}</td>
+              <td>${p.doctor}</td>
+              <td>${p.visits}</td>
+              <td>${p.phone || 'N/A'}</td>
+              <td><span class="status-pill">${p.status}</span></td>
+            </tr>
+          `).join(''),
+          'No patient records found in database.'
+        )}
+      </section>
+    `);
+  } else {
+    content.querySelector('.admin-page').insertAdjacentHTML('beforeend', `
+      <section class="admin-card">
+        ${table(
+          ['Clinic Name', 'City', 'Services Active', 'Doctors', 'Patients', 'Visits', 'Status'],
+          clinics.map(c => `
+            <tr data-clinic-id="${c.id}">
+              <td><strong>${c.name}</strong><br><small>${c.id}</small></td>
+              <td>${c.city}</td>
+              <td>${renderServiceTagsMini(c.services)}</td>
+              <td>${c.doctors}</td>
+              <td>${(c.patients || 0).toLocaleString()}</td>
+              <td>${c.visits || 0}</td>
+              <td><span class="status-pill ${c.status === 'Paused' ? 'paused' : c.status === 'Suspended' ? 'account-status-suspended' : ''}">${c.status}</span></td>
+            </tr>
+          `).join('')
+        )}
+      </section>
+    `);
+  }
 }
 
-function closeDetails() {
-  const modal = document.getElementById('detailsModal');
-  modal.classList.remove('active');
-  modal.setAttribute('aria-hidden', 'true');
-}
-
-function openDoctorDetails(name) {
-  const doctor = clinicDoctors.find(item => item.name === name);
-  if (!doctor) return;
-  const clinic = clinics.find(c => c.name === doctor.clinic);
-  const modal = document.getElementById('detailsModal');
-  
-  modal.innerHTML = `
-    <div class="detail-modal-card">
-      <div class="modal-header">
-        <h2 class="modal-title">${doctor.name}</h2>
-        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
-      </div>
-      <div class="detail-section">
-        <div class="detail-grid">
-          <div class="detail-item"><small>Status</small><strong><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></strong></div>
-          <div class="detail-item"><small>Mapped clinic</small><strong>${doctor.clinic}</strong></div>
-          <div class="detail-item"><small>Specialization</small><strong>${doctor.specialty}</strong></div>
-          <div class="detail-item"><small>Email</small><strong>${doctor.email || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Registration</small><strong>${doctor.registration || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Patients</small><strong>${doctor.patients || 0}</strong></div>
-          <div class="detail-item"><small>Visits</small><strong>${doctor.visits || 0}</strong></div>
-          <div class="detail-item"><small>Credential document</small><strong>${doctor.certificate || 'On file'}</strong></div>
-        </div>
-      </div>
-      <div class="detail-section">
-        <h3><i class="fa-solid fa-cubes"></i> Active Doctor Services for ${doctor.clinic}</h3>
-        <div>${renderServiceTagsMini(clinic?.services || [])}</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" data-action="close-details">Close</button>
-        <button class="btn-secondary suspend-button" data-action="toggle-doctor" data-doctor="${doctor.name}">${doctor.status === 'Suspended' ? 'Restore account' : 'Suspend account'}</button>
-      </div>
-    </div>
-  `;
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
-}
-
-function openPatientDetails(id) {
-  const patient = patients.find(item => item.id === id);
-  if (!patient) return;
-  const modal = document.getElementById('detailsModal');
-  modal.innerHTML = `
-    <div class="detail-modal-card">
-      <div class="modal-header">
-        <h2 class="modal-title">${patient.name}</h2>
-        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
-      </div>
-      <div class="detail-section">
-        <div class="detail-grid">
-          <div class="detail-item"><small>Patient ID</small><strong>${patient.id}</strong></div>
-          <div class="detail-item"><small>Status</small><strong><span class="status-pill">${patient.status}</span></strong></div>
-          <div class="detail-item"><small>Clinic</small><strong>${patient.clinic}</strong></div>
-          <div class="detail-item"><small>Primary doctor</small><strong>${patient.doctor}</strong></div>
-          <div class="detail-item"><small>Total visits</small><strong>${patient.visits}</strong></div>
-          <div class="detail-item"><small>Last visit</small><strong>${patient.lastVisit}</strong></div>
-          <div class="detail-item"><small>Contact</small><strong>${patient.phone || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Address</small><strong>${patient.address || 'Not provided'}</strong></div>
-          <div class="detail-item"><small>Blood group</small><strong>${patient.bloodGroup || 'Not recorded'}</strong></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" data-action="close-details">Close</button>
-      </div>
-    </div>
-  `;
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
-}
-
+// Modals: Add Clinic, Edit Clinic, Add Doctor, etc.
 function doctorEntry(index) {
   return `
     <div class="doctor-entry">
@@ -1994,12 +1070,11 @@ function doctorEntry(index) {
         <button type="button" class="remove-doctor">Remove</button>
       </div>
       <div class="clinic-form-grid">
-        <div class="form-group"><label class="form-label">Full name <span class="req">*</span></label><input class="form-input doctor-name" required placeholder="Dr. Full Name"></div>
-        <div class="form-group"><label class="form-label">Specialization <span class="req">*</span></label><input class="form-input doctor-specialty" required placeholder="e.g. Cardiology"></div>
-        <div class="form-group"><label class="form-label">Registration number <span class="req">*</span></label><input class="form-input doctor-reg" required placeholder="GMC-2026-XXXX"></div>
-        <div class="form-group"><label class="form-label">Doctor email <span class="req">*</span></label><input class="form-input doctor-email" type="email" required placeholder="doctor@example.com"></div>
-        <div class="form-group"><label class="form-label">Initial login password <span class="req">*</span></label><input class="form-input doctor-password" type="password" minlength="8" required placeholder="At least 8 characters"></div>
-        <div class="form-group"><label class="form-label">Medical certificate <span class="req">*</span></label><input class="file-input doctor-certificate" type="file" accept=".pdf,.jpg,.jpeg,.png" required><small class="clinic-form-help">PDF, JPG or PNG</small></div>
+        <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input class="form-input doctor-name" required placeholder="Dr. Full Name"></div>
+        <div class="form-group"><label class="form-label">Specialization <span class="req">*</span></label><input class="form-input doctor-specialty" required placeholder="e.g. General Medicine, Cardiology"></div>
+        <div class="form-group"><label class="form-label">Registration Number</label><input class="form-input doctor-reg" placeholder="GMC-2026-XXXX"></div>
+        <div class="form-group"><label class="form-label">Doctor Email <span class="req">*</span></label><input class="form-input doctor-email" type="email" required placeholder="doctor@example.com"></div>
+        <div class="form-group"><label class="form-label">Initial Login Password <span class="req">*</span></label><input class="form-input doctor-password" type="password" minlength="6" required value="Password@123" placeholder="At least 6 characters"></div>
       </div>
     </div>
   `;
@@ -2018,25 +1093,24 @@ function openClinicModal() {
           
           <!-- Clinic Identity -->
           <div class="clinic-form-section">
-            <h3><i class="fa-solid fa-hospital"></i> Clinic identity and contact</h3>
+            <h3><i class="fa-solid fa-hospital"></i> Clinic Identity and Contact</h3>
             <div class="clinic-form-grid">
-              <div class="form-group"><label class="form-label">Legal clinic name <span class="req">*</span></label><input class="form-input" name="name" required placeholder="Registered clinic name"></div>
-              <div class="form-group"><label class="form-label">Clinic registration number <span class="req">*</span></label><input class="form-input" name="registration" required placeholder="e.g. REG-2026-AHM-01"></div>
-              <div class="form-group"><label class="form-label">Phone number <span class="req">*</span></label><input class="form-input" name="phone" required type="tel" placeholder="10-digit mobile or landline"></div>
-              <div class="form-group"><label class="form-label">Email address <span class="req">*</span></label><input class="form-input" name="email" required type="email" placeholder="clinic@example.com"></div>
-              <div class="form-group full-width"><label class="form-label">Complete address <span class="req">*</span></label><textarea class="form-textarea" name="address" required rows="2" placeholder="Building, street, area, city, state and PIN code"></textarea></div>
-              <div class="form-group"><label class="form-label">Operating days <span class="req">*</span></label><input class="form-input" name="days" required placeholder="Monday - Saturday"></div>
-              <div class="form-group"><label class="form-label">Working hours <span class="req">*</span></label><input class="form-input" name="hours" required placeholder="09:00 - 20:00"></div>
+              <div class="form-group"><label class="form-label">Legal Clinic Name <span class="req">*</span></label><input class="form-input" name="name" required placeholder="Registered clinic name"></div>
+              <div class="form-group"><label class="form-label">Registration Number</label><input class="form-input" name="registration" placeholder="e.g. REG-2026-AHM-01"></div>
+              <div class="form-group"><label class="form-label">Phone Number <span class="req">*</span></label><input class="form-input" name="phone" required type="tel" placeholder="10-digit mobile or landline"></div>
+              <div class="form-group"><label class="form-label">Email Address <span class="req">*</span></label><input class="form-input" name="email" required type="email" placeholder="clinic@example.com"></div>
+              <div class="form-group full-width"><label class="form-label">Complete Address <span class="req">*</span></label><textarea class="form-textarea" name="address" required rows="2" placeholder="Building, street, area, city, state and PIN code"></textarea></div>
+              <div class="form-group"><label class="form-label">Operating Days <span class="req">*</span></label><input class="form-input" name="days" required value="Monday - Saturday" placeholder="Monday - Saturday"></div>
+              <div class="form-group"><label class="form-label">Working Hours <span class="req">*</span></label><input class="form-input" name="hours" required value="09:00 - 20:00" placeholder="09:00 - 20:00"></div>
             </div>
           </div>
 
           <!-- Services Selection -->
           <div class="clinic-form-section">
             <h3><i class="fa-solid fa-cubes"></i> Clinic Services & Feature Modules</h3>
-            <p class="clinic-form-help" style="margin-bottom:10px">Select which services this clinic provides. If Receptionist Service is OFF, Patient Queue is automatically disabled (Doctor-Only direct mode).</p>
+            <p class="clinic-form-help" style="margin-bottom:10px">Select which services this clinic provides. If Receptionist Service is OFF, Patient Queue is disabled (Doctor-Only direct mode).</p>
             
             <div class="services-selection-grid">
-              <!-- Receptionist Service Toggle -->
               <label class="service-select-item is-selected" id="item_receptionist">
                 <input type="checkbox" name="services" value="receptionist" id="svc_receptionist" checked>
                 <div class="service-select-info">
@@ -2045,7 +1119,6 @@ function openClinicModal() {
                 </div>
               </label>
 
-              <!-- Patient Queue Service (Dependent on Receptionist) -->
               <label class="service-select-item is-selected" id="item_appointment">
                 <input type="checkbox" name="services" value="appointment" id="svc_appointment" checked>
                 <div class="service-select-info">
@@ -2054,16 +1127,14 @@ function openClinicModal() {
                 </div>
               </label>
 
-              <!-- Digital Prescription -->
               <label class="service-select-item is-selected" id="item_prescription">
                 <input type="checkbox" name="services" value="digitalPrescription" id="svc_prescription" checked>
                 <div class="service-select-info">
                   <strong><i class="fa-solid fa-file-prescription" style="color:#2563eb"></i> Digital Multi-Language Prescription</strong>
-                  <small>Regional language dosage labels (Gujarati/Hindi/English), meal timing (AF/BF), and quick templates.</small>
+                  <small>Regional language dosage labels (Gujarati/Hindi/English), meal timing (AF/BF), and templates.</small>
                 </div>
               </label>
 
-              <!-- Medical Certificates -->
               <label class="service-select-item is-selected" id="item_certificates">
                 <input type="checkbox" name="services" value="certificates" id="svc_certificates" checked>
                 <div class="service-select-info">
@@ -2072,7 +1143,6 @@ function openClinicModal() {
                 </div>
               </label>
 
-              <!-- Billing & Invoicing -->
               <label class="service-select-item is-selected full-width" id="item_billing">
                 <input type="checkbox" name="services" value="billing" id="svc_billing" checked>
                 <div class="service-select-info">
@@ -2082,7 +1152,7 @@ function openClinicModal() {
               </label>
             </div>
 
-            <!-- Dynamic Receptionist Staff Account Form (Shown only when Receptionist Service is checked) -->
+            <!-- Dynamic Receptionist Staff Account Form -->
             <div class="receptionist-form-container" id="receptionistStaffSection">
               <div class="receptionist-form-header">
                 <i class="fa-solid fa-user-nurse"></i> Receptionist Staff Account Details
@@ -2090,7 +1160,7 @@ function openClinicModal() {
               <div class="receptionist-notice-box">
                 <i class="fa-solid fa-circle-info"></i>
                 <div>
-                  <strong>Dual-Login Mode Enabled:</strong> Two logins will exist for this clinic (Receptionist & Doctor). The receptionist registers family heads, adds members, and pushes patients into the doctor's appointment queue so the doctor can directly open the consultation form.
+                  <strong>Dual-Login Mode Enabled:</strong> The receptionist registers family heads, adds members, and pushes patients into the doctor's queue.
                 </div>
               </div>
               <div class="clinic-form-grid">
@@ -2099,25 +1169,24 @@ function openClinicModal() {
                   <input class="form-input" id="rec_name" name="receptionistName" required placeholder="e.g. Pooja Sharma">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Receptionist Email / Login Username <span class="req">*</span></label>
+                  <label class="form-label">Receptionist Email / Login <span class="req">*</span></label>
                   <input class="form-input" id="rec_email" name="receptionistEmail" type="email" required placeholder="receptionist@clinic.com">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Contact Phone <span class="req">*</span></label>
-                  <input class="form-input" id="rec_phone" name="receptionistPhone" type="tel" required placeholder="10-digit mobile number">
+                  <label class="form-label">Contact Phone</label>
+                  <input class="form-input" id="rec_phone" name="receptionistPhone" type="tel" placeholder="10-digit number">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Duty Shift / Hours <span class="req">*</span></label>
-                  <input class="form-input" id="rec_shift" name="receptionistShift" required placeholder="e.g. Morning Shift (08:00 AM - 03:00 PM)">
+                  <label class="form-label">Duty Shift / Hours</label>
+                  <input class="form-input" id="rec_shift" name="receptionistShift" value="General Shift (08:30 AM - 08:30 PM)">
                 </div>
                 <div class="form-group full-width">
                   <label class="form-label">Initial Login Password <span class="req">*</span></label>
-                  <input class="form-input" id="rec_pwd" name="receptionistPassword" type="password" minlength="8" required placeholder="At least 8 characters">
+                  <input class="form-input" id="rec_pwd" name="receptionistPassword" type="password" minlength="3" required value="123" placeholder="Default: 123">
                 </div>
               </div>
             </div>
 
-            <!-- Doctor-Only Notice (Shown when Receptionist Service is unchecked) -->
             <div class="receptionist-form-container" id="doctorOnlyNoticeSection" style="display:none; background:#f8fafc; border-color:#cbd5e1;">
               <div class="receptionist-form-header" style="color:#334155">
                 <i class="fa-solid fa-user-doctor"></i> Doctor-Only Mode (Direct Workflow)
@@ -2125,7 +1194,7 @@ function openClinicModal() {
               <div class="receptionist-notice-box" style="background:#ffffff; border-color:#e2e8f0; color:#475569;">
                 <i class="fa-solid fa-info-circle"></i>
                 <div>
-                  <strong>Single Doctor Login Mode:</strong> Receptionist service and appointment queue are turned OFF. The doctor handles family head registration, member addition, and new visit entry directly without an intermediate queue.
+                  <strong>Single Doctor Login Mode:</strong> Receptionist service and appointment queue are turned OFF. The doctor handles registration and visits directly.
                 </div>
               </div>
             </div>
@@ -2133,21 +1202,15 @@ function openClinicModal() {
 
           <!-- Specialties & Facilities -->
           <div class="clinic-form-section">
-            <h3><i class="fa-solid fa-stethoscope"></i> Clinical specialties and facilities</h3>
+            <h3><i class="fa-solid fa-stethoscope"></i> Clinical Specialties and Facilities</h3>
             <div class="clinic-form-grid">
               <div class="form-group full-width">
-                <label class="form-label">Specialties provided <span class="req">*</span></label>
+                <label class="form-label">Specialties Provided <span class="req">*</span></label>
                 <input class="form-input" name="specialties" required placeholder="e.g. General Medicine, Cardiology, Pediatrics">
-                <small class="clinic-form-help">Separate specialties with commas.</small>
               </div>
-              <div class="form-group">
+              <div class="form-group full-width">
                 <label class="form-label">Facilities</label>
-                <input class="form-input" name="facilities" placeholder="Pharmacy, lab, ultrasound, ECG">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Clinic certificate <span class="req">*</span></label>
-                <input class="file-input" name="clinicCertificate" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
-                <small class="clinic-form-help">Registration / accreditation proof</small>
+                <input class="form-input" name="facilities" placeholder="Pharmacy, Pathology Lab, Ultrasound, ECG">
               </div>
             </div>
           </div>
@@ -2155,8 +1218,8 @@ function openClinicModal() {
           <!-- Doctors and Credentials -->
           <div class="clinic-form-section">
             <div class="doctor-entry-header">
-              <h3><i class="fa-solid fa-user-doctor"></i> Doctors and credentials</h3>
-              <button type="button" class="btn-secondary" id="addDoctor"><i class="fa-solid fa-plus"></i> Add doctor</button>
+              <h3><i class="fa-solid fa-user-doctor"></i> Doctors and Credentials</h3>
+              <button type="button" class="btn-secondary" id="addDoctor"><i class="fa-solid fa-plus"></i> Add Doctor</button>
             </div>
             <div id="doctorEntries">${doctorEntry(1)}</div>
           </div>
@@ -2165,7 +1228,7 @@ function openClinicModal() {
         
         <div class="modal-footer">
           <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
-          <button class="btn-primary" type="submit"><i class="fa-solid fa-shield-check"></i> Register Clinic with Selected Services</button>
+          <button class="btn-primary" type="submit"><i class="fa-solid fa-shield-check"></i> Register Clinic in Database</button>
         </div>
       </form>
     </div>
@@ -2180,39 +1243,31 @@ function openClinicModal() {
   const apptHelp = document.getElementById('apptHelpText');
   const recSection = document.getElementById('receptionistStaffSection');
   const docOnlySection = document.getElementById('doctorOnlyNoticeSection');
-  const recFields = ['rec_name', 'rec_email', 'rec_phone', 'rec_shift', 'rec_pwd'].map(id => document.getElementById(id));
+  const recFields = ['rec_name', 'rec_email', 'rec_pwd'].map(id => document.getElementById(id));
 
   function updateServiceDependencies() {
     const isRecOn = recCheckbox.checked;
-
     if (isRecOn) {
-      // Enable appointment queue
       apptCheckbox.disabled = false;
       apptCheckbox.checked = true;
       itemAppt.classList.remove('is-disabled');
       itemAppt.classList.add('is-selected');
       apptHelp.innerHTML = `Queue dispatch: Doctor takes arriving patients from queue directly without searching.`;
-      
-      // Show receptionist form
       recSection.style.display = 'block';
       docOnlySection.style.display = 'none';
       recFields.forEach(f => f && f.setAttribute('required', 'true'));
     } else {
-      // Disable and turn off appointment queue automatically
       apptCheckbox.checked = false;
       apptCheckbox.disabled = true;
       itemAppt.classList.add('is-disabled');
       itemAppt.classList.remove('is-selected');
-      apptHelp.innerHTML = `<span style="color:#b91c1c; font-weight:600"><i class="fa-solid fa-ban"></i> Disabled in Doctor-Only Mode</span> (Doctor registers & consults directly)`;
-
-      // Hide receptionist form and show doctor-only notice
+      apptHelp.innerHTML = `<span style="color:#b91c1c; font-weight:600"><i class="fa-solid fa-ban"></i> Disabled in Doctor-Only Mode</span>`;
       recSection.style.display = 'none';
       docOnlySection.style.display = 'block';
       recFields.forEach(f => f && f.removeAttribute('required'));
     }
   }
 
-  // Interactive checkbox styling & events
   modal.querySelectorAll('.service-select-item').forEach(item => {
     const cb = item.querySelector('input[type="checkbox"]');
     cb.addEventListener('change', () => {
@@ -2236,27 +1291,22 @@ function openClinicModal() {
     }
   });
 
-  document.getElementById('clinicForm').addEventListener('submit', event => {
+  document.getElementById('clinicForm').addEventListener('submit', async event => {
     event.preventDefault();
     const data = new FormData(event.target);
     const phone = String(data.get('phone')).replace(/\D/g, '');
-    const registration = String(data.get('registration')).trim();
+    const registration = String(data.get('registration') || '').trim();
     const email = String(data.get('email')).trim();
     const address = String(data.get('address')).trim();
     const clinicName = data.get('name').trim();
 
-    if (clinicName.length < 3) { showToast('Clinic name must contain at least 3 characters.'); return; }
-    if (!/^[6-9]\d{9}$/.test(phone)) { showToast('Enter a valid 10-digit Indian clinic phone number.'); return; }
-    if (!/^[A-Za-z0-9][A-Za-z0-9/-]{3,29}$/.test(registration)) { showToast('Enter a valid clinic registration number.'); return; }
-    if (!email.includes('@') || !email.includes('.')) { showToast('Enter a valid clinic email address.'); return; }
-    if (address.length < 10) { showToast('Enter the clinic address in sufficient detail.'); return; }
+    if (clinicName.length < 2) { showToast('Clinic name must contain at least 2 characters.'); return; }
+    if (!email.includes('@')) { showToast('Enter a valid clinic email address.'); return; }
 
     const isRecSelected = recCheckbox.checked;
     const selectedServices = Array.from(event.target.querySelectorAll('input[name="services"]:checked'))
-      .map(cb => cb.value)
-      .filter(s => s !== 'reports'); // Enforce reports removed
+      .map(cb => cb.value);
 
-    // Ensure appointment queue is strictly stripped if receptionist is not selected
     const finalServices = isRecSelected ? selectedServices : selectedServices.filter(s => s !== 'appointment');
 
     let receptionistData = null;
@@ -2268,15 +1318,14 @@ function openClinicModal() {
       const recPwd = data.get('receptionistPassword');
 
       if (!recName || recName.length < 2) { showToast('Enter receptionist full name.'); return; }
-      if (!recEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(recEmail)) { showToast('Enter a valid receptionist email.'); return; }
-      if (!/^[6-9]\d{9}$/.test(recPhone)) { showToast('Enter a valid 10-digit receptionist phone number.'); return; }
-      if (!recPwd || recPwd.length < 8) { showToast('Receptionist password must be at least 8 characters.'); return; }
+      if (!recEmail || !recEmail.includes('@')) { showToast('Enter a valid receptionist email.'); return; }
 
       receptionistData = {
         name: recName,
         email: recEmail,
-        phone: recPhone,
+        phone: recPhone || phone,
         shift: recShift || 'General Shift',
+        password: recPwd || '123',
         status: 'Active'
       };
     }
@@ -2286,115 +1335,570 @@ function openClinicModal() {
       specialty: entry.querySelector('.doctor-specialty').value.trim(),
       registration: entry.querySelector('.doctor-reg').value.trim(),
       email: entry.querySelector('.doctor-email').value.trim(),
-      password: entry.querySelector('.doctor-password').value,
-      certificate: entry.querySelector('.doctor-certificate').files[0]?.name || '',
-      status: 'Active',
-      patients: 0,
-      visits: 0
+      password: entry.querySelector('.doctor-password').value || 'Password@123',
+      status: 'Active'
     }));
 
-    if (newDoctors.some(doctor => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(doctor.email) || doctor.password.length < 8 || !doctor.certificate)) {
-      showToast('Check every doctor email, password, and certificate.');
+    // Check duplicate doctor emails only within the current form
+    const formEmails = newDoctors.map(d => d.email.toLowerCase());
+    if (new Set(formEmails).size !== formEmails.length) {
+      showToast('Each doctor email in this form must be unique.');
       return;
     }
 
-    if (newDoctors.some(doctor => clinicDoctors.some(existing => existing.email === doctor.email))) {
-      showToast('Each doctor email must be unique.');
-      return;
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/clinics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({
+          name: clinicName,
+          city: address.split(',').pop().trim() || 'Ahmedabad',
+          phone,
+          email,
+          registration,
+          address,
+          days: data.get('days'),
+          hours: data.get('hours'),
+          specialties: data.get('specialties'),
+          facilities: data.get('facilities'),
+          services: finalServices,
+          receptionist: receptionistData,
+          doctors: newDoctors
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Failed to create clinic in database.');
+      }
+
+      await reloadAllAdminData();
+      await logActivity('Registered new clinic', 'Clinic', clinicName, 'Success', `Services: ${finalServices.join(', ')}`);
+      closeModal();
+      showToast(`Clinic "${clinicName}" registered successfully in MongoDB!`);
+      if (location.hash === '#services') renderServices();
+      else renderClinics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
     }
-
-    const doctorCount = entries.children.length;
-    const newClinicId = `CLN-${String(clinics.length + 1).padStart(3, '0')}`;
-
-    newDoctors.forEach(doctor => {
-      doctor.clinic = clinicName;
-      doctor.clinicId = newClinicId;
-      doctor.services = finalServices;
-      clinicDoctors.unshift(doctor);
-    });
-
-    clinics.unshift({
-      id: newClinicId,
-      name: clinicName,
-      city: address.split(',').pop().trim() || 'Not specified',
-      doctors: doctorCount,
-      patients: 0,
-      visits: 0,
-      status: 'Active',
-      updated: 'Just now',
-      services: finalServices,
-      receptionist: receptionistData,
-      specialties: data.get('specialties'),
-      facilities: data.get('facilities'),
-      phone,
-      email,
-      registration,
-      address,
-      days: data.get('days'),
-      hours: data.get('hours'),
-      verifiedDocuments: doctorCount + 1
-    });
-
-    // Strictly initialize isolated clean database for new clinic
-    const cleanClinicKey = `clinic-db-${newClinicId}`;
-    const cleanDB = {
-      counters: { family: 0, patient: 0, visit: 0 },
-      families: {},
-      appointments: [],
-      certificates: [],
-      bills: [],
-      feedbacks: [],
-      dietary: {},
-      clinicShortcuts: {
-        medicines: {},
-        complaints: {},
-        investigations: {},
-        allergies: {},
-        relations: {},
-        areas: {},
-        societies: {},
-      },
-      _shortcutsCleanedV2: true,
-      customShortcuts: [],
-      masterMedicines: [],
-      masterComplaints: [],
-      masterInvestigations: [],
-      masterAreas: [],
-      masterSocieties: [],
-      masterAllergies: [],
-      masterRelations: []
-    };
-    localStorage.setItem(cleanClinicKey, JSON.stringify(cleanDB));
-
-    saveClinics();
-    saveDoctors();
-    logActivity('Deleted clinic', 'Clinic', clinic.id, 'Warning', clinic.name);
-    closeModal();
-    showToast(isRecSelected 
-      ? `Clinic registered with Receptionist + Doctor dual-login!` 
-      : `Clinic registered in Doctor-Only direct mode!`);
-    
-    if (location.hash === '#services') renderServices();
-    else renderClinics();
   });
 }
 
-function closeModal() {
+// Open Edit Clinic Modal with Live Services Controls & UI Adaptation
+function openEditClinicModal(clinicId) {
+  const clinic = clinics.find(c => c.id === clinicId || c.clinicId === clinicId);
+  if (!clinic) return;
+  closeDetails();
+
+  const services = clinic.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
+  const isRec = services.includes('receptionist');
+  const isAppt = services.includes('appointment');
+  const isRx = services.includes('digitalPrescription');
+  const isCert = services.includes('certificates');
+  const isBill = services.includes('billing');
+  const existingRec = clinic.receptionist || {};
+
   const modal = document.getElementById('clinicModal');
-  modal.classList.remove('active');
-  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <div class="clinic-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title"><i class="fa-solid fa-pen"></i> Edit Clinic & Configure Services · ${clinic.name}</h2>
+        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+      </div>
+      <form id="editClinicForm">
+        <div class="modal-body">
+          
+          <!-- Clinic Identity -->
+          <div class="clinic-form-section">
+            <h3><i class="fa-solid fa-hospital"></i> Clinic Identity & Contact</h3>
+            <div class="clinic-form-grid">
+              <div class="form-group">
+                <label class="form-label">Legal Clinic Name <span class="req">*</span></label>
+                <input class="form-input" name="name" required value="${clinic.name || ''}" placeholder="Clinic name">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Registration Number</label>
+                <input class="form-input" name="registration" value="${clinic.registration || ''}" placeholder="REG-XXXX">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number <span class="req">*</span></label>
+                <input class="form-input" name="phone" type="tel" required value="${clinic.phone || ''}" placeholder="10-digit number">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address <span class="req">*</span></label>
+                <input class="form-input" name="email" type="email" required value="${clinic.email || ''}" placeholder="clinic@example.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Operating Days <span class="req">*</span></label>
+                <input class="form-input" name="days" required value="${clinic.days || 'Monday - Saturday'}" placeholder="Mon - Sat">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Working Hours <span class="req">*</span></label>
+                <input class="form-input" name="hours" required value="${clinic.hours || '09:00 - 20:00'}" placeholder="09:00 - 20:00">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Specialties</label>
+                <input class="form-input" name="specialties" value="${clinic.specialties || ''}" placeholder="General Medicine, Cardiology">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Facilities</label>
+                <input class="form-input" name="facilities" value="${clinic.facilities || ''}" placeholder="Pharmacy, Lab">
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label">Complete Address <span class="req">*</span></label>
+                <textarea class="form-textarea" name="address" required rows="2" placeholder="Full address">${clinic.address || ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Clinic Status</label>
+                <select class="form-select" name="status">
+                  <option value="Active" ${clinic.status === 'Active' ? 'selected' : ''}>Active</option>
+                  <option value="Paused" ${clinic.status === 'Paused' ? 'selected' : ''}>Paused</option>
+                  <option value="Suspended" ${clinic.status === 'Suspended' ? 'selected' : ''}>Suspended</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Services & Feature Modules Configuration -->
+          <div class="clinic-form-section">
+            <h3><i class="fa-solid fa-cubes"></i> Clinic Services & Feature Modules</h3>
+            <p class="clinic-form-help" style="margin-bottom:10px">Toggle services for this clinic. Changes will update this clinic's Doctor and Receptionist dashboard UI in real time.</p>
+            
+            <div class="services-selection-grid">
+              <label class="service-select-item ${isRec ? 'is-selected' : ''}" id="edit_item_receptionist">
+                <input type="checkbox" name="services" value="receptionist" id="edit_svc_receptionist" ${isRec ? 'checked' : ''}>
+                <div class="service-select-info">
+                  <strong><i class="fa-solid fa-user-nurse" style="color:#0f766e"></i> Receptionist Service (Front Desk)</strong>
+                  <small>Dual login: Receptionist registers family heads, adds members, or finds patients & pushes to doctor queue.</small>
+                </div>
+              </label>
+
+              <label class="service-select-item ${isAppt ? 'is-selected' : ''} ${!isRec ? 'is-disabled' : ''}" id="edit_item_appointment">
+                <input type="checkbox" name="services" value="appointment" id="edit_svc_appointment" ${isAppt ? 'checked' : ''} ${!isRec ? 'disabled' : ''}>
+                <div class="service-select-info">
+                  <strong><i class="fa-solid fa-users-line" style="color:#0284c7"></i> Patient Consultation Queue</strong>
+                  <small id="editApptHelpText">Queue dispatch: Doctor takes arriving patients from queue directly without searching.</small>
+                </div>
+              </label>
+
+              <label class="service-select-item ${isRx ? 'is-selected' : ''}" id="edit_item_prescription">
+                <input type="checkbox" name="services" value="digitalPrescription" id="edit_svc_prescription" ${isRx ? 'checked' : ''}>
+                <div class="service-select-info">
+                  <strong><i class="fa-solid fa-file-prescription" style="color:#2563eb"></i> Digital Multi-Language Prescription</strong>
+                  <small>Regional language dosage labels (Gujarati/Hindi/English), meal timing (AF/BF), and quick templates.</small>
+                </div>
+              </label>
+
+              <label class="service-select-item ${isCert ? 'is-selected' : ''}" id="edit_item_certificates">
+                <input type="checkbox" name="services" value="certificates" id="edit_svc_certificates" ${isCert ? 'checked' : ''}>
+                <div class="service-select-info">
+                  <strong><i class="fa-solid fa-certificate" style="color:#d97706"></i> Medical Certificates & Verification</strong>
+                  <small>Generate fitness/sickness certificates with unique auto-generated certificate IDs.</small>
+                </div>
+              </label>
+
+              <label class="service-select-item ${isBill ? 'is-selected' : ''} full-width" id="edit_item_billing">
+                <input type="checkbox" name="services" value="billing" id="edit_svc_billing" ${isBill ? 'checked' : ''}>
+                <div class="service-select-info">
+                  <strong><i class="fa-solid fa-file-invoice-dollar" style="color:#16a34a"></i> Billing, Invoices & Receipts</strong>
+                  <small>Itemized clinical consultation invoices, payment status (Paid/Partial/Due), and receipt printouts.</small>
+                </div>
+              </label>
+            </div>
+
+            <!-- Receptionist Staff Account Form (Shown when Receptionist Service is ON) -->
+            <div class="receptionist-form-container" id="editReceptionistSection" style="${isRec ? 'display:block;' : 'display:none;'}">
+              <div class="receptionist-form-header">
+                <i class="fa-solid fa-user-nurse"></i> Receptionist Staff Account
+              </div>
+              <div class="clinic-form-grid">
+                <div class="form-group">
+                  <label class="form-label">Receptionist Name <span class="req">*</span></label>
+                  <input class="form-input" id="edit_rec_name" name="receptionistName" value="${existingRec.name || (clinic.name + ' Front Desk')}" placeholder="Staff Name">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email / Login Username <span class="req">*</span></label>
+                  <input class="form-input" id="edit_rec_email" name="receptionistEmail" type="email" value="${existingRec.email || ''}" placeholder="receptionist@clinic.com">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Contact Phone</label>
+                  <input class="form-input" id="edit_rec_phone" name="receptionistPhone" type="tel" value="${existingRec.phone || clinic.phone || ''}">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Duty Shift</label>
+                  <input class="form-input" id="edit_rec_shift" name="receptionistShift" value="${existingRec.shift || 'General Shift (08:30 AM - 08:30 PM)'}">
+                </div>
+              </div>
+            </div>
+
+            <div class="receptionist-form-container" id="editDoctorOnlyNotice" style="${!isRec ? 'display:block;' : 'display:none;'} background:#f8fafc; border-color:#cbd5e1;">
+              <div class="receptionist-form-header" style="color:#334155">
+                <i class="fa-solid fa-user-doctor"></i> Doctor-Only Mode (Direct Workflow)
+              </div>
+              <div class="receptionist-notice-box" style="background:#ffffff; border-color:#e2e8f0; color:#475569;">
+                <i class="fa-solid fa-info-circle"></i>
+                <div>
+                  <strong>Doctor-Only Direct Mode:</strong> Receptionist service is turned OFF. The doctor handles patient search and visits directly.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Changes to Database</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+
+  const recCb = document.getElementById('edit_svc_receptionist');
+  const apptCb = document.getElementById('edit_svc_appointment');
+  const itemAppt = document.getElementById('edit_item_appointment');
+  const recSec = document.getElementById('editReceptionistSection');
+  const docOnlySec = document.getElementById('editDoctorOnlyNotice');
+
+  function updateEditDependencies() {
+    const on = recCb.checked;
+    if (on) {
+      apptCb.disabled = false;
+      apptCb.checked = true;
+      itemAppt.classList.remove('is-disabled');
+      itemAppt.classList.add('is-selected');
+      recSec.style.display = 'block';
+      docOnlySec.style.display = 'none';
+    } else {
+      apptCb.checked = false;
+      apptCb.disabled = true;
+      itemAppt.classList.add('is-disabled');
+      itemAppt.classList.remove('is-selected');
+      recSec.style.display = 'none';
+      docOnlySec.style.display = 'block';
+    }
+  }
+
+  modal.querySelectorAll('.service-select-item').forEach(item => {
+    const cb = item.querySelector('input[type="checkbox"]');
+    cb.addEventListener('change', () => {
+      if (cb === recCb) {
+        item.classList.toggle('is-selected', cb.checked);
+        updateEditDependencies();
+      } else if (!cb.disabled) {
+        item.classList.toggle('is-selected', cb.checked);
+      }
+    });
+  });
+
+  document.getElementById('editClinicForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const name = data.get('name').trim();
+    const phone = String(data.get('phone')).replace(/\D/g, '');
+    const email = data.get('email').trim();
+    const registration = data.get('registration').trim();
+    const address = data.get('address').trim();
+    const status = data.get('status');
+
+    if (name.length < 2) { showToast('Clinic name must be at least 2 characters.'); return; }
+    if (!email.includes('@')) { showToast('Enter a valid email address.'); return; }
+
+    const isRecSelected = recCb.checked;
+    const selectedServices = Array.from(e.target.querySelectorAll('input[name="services"]:checked'))
+      .map(cb => cb.value);
+    const finalServices = isRecSelected ? selectedServices : selectedServices.filter(s => s !== 'appointment');
+
+    let receptionistData = null;
+    if (isRecSelected) {
+      receptionistData = {
+        name: data.get('receptionistName')?.trim() || `${name} Front Desk`,
+        email: data.get('receptionistEmail')?.trim() || existingRec.email,
+        phone: String(data.get('receptionistPhone') || phone).replace(/\D/g, ''),
+        shift: data.get('receptionistShift')?.trim() || 'General Shift',
+        status: 'Active'
+      };
+    }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/clinics/${clinic.id || clinic.clinicId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({
+          name,
+          phone,
+          email,
+          registration,
+          address,
+          days: data.get('days'),
+          hours: data.get('hours'),
+          specialties: data.get('specialties'),
+          facilities: data.get('facilities'),
+          status,
+          services: finalServices,
+          receptionist: receptionistData
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Failed to update clinic in database.');
+      }
+
+      await reloadAllAdminData();
+      await logActivity('Updated clinic & services', 'Clinic', name, 'Success', `Services: ${finalServices.join(', ')}`);
+      closeModal();
+      showToast(`Clinic "${name}" details and services updated successfully!`);
+      if (location.hash === '#services') renderServices();
+      else renderClinics();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
 }
 
-function showToast(message, type = 'success') {
-  const toast = document.createElement('div');
-  toast.className = `toast ${type === 'error' ? 'error' : 'success'}`;
-  const icon = type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check';
-  toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
-  document.getElementById('toastContainer').appendChild(toast);
-  setTimeout(() => toast.remove(), 3200);
+// Toggle Individual Service Direct from Services Matrix
+async function toggleClinicService(clinicId, serviceId) {
+  const clinic = clinics.find(c => c.id === clinicId || c.clinicId === clinicId);
+  if (!clinic) return;
+
+  const services = clinic.services || [];
+  const isOn = services.includes(serviceId);
+
+  let newServices = [];
+  if (isOn) {
+    newServices = services.filter(s => s !== serviceId);
+    if (serviceId === 'receptionist') {
+      newServices = newServices.filter(s => s !== 'appointment');
+    }
+  } else {
+    if (serviceId === 'appointment' && !services.includes('receptionist')) {
+      showToast('Appointment Queue requires Receptionist Service to be enabled first.', 'error');
+      return;
+    }
+    newServices = [...services, serviceId];
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/clinics/${clinic.id || clinic.clinicId}/services`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ services: newServices })
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || 'Failed to update services.');
+
+    await reloadAllAdminData();
+    await logActivity(`${isOn ? 'Disabled' : 'Enabled'} service`, 'Service', `${clinic.name}:${serviceId}`);
+    showToast(`${isOn ? 'Disabled' : 'Enabled'} "${serviceId}" for ${clinic.name}.`);
+
+    if (location.hash === '#services') renderServices();
+    else if (location.hash === '#clinics') renderClinics();
+    else renderOverview();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
-/* ---- Confirm Dialog ---- */
+// Delete Clinic
+async function deleteClinic(clinicId) {
+  const clinic = clinics.find(c => c.id === clinicId || c.clinicId === clinicId);
+  if (!clinic) return;
+
+  confirmAction(
+    `Are you sure you want to permanently delete <strong>${clinic.name}</strong> from MongoDB database?<br>All associated doctor mappings will also be unlinked.`,
+    async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/clinics/${clinic.id || clinic.clinicId}`, {
+          method: 'DELETE',
+          headers: getAuthHeader()
+        });
+
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Failed to delete clinic.');
+
+        await reloadAllAdminData();
+        await logActivity('Deleted clinic from database', 'Clinic', clinic.name);
+        closeDetails();
+        showToast(`Clinic "${clinic.name}" deleted successfully.`);
+        if (location.hash === '#services') renderServices();
+        else renderClinics();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  );
+}
+
+// Add Doctor Modal & Save to Database
+function openAddDoctorModal(clinicId = null) {
+  const clinic = clinicId ? clinics.find(c => c.id === clinicId || c.clinicId === clinicId) : null;
+  const modal = document.getElementById('clinicModal');
+
+  modal.innerHTML = `
+    <div class="clinic-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title"><i class="fa-solid fa-user-doctor"></i> ${clinic ? `Add Doctor to ${clinic.name}` : 'Add New Doctor Account'}</h2>
+        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+      </div>
+      <form id="addDoctorForm">
+        <div class="modal-body">
+          ${clinic ? `
+            <input type="hidden" name="clinicId" value="${clinic.id || clinic.clinicId}">
+          ` : `
+            <div class="form-group" style="margin-bottom:14px">
+              <label class="form-label">Assign to Clinic <span class="req">*</span></label>
+              <select class="form-select" name="clinicId" required>
+                ${clinics.map(c => `<option value="${c.id || c.clinicId}">${c.name} (${c.city})</option>`).join('')}
+              </select>
+            </div>
+          `}
+
+          <div class="clinic-form-section" style="border-top:0;padding-top:0">
+            <h3><i class="fa-solid fa-id-card-clip"></i> Doctor Profile Information</h3>
+            <div class="clinic-form-grid">
+              <div class="form-group">
+                <label class="form-label">Doctor Name <span class="req">*</span></label>
+                <input class="form-input" name="doctorName" required placeholder="e.g. Dr. Rajesh Patel">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Specialization <span class="req">*</span></label>
+                <input class="form-input" name="specialty" required placeholder="e.g. General Medicine, Cardiology">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email Address (Login Username) <span class="req">*</span></label>
+                <input class="form-input" name="email" type="email" required placeholder="doctor@clinic.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input class="form-input" name="phone" type="tel" placeholder="10-digit mobile number">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Medical Registration No.</label>
+                <input class="form-input" name="registration" placeholder="e.g. GMC-2026-01">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Login Password</label>
+                <input class="form-input" name="password" type="text" value="Password@123" placeholder="Default: Password@123">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Save Doctor in MongoDB</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+
+  document.getElementById('addDoctorForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const targetClinicId = clinicId || data.get('clinicId');
+    const targetClinic = clinics.find(c => c.id === targetClinicId || c.clinicId === targetClinicId);
+    
+    let rawName = (data.get('doctorName') || '').trim();
+    const docName = rawName.startsWith('Dr.') ? rawName : `Dr. ${rawName}`;
+    const email = (data.get('email') || '').trim().toLowerCase();
+    const specialty = (data.get('specialty') || '').trim() || 'General Medicine';
+    const phone = String(data.get('phone') || '').replace(/\D/g, '');
+    const registration = (data.get('registration') || '').trim();
+    const password = (data.get('password') || '').trim() || 'Password@123';
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/register-doctor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify({
+          name: docName,
+          email,
+          username: email,
+          specialty,
+          phone,
+          registration,
+          password,
+          clinicId: targetClinicId,
+          clinicName: targetClinic?.name || 'Dhyey Main Clinic'
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || 'Failed to save doctor.');
+      }
+
+      await reloadAllAdminData();
+      await logActivity('Added doctor account', 'Doctor', docName, 'Success', targetClinic?.name || '');
+      closeModal();
+      showToast(`Doctor ${docName} successfully added to database!`);
+      if (location.hash === '#clinics') renderClinics();
+      else renderOverview();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// Request Approval / Rejection in MongoDB
+async function approveClinicRequest(reqId) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/clinics/requests/${reqId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ status: 'Approved' })
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || 'Approval failed.');
+    await reloadAllAdminData();
+    await logActivity('Approved clinic application', 'Application', reqId);
+    showToast('Clinic application approved and provisioned into MongoDB network!');
+    renderClinics('requests');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function rejectClinicRequest(reqId) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/clinics/requests/${reqId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ status: 'Rejected' })
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || 'Rejection failed.');
+    await reloadAllAdminData();
+    await logActivity('Rejected clinic application', 'Application', reqId);
+    showToast('Clinic application rejected.');
+    renderClinics('requests');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Helper confirmation dialog
 function confirmAction(message, onConfirm) {
   const existing = document.getElementById('adminConfirmDialog');
   if (existing) existing.remove();
@@ -2417,582 +1921,189 @@ function confirmAction(message, onConfirm) {
   dlg.addEventListener('click', e => { if (e.target === dlg) dlg.remove(); });
 }
 
-/* ---- Delete Clinic ---- */
-function deleteClinic(clinicId) {
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!clinic) return;
-  confirmAction(
-    `Are you sure you want to permanently delete <strong>${clinic.name}</strong>?<br>All associated doctor mappings will also be removed. This action cannot be undone.`,
-    () => {
-      // Remove clinic doctors
-      clinicDoctors = clinicDoctors.filter(d => d.clinic !== clinic.name);
-      // Remove clinic
-      clinics = clinics.filter(c => c.id !== clinicId);
-      // Clear local db for that clinic
-      localStorage.removeItem(`clinic-db-${clinicId}`);
-      saveClinics();
-      saveDoctors();
-      closeDetails();
-      showToast(`Clinic "${clinic.name}" has been deleted.`, 'error');
-      if (location.hash === '#services') renderServices();
-      else renderClinics();
-    }
-  );
-}
-
-/* ---- Toggle individual service on/off ---- */
-function toggleClinicService(clinicId, serviceId) {
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!clinic) return;
-  const services = clinic.services || [];
-  const isOn = services.includes(serviceId);
-
-  if (isOn) {
-    // Turn off
-    let newServices = services.filter(s => s !== serviceId);
-    // If receptionist turned off, also auto-remove appointment
-    if (serviceId === 'receptionist') {
-      newServices = newServices.filter(s => s !== 'appointment');
-    }
-    clinic.services = newServices;
-  } else {
-    // Turn on
-    // appointment can only be enabled when receptionist is on
-    if (serviceId === 'appointment' && !services.includes('receptionist')) {
-      showToast('Appointment Queue requires Receptionist Service to be enabled first.', 'error');
-      return;
-    }
-    clinic.services = [...services, serviceId];
-  }
-
-  clinic.updated = 'Just now';
-
-  // Propagate to doctor localStorage so doctor dashboard reads it immediately
-  propagateServicesToClinicDB(clinicId, clinic.services);
-
-  saveClinics();
-  logActivity(`${isOn ? 'Disabled' : 'Enabled'} clinic service`, 'Service', `${clinic.name}:${serviceId}`);
-  showToast(`${isOn ? 'Disabled' : 'Enabled'} "${serviceId}" for ${clinic.name}.`);
-  // Re-open the details with updated data
-  openClinicDetails(clinicId);
-}
-
-/* ---- Write services into the clinic's localStorage DB so doctor reads it ---- */
-function propagateServicesToClinicDB(clinicId, services) {
-  try {
-    const key = `clinic-db-${clinicId}`;
-    const raw = localStorage.getItem(key);
-    const db = raw ? JSON.parse(raw) : {};
-    db.activeServices = services;
-    localStorage.setItem(key, JSON.stringify(db));
-  } catch (e) {}
-}
-
-/* ---- Remove Doctor from Clinic ---- */
-function removeDoctorFromClinic(doctorName, clinicId) {
-  const doctor = clinicDoctors.find(d => d.name === doctorName);
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!doctor || !clinic) return;
-  confirmAction(
-    `Remove <strong>${doctorName}</strong> from <strong>${clinic.name}</strong>?<br>The doctor account will be unlinked but not permanently deleted.`,
-    () => {
-      doctor.clinic = 'Unassigned';
-      doctor.clinicId = null;
-      if (clinic.doctors > 0) clinic.doctors--;
-      saveClinics();
-      saveDoctors();
-      openClinicDetails(clinicId); // refresh modal
-      showToast(`${doctorName} has been removed from ${clinic.name}.`);
-    }
-  );
-}
-
-/* ---- Add Doctor to Clinic Modal ---- */
-function openAddDoctorModal(clinicId = null) {
-  const clinic = clinicId ? clinics.find(c => c.id === clinicId) : null;
+function closeModal() {
   const modal = document.getElementById('clinicModal');
-  const unassignedDoctors = clinicDoctors.filter(d => !d.clinicId || d.clinic === 'Unassigned');
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function closeDetails() {
+  const modal = document.getElementById('detailsModal');
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function openClinicDetails(clinicId) {
+  const clinic = clinics.find(c => c.id === clinicId || c.clinicId === clinicId);
+  if (!clinic) return;
+  const modal = document.getElementById('detailsModal');
+  const assignedDoctors = clinicDoctors.filter(d => d.clinicId === clinic.id || d.clinic === clinic.name);
 
   modal.innerHTML = `
-    <div class="clinic-modal-card">
+    <div class="detail-modal-card">
       <div class="modal-header">
-        <h2 class="modal-title"><i class="fa-solid fa-user-doctor"></i> ${clinic ? `Add Doctor to ${clinic.name}` : 'Add New Doctor Account'}</h2>
-        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+        <h2 class="modal-title">${clinic.name}</h2>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
       </div>
-      <form id="addDoctorForm">
-        <div class="modal-body">
-          ${clinic ? `
-            <input type="hidden" name="clinicId" value="${clinic.id}">
-          ` : `
-            <div class="form-group" style="margin-bottom:14px">
-              <label class="form-label">Assign to Clinic <span class="req">*</span></label>
-              <select class="form-select" name="clinicId" required>
-                ${clinics.map(c => `<option value="${c.id}">${c.name} (${c.city})</option>`).join('')}
-              </select>
-            </div>
-          `}
-
-          ${unassignedDoctors.length > 0 ? `
-            <div style="background:var(--primary-teal-light);padding:10px 14px;border-radius:var(--radius-md);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-              <div style="font-size:12px;color:var(--text-main)">
-                <i class="fa-solid fa-circle-info" style="color:var(--primary-teal);margin-right:4px"></i>
-                <strong>${unassignedDoctors.length} unassigned doctor${unassignedDoctors.length > 1 ? 's' : ''}</strong> available.
-              </div>
-              <button type="button" class="btn-secondary" id="btnToggleUnassigned" style="padding:4px 9px;font-size:11px">
-                <i class="fa-solid fa-link"></i> Link Existing
-              </button>
-            </div>
-
-            <div id="unassignedDocSection" style="display:none;margin-bottom:14px;padding:12px;border:1px solid var(--border-color);border-radius:var(--radius-md)">
-              <div class="form-group" style="margin-bottom:8px">
-                <label class="form-label">Select Unassigned Doctor</label>
-                <select class="form-select" id="selectUnassignedDoc">
-                  <option value="">-- Choose doctor to link --</option>
-                  ${unassignedDoctors.map(d => `<option value="${d.name}">${d.name} (${d.specialty || 'General'})</option>`).join('')}
-                </select>
-              </div>
-              <button type="button" class="btn-primary" id="btnAssignExisting" style="font-size:12px;padding:5px 12px">
-                <i class="fa-solid fa-check"></i> Link to Clinic
-              </button>
-            </div>
-          ` : ''}
-
-          <div class="clinic-form-section" style="border-top:0;padding-top:0">
-            <h3><i class="fa-solid fa-id-card-clip"></i> Doctor Profile Information</h3>
-            <div class="clinic-form-grid">
-              <div class="form-group">
-                <label class="form-label">Doctor Name <span class="req">*</span></label>
-                <input class="form-input" name="doctorName" required placeholder="e.g. Dr. Rajesh Patel">
-                <small class="clinic-form-help" id="docNameError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Specialization <span class="req">*</span></label>
-                <input class="form-input" name="specialty" list="specialtyList" required placeholder="e.g. General Medicine">
-                <datalist id="specialtyList">
-                  <option value="General Medicine">
-                  <option value="Cardiology">
-                  <option value="Pediatrics">
-                  <option value="Dermatology">
-                  <option value="Orthopedics">
-                  <option value="Gynecology & Obstetrics">
-                  <option value="ENT Specialist">
-                  <option value="Ophthalmology">
-                  <option value="Dentistry">
-                  <option value="Psychiatry">
-                </datalist>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Email Address (Login Username) <span class="req">*</span></label>
-                <input class="form-input" name="email" type="email" required placeholder="doctor@clinic.com">
-                <small class="clinic-form-help" id="docEmailError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Phone Number</label>
-                <input class="form-input" name="phone" type="tel" placeholder="10-digit mobile number">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Medical Registration No.</label>
-                <input class="form-input" name="registration" placeholder="e.g. G-9035 or REG-2026-01">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Login Password</label>
-                <input class="form-input" name="password" type="text" value="Password@123" placeholder="Default Password@123">
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
-          <button class="btn-primary" type="submit"><i class="fa-solid fa-user-plus"></i> Save Doctor</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
-
-  const toggleBtn = document.getElementById('btnToggleUnassigned');
-  const unassignedSec = document.getElementById('unassignedDocSection');
-  if (toggleBtn && unassignedSec) {
-    toggleBtn.addEventListener('click', () => {
-      const isHidden = unassignedSec.style.display === 'none';
-      unassignedSec.style.display = isHidden ? 'block' : 'none';
-      toggleBtn.innerHTML = isHidden ? '<i class="fa-solid fa-xmark"></i> Hide' : '<i class="fa-solid fa-link"></i> Link Existing';
-    });
-  }
-
-  const btnAssignExisting = document.getElementById('btnAssignExisting');
-  if (btnAssignExisting) {
-    btnAssignExisting.addEventListener('click', () => {
-      const selectedName = document.getElementById('selectUnassignedDoc')?.value;
-      if (!selectedName) {
-        showToast('Please select a doctor to link.', 'error');
-        return;
-      }
-      const targetClinicId = clinicId || document.querySelector('[name="clinicId"]')?.value;
-      const targetClinic = clinics.find(c => c.id === targetClinicId);
-      const doctor = clinicDoctors.find(d => d.name === selectedName);
-      if (!targetClinic || !doctor) return;
-
-      doctor.clinic = targetClinic.name;
-      doctor.clinicId = targetClinic.id;
-      doctor.status = 'Active';
-      targetClinic.doctors = (targetClinic.doctors || 0) + 1;
-
-      saveDoctors();
-      saveClinics();
-      closeModal();
-      const detailsModal = document.getElementById('detailsModal');
-      if (detailsModal && detailsModal.classList.contains('active')) {
-        openClinicDetails(targetClinic.id);
-      } else {
-        renderClinics();
-      }
-      showToast(`${doctor.name} linked to ${targetClinic.name} successfully.`);
-    });
-  }
-
-  document.getElementById('addDoctorForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    const targetClinicId = clinicId || data.get('clinicId');
-    const targetClinic = clinics.find(c => c.id === targetClinicId);
-    if (!targetClinic) {
-      showToast('Please select a valid clinic.', 'error');
-      return;
-    }
-
-    let rawName = (data.get('doctorName') || '').trim();
-    if (rawName.length < 3) {
-      const err = document.getElementById('docNameError');
-      if (err) { err.textContent = 'Please enter a valid doctor name.'; err.style.display = 'block'; }
-      return;
-    }
-    const docName = rawName.startsWith('Dr.') ? rawName : `Dr. ${rawName}`;
-
-    const specialty = (data.get('specialty') || '').trim() || 'General Medicine';
-    const email = (data.get('email') || '').trim().toLowerCase();
-    const phone = String(data.get('phone') || '').replace(/\D/g, '');
-    const registration = (data.get('registration') || '').trim() || `REG-${Date.now().toString().slice(-4)}`;
-    const password = (data.get('password') || '').trim() || 'Password@123';
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      const err = document.getElementById('docEmailError');
-      if (err) { err.textContent = 'Enter a valid email address.'; err.style.display = 'block'; }
-      return;
-    }
-
-    if (clinicDoctors.some(d => (d.email || '').toLowerCase() === email)) {
-      const err = document.getElementById('docEmailError');
-      if (err) { err.textContent = 'A doctor with this email already exists.'; err.style.display = 'block'; }
-      return;
-    }
-
-    const newDoc = {
-      id: `doc_${Date.now()}`,
-      name: docName,
-      specialty,
-      clinic: targetClinic.name,
-      clinicId: targetClinic.id,
-      email,
-      phone,
-      registration,
-      password,
-      status: 'Active',
-      patients: 0,
-      visits: 0,
-      rating: 95,
-      services: targetClinic.services || []
-    };
-
-    clinicDoctors.unshift(newDoc);
-    targetClinic.doctors = (targetClinic.doctors || 0) + 1;
-    targetClinic.updated = 'Just now';
-
-    saveDoctors();
-    saveClinics();
-    closeModal();
-
-    const detailsModal = document.getElementById('detailsModal');
-    if (detailsModal && detailsModal.classList.contains('active')) {
-      openClinicDetails(targetClinic.id);
-    } else {
-      renderClinics();
-    }
-    showToast(`Doctor ${docName} successfully added to ${targetClinic.name}!`);
-  });
-}
-
-/* ---- Add / Edit Receptionist Staff Modal ---- */
-function openAddReceptionistModal(clinicId) {
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!clinic) return;
-  const modal = document.getElementById('clinicModal');
-  const existing = clinic.receptionist || {};
-
-  modal.innerHTML = `
-    <div class="clinic-modal-card">
-      <div class="modal-header">
-        <h2 class="modal-title"><i class="fa-solid fa-user-nurse"></i> ${clinic.receptionist ? 'Edit Receptionist Staff' : 'Add Receptionist Staff'} · ${clinic.name}</h2>
-        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+      
+      <div class="detail-section">
+        <h3><i class="fa-solid fa-cubes"></i> Active Services & Role</h3>
+        <div style="margin-bottom:10px">${renderServiceTagsMini(clinic.services)}</div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:0">
+          ${(clinic.services || []).includes('receptionist') 
+            ? '<strong>Dual-Role Enabled:</strong> Dedicated receptionist desk + doctor consultation queue.' 
+            : '<strong>Doctor-Only Direct Mode:</strong> Single login where doctor handles patient registration directly.'}
+        </p>
       </div>
-      <form id="receptionistForm">
-        <div class="modal-body">
-          <div class="receptionist-notice-box" style="margin-bottom:16px">
-            <i class="fa-solid fa-shield-check"></i>
-            <div>
-              <strong>Front-Desk Receptionist Role:</strong>
-              This staff account logs into the Receptionist OPD Desk to register Family Heads, search patients, and route tokens to the doctor's queue.
-            </div>
-          </div>
 
-          <div class="clinic-form-section" style="border-top:0;padding-top:0">
-            <h3><i class="fa-solid fa-id-card"></i> Receptionist Account Details</h3>
-            <div class="clinic-form-grid">
-              <div class="form-group">
-                <label class="form-label">Staff / Desk Name <span class="req">*</span></label>
-                <input class="form-input" name="name" required value="${existing.name || (clinic.name + ' Front Desk')}" placeholder="e.g. Front Desk or Staff Name">
-                <small class="clinic-form-help" id="recNameError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Email (Login Username) <span class="req">*</span></label>
-                <input class="form-input" name="email" type="email" required value="${existing.email || ('reception.' + clinic.name.toLowerCase().replace(/[^a-z0-9]+/g, '') + '@dhyeyclinic.com')}" placeholder="reception@clinic.com">
-                <small class="clinic-form-help" id="recEmailError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Contact Phone <span class="req">*</span></label>
-                <input class="form-input" name="phone" type="tel" required value="${existing.phone || clinic.phone || ''}" placeholder="10-digit number">
-                <small class="clinic-form-help" id="recPhoneError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Duty Shift <span class="req">*</span></label>
-                <select class="form-select" name="shift">
-                  <option value="General Shift (08:30 AM - 08:30 PM)" ${existing.shift?.includes('08:30') ? 'selected' : ''}>General Shift (08:30 AM - 08:30 PM)</option>
-                  <option value="Morning Shift (08:00 AM - 02:00 PM)" ${existing.shift?.includes('Morning') ? 'selected' : ''}>Morning Shift (08:00 AM - 02:00 PM)</option>
-                  <option value="Evening Shift (02:00 PM - 09:00 PM)" ${existing.shift?.includes('Evening') ? 'selected' : ''}>Evening Shift (02:00 PM - 09:00 PM)</option>
-                  <option value="Full Day (09:00 AM - 07:00 PM)" ${existing.shift?.includes('Full Day') ? 'selected' : ''}>Full Day (09:00 AM - 07:00 PM)</option>
-                  <option value="Night Emergency (08:00 PM - 08:00 AM)" ${existing.shift?.includes('Night') ? 'selected' : ''}>Night Emergency (08:00 PM - 08:00 AM)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Account Status</label>
-                <select class="form-select" name="status">
-                  <option value="Active" ${existing.status !== 'Suspended' ? 'selected' : ''}>Active</option>
-                  <option value="Suspended" ${existing.status === 'Suspended' ? 'selected' : ''}>Suspended</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Login Password</label>
-                <input class="form-input" name="password" type="text" value="${existing.password || '123'}" placeholder="e.g. 123">
-                <small class="clinic-form-help">Default password is 123.</small>
-              </div>
-            </div>
-          </div>
+      <div class="detail-section">
+        <h3><i class="fa-solid fa-hospital"></i> Clinic Information</h3>
+        <div class="detail-grid">
+          <div class="detail-item"><small>Clinic ID</small><strong>${clinic.id || clinic.clinicId}</strong></div>
+          <div class="detail-item"><small>Registration</small><strong>${clinic.registration || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Status</small><strong><span class="status-pill ${clinic.status === 'Suspended' ? 'account-status-suspended' : ''}">${clinic.status}</span></strong></div>
+          <div class="detail-item"><small>City</small><strong>${clinic.city}</strong></div>
+          <div class="detail-item"><small>Phone</small><strong>${clinic.phone || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Email</small><strong>${clinic.email || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Operating Days</small><strong>${clinic.days || 'N/A'}</strong></div>
+          <div class="detail-item"><small>Working Hours</small><strong>${clinic.hours || 'N/A'}</strong></div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
-          <button class="btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Receptionist</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
-
-  document.getElementById('receptionistForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    const name = (data.get('name') || '').trim();
-    const email = (data.get('email') || '').trim().toLowerCase();
-    const phone = String(data.get('phone') || '').replace(/\D/g, '');
-    const shift = data.get('shift');
-    const status = data.get('status');
-    const password = (data.get('password') || '').trim() || '123';
-
-    let valid = true;
-    if (name.length < 2) {
-      const err = document.getElementById('recNameError');
-      if (err) { err.textContent = 'Please enter a valid name.'; err.style.display = 'block'; }
-      valid = false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      const err = document.getElementById('recEmailError');
-      if (err) { err.textContent = 'Enter a valid email address.'; err.style.display = 'block'; }
-      valid = false;
-    }
-    if (phone.length < 7) {
-      const err = document.getElementById('recPhoneError');
-      if (err) { err.textContent = 'Enter a valid contact phone number.'; err.style.display = 'block'; }
-      valid = false;
-    }
-    if (!valid) return;
-
-    clinic.receptionist = {
-      name,
-      email,
-      phone,
-      shift,
-      status,
-      password
-    };
-    clinic.updated = 'Just now';
-
-    saveClinics();
-    closeModal();
-    openClinicDetails(clinic.id);
-    showToast(`Receptionist "${name}" saved for ${clinic.name}.`);
-  });
-}
-
-/* ---- Remove Receptionist from Clinic ---- */
-function removeReceptionistFromClinic(clinicId) {
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!clinic || !clinic.receptionist) return;
-
-  confirmAction(
-    `Remove receptionist account <strong>${clinic.receptionist.name}</strong> from <strong>${clinic.name}</strong>?`,
-    () => {
-      clinic.receptionist = null;
-      clinic.updated = 'Just now';
-      saveClinics();
-      openClinicDetails(clinicId);
-      showToast(`Receptionist removed from ${clinic.name}.`);
-    }
-  );
-}
-
-window.openAddDoctorModal = openAddDoctorModal;
-window.openAddReceptionistModal = openAddReceptionistModal;
-window.removeReceptionistFromClinic = removeReceptionistFromClinic;
-
-/* ---- Open Edit Clinic Modal ---- */
-function openEditClinicModal(clinicId) {
-  const clinic = clinics.find(c => c.id === clinicId);
-  if (!clinic) return;
-  closeDetails();
-  const modal = document.getElementById('clinicModal');
-  modal.innerHTML = `
-    <div class="clinic-modal-card">
-      <div class="modal-header">
-        <h2 class="modal-title"><i class="fa-solid fa-pen"></i> Edit Clinic Details</h2>
-        <button class="modal-close-btn" data-action="close-modal" aria-label="Close">&times;</button>
+        <div style="margin-top:8px"><small style="color:var(--text-muted)">Address:</small><br><strong>${clinic.address || 'N/A'}</strong></div>
       </div>
-      <form id="editClinicForm">
-        <div class="modal-body">
-          <div class="clinic-form-section">
-            <h3><i class="fa-solid fa-hospital"></i> Clinic Identity & Contact</h3>
-            <div class="clinic-form-grid">
-              <div class="form-group">
-                <label class="form-label">Legal clinic name <span class="req">*</span></label>
-                <input class="form-input" name="name" required value="${clinic.name || ''}" placeholder="Clinic name">
-                <small class="clinic-form-help" id="editNameError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Registration number <span class="req">*</span></label>
-                <input class="form-input" name="registration" required value="${clinic.registration || ''}" placeholder="REG-XXXX">
-                <small class="clinic-form-help" id="editRegError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Phone number <span class="req">*</span></label>
-                <input class="form-input" name="phone" type="tel" required value="${clinic.phone || ''}" placeholder="10-digit number">
-                <small class="clinic-form-help" id="editPhoneError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Email address <span class="req">*</span></label>
-                <input class="form-input" name="email" type="email" required value="${clinic.email || ''}" placeholder="clinic@example.com">
-                <small class="clinic-form-help" id="editEmailError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Operating days <span class="req">*</span></label>
-                <input class="form-input" name="days" required value="${clinic.days || ''}" placeholder="Mon - Sat">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Working hours <span class="req">*</span></label>
-                <input class="form-input" name="hours" required value="${clinic.hours || ''}" placeholder="09:00 - 20:00">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Specialties</label>
-                <input class="form-input" name="specialties" value="${clinic.specialties || ''}" placeholder="General Medicine, Cardiology">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Facilities</label>
-                <input class="form-input" name="facilities" value="${clinic.facilities || ''}" placeholder="Pharmacy, Lab">
-              </div>
-              <div class="form-group full-width">
-                <label class="form-label">Complete address <span class="req">*</span></label>
-                <textarea class="form-textarea" name="address" required rows="2" placeholder="Full address">${clinic.address || ''}</textarea>
-                <small class="clinic-form-help" id="editAddrError" style="color:#dc2626;display:none"></small>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Clinic Status</label>
-                <select class="form-select" name="status">
-                  <option value="Active" ${clinic.status === 'Active' ? 'selected' : ''}>Active</option>
-                  <option value="Paused" ${clinic.status === 'Paused' ? 'selected' : ''}>Paused</option>
-                  <option value="Suspended" ${clinic.status === 'Suspended' ? 'selected' : ''}>Suspended</option>
-                </select>
-              </div>
-            </div>
+
+      <div class="detail-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <h3 style="margin-bottom:0;display:flex;align-items:center;gap:8px">
+            <i class="fa-solid fa-user-doctor"></i> Doctors Mapped to This Clinic
+          </h3>
+          <button class="btn-primary" data-action="open-add-doctor" data-clinic="${clinic.id}" style="padding:5px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-user-plus"></i> Add Doctor
+          </button>
+        </div>
+        ${assignedDoctors.length ? table(
+          ['Doctor', 'Specialty', 'Status', 'Suspend', 'Action'],
+          assignedDoctors.map(doctor => `
+            <tr data-doctor-name="${doctor.name}">
+              <td><strong>${doctor.name}</strong><br><small>${doctor.email || ''}</small></td>
+              <td>${doctor.specialty}</td>
+              <td><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></td>
+              <td><button class="btn-secondary suspend-button" style="font-size:11px;padding:4px 8px" data-action="toggle-doctor" data-doctor="${doctor.name}" data-clinic="${clinic.id}">${doctor.status === 'Suspended' ? 'Restore' : 'Suspend'}</button></td>
+              <td><button class="btn-secondary" style="font-size:11px;padding:4px 8px;color:#dc2626;border-color:#dc2626" data-action="delete-doctor" data-doctor-id="${doctor._id || doctor.id || doctor.name}"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>
+          `).join('')
+        ) : `
+          <div class="empty-results" style="padding:16px;text-align:center">
+            <p style="margin-bottom:10px;color:var(--text-muted)">No doctor accounts mapped yet.</p>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" data-action="close-modal">Cancel</button>
-          <button class="btn-primary" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
-        </div>
-      </form>
+        `}
+      </div>
+
+      <div class="modal-footer" style="gap:8px;flex-wrap:wrap">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+        <button class="btn-secondary" data-action="edit-clinic" data-clinic="${clinic.id}" style="color:#2563eb;border-color:#2563eb"><i class="fa-solid fa-pen"></i> Edit Details & Services</button>
+        <button class="btn-secondary" data-action="delete-clinic" data-clinic="${clinic.id}" style="color:#dc2626;border-color:#dc2626"><i class="fa-solid fa-trash"></i> Delete Clinic</button>
+      </div>
     </div>
   `;
   modal.classList.add('active');
   modal.setAttribute('aria-hidden', 'false');
+}
 
-  document.getElementById('editClinicForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const data = new FormData(e.target);
-    const name = data.get('name').trim();
-    const phone = String(data.get('phone')).replace(/\D/g, '');
-    const email = data.get('email').trim();
-    const registration = data.get('registration').trim();
-    const address = data.get('address').trim();
+function openDoctorDetails(name) {
+  const doctor = clinicDoctors.find(item => item.name === name);
+  if (!doctor) return;
+  const clinic = clinics.find(c => c.name === doctor.clinic || c.id === doctor.clinicId);
+  const modal = document.getElementById('detailsModal');
+  
+  modal.innerHTML = `
+    <div class="detail-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">${doctor.name}</h2>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
+      </div>
+      <div class="detail-section">
+        <div class="detail-grid">
+          <div class="detail-item"><small>Status</small><strong><span class="status-pill ${doctor.status === 'Suspended' ? 'account-status-suspended' : ''}">${doctor.status || 'Active'}</span></strong></div>
+          <div class="detail-item"><small>Mapped Clinic</small><strong>${doctor.clinic}</strong></div>
+          <div class="detail-item"><small>Specialization</small><strong>${doctor.specialty}</strong></div>
+          <div class="detail-item"><small>Email</small><strong>${doctor.email || 'Not provided'}</strong></div>
+          <div class="detail-item"><small>Registration</small><strong>${doctor.registration || 'Not provided'}</strong></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <h3><i class="fa-solid fa-cubes"></i> Active Services</h3>
+        <div>${renderServiceTagsMini(clinic?.services || [])}</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+      </div>
+    </div>
+  `;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
 
-    // Frontend validation
-    let valid = true;
-    const showFieldError = (id, msg) => { const el = document.getElementById(id); if (el) { el.textContent = msg; el.style.display = 'block'; } valid = false; };
-    const clearFieldError = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+function openPatientDetails(id) {
+  const patient = patients.find(item => item.id === id);
+  if (!patient) return;
+  const modal = document.getElementById('detailsModal');
+  modal.innerHTML = `
+    <div class="detail-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">${patient.name}</h2>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
+      </div>
+      <div class="detail-section">
+        <div class="detail-grid">
+          <div class="detail-item"><small>Patient ID</small><strong>${patient.id}</strong></div>
+          <div class="detail-item"><small>Clinic</small><strong>${patient.clinic}</strong></div>
+          <div class="detail-item"><small>Primary Doctor</small><strong>${patient.doctor}</strong></div>
+          <div class="detail-item"><small>Total Visits</small><strong>${patient.visits}</strong></div>
+          <div class="detail-item"><small>Contact</small><strong>${patient.phone || 'Not provided'}</strong></div>
+          <div class="detail-item"><small>Blood Group</small><strong>${patient.bloodGroup || 'Not recorded'}</strong></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+      </div>
+    </div>
+  `;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+}
 
-    clearFieldError('editNameError'); clearFieldError('editPhoneError'); clearFieldError('editEmailError'); clearFieldError('editRegError'); clearFieldError('editAddrError');
-
-    if (name.length < 3) showFieldError('editNameError', 'Clinic name must be at least 3 characters.');
-    if (!/^[6-9]\d{9}$/.test(phone)) showFieldError('editPhoneError', 'Enter a valid 10-digit Indian phone number.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) showFieldError('editEmailError', 'Enter a valid email address.');
-    if (registration.length < 4) showFieldError('editRegError', 'Registration number is too short.');
-    if (address.length < 10) showFieldError('editAddrError', 'Please enter a more detailed address.');
-    if (!valid) return;
-
-    // Update clinic object
-    clinic.name = name;
-    clinic.phone = phone;
-    clinic.email = email;
-    clinic.registration = registration;
-    clinic.address = address;
-    clinic.days = data.get('days');
-    clinic.hours = data.get('hours');
-    clinic.specialties = data.get('specialties');
-    clinic.facilities = data.get('facilities');
-    clinic.status = data.get('status');
-    clinic.city = address.split(',').pop().trim() || clinic.city;
-    clinic.updated = 'Just now';
-
-    // Update clinic name in all mapped doctors
-    clinicDoctors.forEach(d => { if (d.clinicId === clinicId) d.clinic = name; });
-
-    saveClinics();
-    saveDoctors();
-    closeModal();
-    showToast(`Clinic "${name}" details updated successfully.`);
-    if (location.hash === '#services') renderServices();
-    else renderClinics();
-  });
+function openRequestDetailsModal(reqId) {
+  const request = clinicRequests.find(r => r.id === reqId || r.clinicId === reqId);
+  if (!request) return;
+  const modal = document.getElementById('detailsModal');
+  modal.innerHTML = `
+    <div class="detail-modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">${request.name}</h2>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
+      </div>
+      <div class="detail-section">
+        <div class="detail-grid">
+          <div class="detail-item"><small>Request ID</small><strong>${request.id || request.clinicId}</strong></div>
+          <div class="detail-item"><small>Applicant</small><strong>${request.applicantName || 'Applicant'} (${request.applicantRole || 'Owner'})</strong></div>
+          <div class="detail-item"><small>Status</small><strong>${request.status}</strong></div>
+          <div class="detail-item"><small>City</small><strong>${request.city}</strong></div>
+          <div class="detail-item"><small>Contact Phone</small><strong>${request.phone}</strong></div>
+          <div class="detail-item"><small>Email</small><strong>${request.email}</strong></div>
+        </div>
+        <div style="margin-top:8px"><small style="color:var(--text-muted)">Address:</small><br><strong>${request.address || 'N/A'}</strong></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+        ${request.status === 'Pending' ? `
+          <button class="btn-action-approve" data-action="approve-request" data-req-id="${request.id || request.clinicId}"><i class="fa-solid fa-check"></i> Approve & Provision</button>
+          <button class="btn-action-reject" data-action="reject-request" data-req-id="${request.id || request.clinicId}"><i class="fa-solid fa-xmark"></i> Reject</button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
 }
 
 function exportVisibleTable() {
@@ -3021,7 +2132,8 @@ function navigate(view = location.hash.slice(1) || 'overview') {
   else renderOverview();
 }
 
-document.addEventListener('click', event => {
+// Global Event Listeners
+document.addEventListener('click', async event => {
   const viewLink = event.target.closest('[data-view]');
   if (viewLink) {
     event.preventDefault();
@@ -3035,52 +2147,66 @@ document.addEventListener('click', event => {
   if (action === 'close-details') closeDetails();
   if (action === 'export') exportVisibleTable();
   
-  if (action === 'toggle-clinic') {
-    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
-    const clinic = clinics.find(item => item.id === clinicId);
-    if (clinic) {
-      const nextStatus = clinic.status === 'Suspended' ? 'restore' : 'suspend';
-      if (nextStatus === 'suspend' && !confirm(`Suspend ${clinic.name}'s membership? Confirm to continue.`)) return;
-      clinic.status = clinic.status === 'Suspended' ? 'Active' : 'Suspended';
-      clinic.updated = 'Just now';
-      saveClinics();
-      logActivity(`${clinic.status === 'Active' ? 'Restored' : 'Suspended'} clinic membership`, 'Clinic', clinic.id);
-      closeDetails();
-      showToast(`Clinic "${clinic.name}" ${clinic.status === 'Active' ? 'restored' : 'suspended'}.`);
-      if (location.hash === '#services') renderServices();
-      else renderClinics();
-    }
-  }
-
   if (action === 'toggle-doctor') {
-    const name = event.target.closest('[data-doctor]')?.dataset.doctor;
-    const doctor = clinicDoctors.find(item => item.name === name);
+    const doctorName = event.target.closest('[data-doctor]')?.dataset.doctor;
+    const doctor = clinicDoctors.find(d => d.name === doctorName);
     if (doctor) {
-      const nextStatus = doctor.status === 'Suspended' ? 'restore' : 'suspend';
-      if (nextStatus === 'suspend' && !confirm(`Suspend ${doctor.name}'s account? Confirm to continue.`)) return;
-      doctor.status = doctor.status === 'Suspended' ? 'Active' : 'Suspended';
-      saveDoctors();
-      logActivity(`${doctor.status === 'Active' ? 'Restored' : 'Suspended'} doctor account`, 'Doctor', doctor.name);
-      const clinicId2 = event.target.closest('[data-clinic]')?.dataset.clinic;
-      showToast(`Doctor account ${doctor.status === 'Active' ? 'restored' : 'suspended'}.`);
-      // If inside clinic details modal, refresh it
-      const detailsModal = document.getElementById('detailsModal');
-      if (detailsModal.classList.contains('active') && clinicId2) {
-        openClinicDetails(clinicId2);
-      } else {
-        closeDetails();
-        renderClinics();
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/doctors/${doctor._id || doctor.id || doctor.name}/status`, {
+          method: 'PATCH',
+          headers: getAuthHeader()
+        });
+        const json = await res.json();
+        await reloadAllAdminData();
+        showToast(`Doctor account status updated.`);
+        const detailsModal = document.getElementById('detailsModal');
+        if (detailsModal.classList.contains('active')) {
+          closeDetails();
+        }
+        if (location.hash === '#clinics') renderClinics();
+        else renderOverview();
+      } catch (err) {
+        showToast(err.message, 'error');
       }
-
     }
   }
 
-  if (action === 'clear-logs') {
-    if (!confirm('Clear all administrator activity logs? This action cannot be undone.')) return;
-    activityLogs = [];
-    saveActivityLogs();
-    renderLogs();
-    showToast('Activity logs cleared.');
+  if (action === 'delete-doctor') {
+    const doctorId = event.target.closest('[data-doctor-id]')?.dataset.doctorId;
+    if (doctorId && confirm('Delete this doctor account from database?')) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/doctors/${doctorId}`, {
+          method: 'DELETE',
+          headers: getAuthHeader()
+        });
+        await reloadAllAdminData();
+        showToast('Doctor account deleted from database.');
+        closeDetails();
+        if (location.hash === '#clinics') renderClinics();
+        else renderOverview();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  }
+
+  if (action === 'delete-admin') {
+    const adminId = event.target.closest('[data-admin-id]')?.dataset.adminId;
+    if (adminId && confirm('Delete this administrator account?')) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/admins/${adminId}`, {
+          method: 'DELETE',
+          headers: getAuthHeader()
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Failed to delete admin.');
+        await fetchAdminsFromDB();
+        renderAdmins();
+        showToast('Administrator account deleted.');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
   }
 
   if (action === 'switch-clinic-tab') {
@@ -3093,7 +2219,7 @@ document.addEventListener('click', event => {
     openRequestDetailsModal(event.target.closest('[data-req-id]')?.dataset.reqId);
   }
   if (action === 'approve-request') {
-    if (confirm('Approve this clinic application and add it to the active clinic network?')) {
+    if (confirm('Approve this clinic application and add it to the active MongoDB network?')) {
       approveClinicRequest(event.target.closest('[data-req-id]')?.dataset.reqId);
     }
   }
@@ -3104,15 +2230,9 @@ document.addEventListener('click', event => {
   }
 
   if (action === 'toggle-service') {
-    const clinicId3 = event.target.closest('[data-clinic]')?.dataset.clinic;
+    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
     const serviceId = event.target.closest('[data-service]')?.dataset.service;
-    if (clinicId3 && serviceId) toggleClinicService(clinicId3, serviceId);
-  }
-
-  if (action === 'remove-doctor-from-clinic') {
-    const doctorName = event.target.closest('[data-doctor]')?.dataset.doctor;
-    const clinicId4 = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (doctorName && clinicId4) removeDoctorFromClinic(doctorName, clinicId4);
+    if (clinicId && serviceId) toggleClinicService(clinicId, serviceId);
   }
 
   if (action === 'open-add-doctor') {
@@ -3124,27 +2244,17 @@ document.addEventListener('click', event => {
     openAddDoctorModal();
   }
 
-  if (action === 'open-add-receptionist') {
-    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (clinicId) openAddReceptionistModal(clinicId);
-  }
-
-  if (action === 'remove-receptionist') {
-    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (clinicId) removeReceptionistFromClinic(clinicId);
-  }
-
   if (action === 'edit-clinic') {
-    const clinicId5 = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (clinicId5) openEditClinicModal(clinicId5);
+    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId) openEditClinicModal(clinicId);
   }
 
   if (action === 'delete-clinic') {
-    const clinicId6 = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (clinicId6) deleteClinic(clinicId6);
+    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
+    if (clinicId) deleteClinic(clinicId);
   }
 
-  if (action === 'account-info') showToast('Administrator account · Full system access');
+  if (action === 'account-info') showToast('Administrator account · MongoDB connected');
   if (action === 'logout') {
     localStorage.removeItem('clinic-auth-session');
     sessionStorage.clear();
@@ -3165,13 +2275,15 @@ window.handleAdminLogout = handleAdminLogout;
 
 function closeAccountMenu() {
   const menu = document.getElementById('accountMenu');
+  if (!menu) return;
   menu.hidden = true;
-  document.getElementById('accountToggle').setAttribute('aria-expanded', 'false');
+  document.getElementById('accountToggle')?.setAttribute('aria-expanded', 'false');
 }
 
-document.getElementById('accountToggle').addEventListener('click', event => {
+document.getElementById('accountToggle')?.addEventListener('click', event => {
   event.stopPropagation();
   const menu = document.getElementById('accountMenu');
+  if (!menu) return;
   menu.hidden = !menu.hidden;
   event.currentTarget.setAttribute('aria-expanded', String(!menu.hidden));
 });
@@ -3179,15 +2291,15 @@ document.getElementById('accountToggle').addEventListener('click', event => {
 const savedTheme = localStorage.getItem('dhyey-admin-theme');
 if (savedTheme === 'dark') document.body.dataset.theme = 'dark';
 
-document.getElementById('themeToggle').addEventListener('click', event => {
+document.getElementById('themeToggle')?.addEventListener('click', event => {
   const dark = document.body.dataset.theme !== 'dark';
   document.body.dataset.theme = dark ? 'dark' : '';
   localStorage.setItem('dhyey-admin-theme', dark ? 'dark' : 'light');
   event.currentTarget.innerHTML = `<i class="fa-solid fa-${dark ? 'sun' : 'moon'}"></i>`;
 });
 
-document.getElementById('menuToggle').addEventListener('click', () => {
-  document.querySelector('.sidebar').classList.toggle('is-collapsed');
+document.getElementById('menuToggle')?.addEventListener('click', () => {
+  document.querySelector('.sidebar')?.classList.toggle('is-collapsed');
 });
 
 document.addEventListener('click', event => {
@@ -3215,41 +2327,23 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape') { closeModal(); closeDetails(); closeAccountMenu(); }
 });
 
-document.getElementById('todayLabel').textContent = new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date());
+const todayEl = document.getElementById('todayLabel');
+if (todayEl) todayEl.textContent = new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date());
 
 function updateDoctorClock() {
+  const clock = document.getElementById('docClock');
+  if (!clock) return;
   const now = new Date();
-  document.getElementById('docClock').textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  clock.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 }
 updateDoctorClock();
 setInterval(updateDoctorClock, 1000);
 
 window.addEventListener('hashchange', () => navigate());
-document.getElementById('themeToggle').innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
+const themeBtn = document.getElementById('themeToggle');
+if (themeBtn) themeBtn.innerHTML = `<i class="fa-solid fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
 
-// Live Cross-Tab Synchronization for Feedback & Support Tickets
-window.addEventListener('storage', (event) => {
-  if (
-    event.key === 'dhyey-feedback-tickets' ||
-    event.key === 'dhyey-feedback-last-updated' ||
-    event.key === 'dhyey-public-feedback' ||
-    (event.key && (event.key.startsWith('clinic-db-') || event.key.startsWith('clinic_db_')))
-  ) {
-    if (location.hash === '#feedback') {
-      renderFeedbackInbox();
-    }
-  }
+// Initial load from MongoDB database
+reloadAllAdminData().then(() => {
+  navigate();
 });
-
-// Periodic auto-refresh when on feedback screen (every 5 seconds)
-setInterval(() => {
-  if (location.hash === '#feedback' && !document.querySelector('#feedbackModalMount > div')) {
-    const searchInput = document.getElementById('feedbackSearch');
-    // Only background refresh if the search input is not actively focused/being typed into
-    if (searchInput !== document.activeElement && (!searchInput || !searchInput.value.trim())) {
-      renderFeedbackInbox();
-    }
-  }
-}, 5000);
-
-navigate();

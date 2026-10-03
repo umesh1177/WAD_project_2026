@@ -238,7 +238,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
           </div>
         </div>
 
-        <!-- 5 Balanced High-Impact KPI Cards -->
+        <!-- 4 High-Impact KPI Cards -->
         <div class="cms-dash-kpi-grid">
           
           <!-- KPI 1: OPD Visits -->
@@ -258,35 +258,35 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             </div>
           </div>
 
-          <!-- KPI 2: Appointments & Queue -->
-          <div class="cms-kpi-card tone-apts ${activeTab === 'appointments' ? 'active' : ''}" data-tab="appointments">
+          <!-- KPI 2: Total Today Collections (Replaced Booked Appointments) -->
+          <div class="cms-kpi-card tone-revenue ${activeTab === 'collections' ? 'active' : ''}" data-tab="collections">
             <div class="cms-kpi-top">
-              <div class="cms-kpi-icon"><i class="fa-solid fa-calendar-check"></i></div>
-              <span class="cms-kpi-badge" style="background: #e0e7ff; color: #4338ca;">Queue</span>
+              <div class="cms-kpi-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+              <span class="cms-kpi-badge" style="background: #d1fae5; color: #059669;">Collected</span>
             </div>
             <div class="cms-kpi-value-group">
-              <div class="cms-kpi-val">${targetApts.length} <span style="font-size: 13.5px; font-weight: 600; color: var(--text-muted);">Slots</span></div>
-              <div class="cms-kpi-title">Booked Appointments</div>
+              <div class="cms-kpi-val" style="color: #059669;">${fmtMoney(dateReceived)}</div>
+              <div class="cms-kpi-title">Total Today Collections</div>
             </div>
             <div class="cms-kpi-meta">
-              <span style="color: #4f46e5;"><b>${aptsPending}</b> Pending</span>
+              <span>Billed: <b>${fmtMoney(dateBilled)}</b></span>
               <span>&bull;</span>
-              <span><b>${aptsCompleted}</b> Done</span>
+              <span>Due: <b style="color: ${dateDue > 0 ? '#dc2626' : 'inherit'};">${fmtMoney(dateDue)}</b></span>
             </div>
           </div>
 
-          <!-- KPI 3: Follow-ups -->
-          <div class="cms-kpi-card tone-apts ${activeTab === 'followups' ? 'active' : ''}" data-tab="followups">
+          <!-- KPI 3: Total Due Balance (Replaced Pending Follow-ups) -->
+          <div class="cms-kpi-card tone-dues ${activeTab === 'dues' ? 'active' : ''}" data-tab="dues">
             <div class="cms-kpi-top">
-              <div class="cms-kpi-icon"><i class="fa-solid fa-bell"></i></div>
-              <span class="cms-kpi-badge" style="background: #fef3c7; color: #92400e;">Follow-ups</span>
+              <div class="cms-kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+              <span class="cms-kpi-badge" style="background: #fee2e2; color: #dc2626;">Outstanding</span>
             </div>
             <div class="cms-kpi-value-group">
-              <div class="cms-kpi-val">${targetFollowUps.length} <span style="font-size: 13.5px; font-weight: 600; color: var(--text-muted);">Due</span></div>
-              <div class="cms-kpi-title">Pending Follow-ups</div>
+              <div class="cms-kpi-val" style="color: #dc2626;">${fmtMoney(totalClinicDue)}</div>
+              <div class="cms-kpi-title">Total Due Balance</div>
             </div>
             <div class="cms-kpi-meta">
-              <span>Patients awaiting review</span>
+              <span style="color: #dc2626;"><b>${defaultersCount}</b> Patients with Pending Due</span>
             </div>
           </div>
 
@@ -318,15 +318,15 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
                 <span>OPD Consultations</span>
                 <span class="cms-dash-tab-count">${targetVisits.length}</span>
               </button>
-              <button type="button" class="cms-dash-tab-btn ${activeTab === 'appointments' ? 'active' : ''}" data-tab="appointments">
-                <i class="fa-solid fa-calendar-check"></i>
-                <span>Appointments Queue</span>
-                <span class="cms-dash-tab-count">${targetApts.length}</span>
+              <button type="button" class="cms-dash-tab-btn ${activeTab === 'collections' ? 'active' : ''}" data-tab="collections">
+                <i class="fa-solid fa-indian-rupee-sign"></i>
+                <span>Daily Collections</span>
+                <span class="cms-dash-tab-count">${targetVisits.filter(v => Number(v.received) > 0 || Number(v.charge) > 0).length}</span>
               </button>
-              <button type="button" class="cms-dash-tab-btn ${activeTab === 'followups' ? 'active' : ''}" data-tab="followups">
-                <i class="fa-solid fa-bell"></i>
-                <span>Follow-ups</span>
-                <span class="cms-dash-tab-count">${targetFollowUps.length}</span>
+              <button type="button" class="cms-dash-tab-btn ${activeTab === 'dues' ? 'active' : ''}" data-tab="dues">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Due Defaulters</span>
+                <span class="cms-dash-tab-count">${flatPatients.filter(p => p.totalDue > 0).length}</span>
               </button>
               <button type="button" class="cms-dash-tab-btn ${activeTab === 'patients' ? 'active' : ''}" data-tab="patients">
                 <i class="fa-solid fa-user-group"></i>
@@ -339,8 +339,8 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
               <div style="font-weight: 800; font-size: 13.5px; color: var(--text);">
                 ${
                   activeTab === 'visits' ? `OPD Consultations on ${fmtDate(dateFilter)}` :
-                  activeTab === 'appointments' ? `Appointments Scheduled on ${fmtDate(dateFilter)}` :
-                  activeTab === 'followups' ? `Pending Follow-up Consultations` :
+                  activeTab === 'collections' ? `Daily Collections &amp; Received Fees on ${fmtDate(dateFilter)}` :
+                  activeTab === 'dues' ? `Outstanding Due Balance &amp; Defaulters List` :
                   `Registered Patient Population`
                 }
               </div>
@@ -350,7 +350,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             </div>
 
             <div class="cms-table-wrapper cms-dash-table-body" id="dash-active-table-body">
-              ${renderActiveTableHTML(data, targetVisits, targetApts, targetFollowUps)}
+              ${renderActiveTableHTML(data, targetVisits)}
             </div>
 
           </div>
@@ -363,8 +363,8 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
     attachEventListeners(data);
   }
 
-  function renderActiveTableHTML(data, targetVisits, targetApts, targetFollowUps) {
-    const { flatPatients, bills } = data;
+  function renderActiveTableHTML(data, targetVisits) {
+    const { flatPatients } = data;
     const q = searchQuery.toLowerCase().trim();
 
     if (activeTab === 'visits') {
@@ -431,107 +431,124 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       `;
     }
 
-    if (activeTab === 'appointments') {
-      let list = targetApts;
+    if (activeTab === 'collections') {
+      let list = targetVisits.filter((v) => Number(v.received) > 0 || Number(v.charge) > 0);
       if (q) {
         list = list.filter(
-          (a) =>
-            (a.patientName || a.name || '').toLowerCase().includes(q) ||
-            (a.reason || '').toLowerCase().includes(q) ||
-            (a.phone || '').toLowerCase().includes(q)
+          (v) =>
+            (v.patName || '').toLowerCase().includes(q) ||
+            (v.caseId || '').toLowerCase().includes(q) ||
+            (v.famHead || '').toLowerCase().includes(q) ||
+            (v.patId || '').toLowerCase().includes(q)
         );
       }
 
       if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-calendar-xmark" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No appointments booked for this date.</div>`;
+        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-receipt" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No payment collections or billings recorded for this date.</div>`;
       }
 
       return `
         <table class="cms-table">
           <thead>
             <tr>
-              <th style="width: 100px;">Time Slot</th>
+              <th style="width: 85px;">Time</th>
+              <th style="width: 130px;">Case ID</th>
               <th>Patient Name</th>
-              <th style="width: 120px;">Phone</th>
-              <th>Clinical Reason</th>
-              <th style="width: 110px;">Status</th>
-              <th style="text-align: right; width: 120px;">Action</th>
+              <th>Family Head</th>
+              <th>Area / Locality</th>
+              <th style="text-align: right; width: 100px;">Fee Charged</th>
+              <th style="text-align: right; width: 100px;">Received</th>
+              <th style="text-align: right; width: 90px;">Due Left</th>
+              <th style="text-align: right; width: 110px;">Action</th>
             </tr>
           </thead>
           <tbody>
             ${list
-              .map((a) => {
-                const patName = a.patientName || a.name || 'Patient';
-                const matchedPat = flatPatients.find(
-                  (p) => p.pat.name.toLowerCase() === patName.toLowerCase() || (a.patientId && p.pat.id === a.patientId)
-                );
-                return `
-                <tr>
-                  <td class="font-mono" style="font-weight: 700; color: var(--primary); white-space: nowrap;">${a.time || a.appointmentTime || '10:00 AM'}</td>
-                  <td><b>${patName}</b></td>
-                  <td class="font-mono" style="white-space: nowrap;">${a.phone || '—'}</td>
-                  <td>${a.reason || 'General Checkup'}</td>
-                  <td><span class="cms-pill ${a.status === 'Completed' ? 'cms-badge-paid' : 'cms-badge-neutral'}">${a.status || 'Scheduled'}</span></td>
-                  <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="cms-btn cms-btn-primary btn-start-apt-consultation" data-famid="${matchedPat ? matchedPat.fam.id : ''}" data-patid="${matchedPat ? matchedPat.pat.id : ''}" data-name="${encodeURIComponent(patName)}" style="padding: 3px 10px; font-size: 11.5px;">
-                      Start Visit <i class="fa-solid fa-stethoscope"></i>
-                    </button>
-                  </td>
-                </tr>
-              `;
-              })
+              .map(
+                (v) => `
+              <tr class="cms-clickable-row" data-famid="${v.famId}" data-patid="${v.patId}">
+                <td class="font-mono" style="font-weight: 700; white-space: nowrap;">${v.time || '—'}</td>
+                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">${v.caseId}</td>
+                <td>
+                  <b>${v.patName}</b>
+                  <div style="font-size: 11px; color: var(--text-muted);">PT ${v.patId}</div>
+                </td>
+                <td>${v.famHead || '—'}</td>
+                <td>${v.area || '—'}</td>
+                <td class="font-mono" style="text-align: right; white-space: nowrap;">${fmtMoney(v.charge)}</td>
+                <td class="font-mono" style="text-align: right; color: #059669; font-weight: 800; white-space: nowrap;">${fmtMoney(v.received)}</td>
+                <td class="font-mono" style="text-align: right; color: ${Number(v.due) > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: ${Number(v.due) > 0 ? '800' : '500'}; white-space: nowrap;">${fmtMoney(v.due)}</td>
+                <td style="text-align: right; white-space: nowrap;">
+                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${v.famId}" data-patid="${v.patId}" style="padding: 4px 8px; font-size: 11.5px; color: var(--primary); font-weight: 700;">
+                    Case <i class="fa-solid fa-arrow-right"></i>
+                  </button>
+                </td>
+              </tr>
+            `
+              )
               .join('')}
           </tbody>
         </table>
       `;
     }
 
-    if (activeTab === 'followups') {
-      let list = targetFollowUps;
+    if (activeTab === 'dues') {
+      let list = flatPatients.filter((p) => p.totalDue > 0);
       if (q) {
         list = list.filter(
-          (f) =>
-            (f.patientName || f.name || '').toLowerCase().includes(q) ||
-            (f.patientId || '').toLowerCase().includes(q) ||
-            (f.reason || '').toLowerCase().includes(q)
+          ({ fam, pat }) =>
+            pat.name.toLowerCase().includes(q) ||
+            pat.id.toLowerCase().includes(q) ||
+            fam.headName.toLowerCase().includes(q) ||
+            (fam.area || '').toLowerCase().includes(q) ||
+            (pat.phone || fam.phone || '').includes(q)
         );
       }
 
+      list.sort((a, b) => b.totalDue - a.totalDue);
+
       if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-bell-slash" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No pending follow-ups.</div>`;
+        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-circle-check" style="font-size: 28px; margin-bottom: 8px; display: block; color: #059669;"></i>No pending dues! All patient accounts are completely settled.</div>`;
       }
 
       return `
         <table class="cms-table">
           <thead>
             <tr>
-              <th style="width: 120px;">Follow-up Date</th>
-              <th style="width: 100px;">Patient ID</th>
+              <th style="width: 110px;">Patient ID</th>
               <th>Patient Name</th>
-              <th>Clinical Purpose</th>
-              <th style="width: 110px;">Status</th>
+              <th style="width: 90px;">Relation</th>
+              <th>Family Head</th>
+              <th>Area / Locality</th>
+              <th style="width: 120px;">Contact Phone</th>
+              <th style="width: 100px; text-align: center;">Total Visits</th>
+              <th style="text-align: right; width: 120px;">Total Due</th>
               <th style="text-align: right; width: 120px;">Action</th>
             </tr>
           </thead>
           <tbody>
             ${list
-              .map((f) => {
-                const matchedPat = flatPatients.find((p) => p.pat.id === f.patientId || p.pat.name.toLowerCase() === (f.patientName || '').toLowerCase());
-                return `
-                <tr>
-                  <td class="font-mono" style="font-weight: 700; white-space: nowrap;">${fmtDate(f.date || f.followUpDate || f.scheduledDate)}</td>
-                  <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${f.patientId || '—'}</td>
-                  <td><b>${f.patientName || matchedPat?.pat?.name || 'Patient'}</b></td>
-                  <td>${f.reason || 'Review / Follow-up'}</td>
-                  <td><span class="cms-pill cms-badge-neutral">${f.status || 'Pending'}</span></td>
-                  <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="cms-btn cms-btn-ghost btn-open-fu-case" data-famid="${matchedPat ? matchedPat.fam.id : ''}" data-patid="${matchedPat ? matchedPat.pat.id : ''}" style="padding: 3px 8px; font-size: 11.5px; color: var(--primary); font-weight: 700;">
-                      Open Record <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-                  </td>
-                </tr>
-              `;
-              })
+              .map(
+                ({ fam, pat, totalDue, visitCount }) => `
+              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.id}">
+                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.id}</td>
+                <td>
+                  <b style="color: var(--text);">${pat.name}</b>
+                </td>
+                <td>${pat.relation || 'Head'}</td>
+                <td>${fam.headName}</td>
+                <td>${fam.area || '—'}</td>
+                <td class="font-mono" style="white-space: nowrap;"><i class="fa-solid fa-phone" style="font-size: 10px; color: var(--text-muted);"></i> ${pat.phone || fam.phone || '—'}</td>
+                <td style="text-align: center;"><span class="cms-pill cms-badge-neutral font-mono">${visitCount}</span></td>
+                <td class="font-mono" style="text-align: right; font-weight: 800; color: #dc2626; font-size: 13.5px; white-space: nowrap;">${fmtMoney(totalDue)}</td>
+                <td style="text-align: right; white-space: nowrap;">
+                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: #dc2626; font-weight: 700; border: 1px solid #fecaca; background: #fff5f5;">
+                    Open Due <i class="fa-solid fa-arrow-right"></i>
+                  </button>
+                </td>
+              </tr>
+            `
+              )
               .join('')}
           </tbody>
         </table>

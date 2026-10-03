@@ -183,7 +183,7 @@
         <span>F3 Record</span>
         <span>F4 Dashboard</span>
         <span>F5 Reports</span>
-        <span>F6 Certificate</span>
+        <span id="statusbar-cert-shortcut">F6 Certificate</span>
         <span>F7 Master Data</span>
         <span>F8 Feedback</span>
         <span id="statusbar-clock" class="font-mono" style="margin-left: auto;">--:--</span>
@@ -245,14 +245,15 @@
       showAppScreen(session);
     }
 
-    function showAppScreen(session) {
+    window.currentClinicServices = ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing'];
+
+    async function showAppScreen(session) {
       const docName = session.profile?.name || session.profile?.username || 'Doctor';
       document.getElementById('topbar-doc-name').textContent = docName.startsWith('Dr.') ? docName : `Dr. ${docName}`;
       document.getElementById('dropdown-doc-fullname').textContent = docName.startsWith('Dr.') ? docName : `Dr. ${docName}`;
 
-      const clinicId = session?.profile?.activeClinicId;
-      const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-      const activeClinic = (session.profile?.clinics || []).find(c => c.id === clinicId) || adminClinics.find(c => c.id === clinicId) || session.profile?.clinics?.[0];
+      const clinicId = session?.profile?.activeClinicId || 'demo';
+      const activeClinic = (session.profile?.clinics || []).find(c => c.id === clinicId) || session.profile?.clinics?.[0];
       const clinicName = activeClinic ? activeClinic.name : (session.profile?.clinicName || 'Clinic Management');
 
       // Dynamically update all Clinic Branding elements
@@ -267,36 +268,49 @@
 
       document.title = `${clinicName} - Clinical Management System`;
 
-      // Customize Doctor Dashboard UI based on active clinic services
-      customizeViewByServices(session, activeClinic);
+      // Customize Doctor Dashboard UI based on active clinic services (await it!)
+      await customizeViewByServices(session, activeClinic);
 
       renderActiveView();
     }
 
     /* ---- Customize Doctor Dashboard according to Selected Clinic Services ---- */
-    function customizeViewByServices(session, activeClinic) {
+    async function customizeViewByServices(session, activeClinic) {
       const clinicId = session?.profile?.activeClinicId || activeClinic?.id || 'demo';
-      const adminClinics = JSON.parse(localStorage.getItem('dhyey-admin-clinics') || '[]');
-      const adminDocs = JSON.parse(localStorage.getItem('dhyey-admin-doctors') || '[]');
-      const matchedClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinic?.name || c.id === activeClinic?.id);
-      const matchedDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
+      
+      let services = session?.profile?.services;
 
-      // Read activeServices from clinic's local DB first (admin may have toggled them)
-      let clinicDbServices = null;
+      // Fetch live clinic info from database API
       try {
-        const dbRaw = localStorage.getItem(`clinic-db-${clinicId}`);
-        if (dbRaw) {
-          const dbObj = JSON.parse(dbRaw);
-          if (Array.isArray(dbObj.activeServices)) clinicDbServices = dbObj.activeServices;
+        const res = await fetch(`/api/clinic/info?clinicId=${encodeURIComponent(clinicId)}`, {
+          headers: {
+            'x-clinic-id': clinicId,
+            ...(session?.token ? { 'Authorization': `Bearer ${session.token}` } : {})
+          }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            if (Array.isArray(json.data.services)) {
+              services = json.data.services;
+            }
+            if (json.data.name) {
+              const sidebarBrandEl = document.getElementById('sidebar-clinic-name') || document.querySelector('.cms-brand-text');
+              if (sidebarBrandEl) sidebarBrandEl.textContent = json.data.name;
+              const topbarClinicEl = document.getElementById('topbar-clinic-title');
+              if (topbarClinicEl) topbarClinicEl.textContent = json.data.name;
+              const statusbarEl = document.getElementById('statusbar-clinic-title');
+              if (statusbarEl) statusbarEl.innerHTML = `<b>${json.data.name} System</b>`;
+            }
+          }
         }
       } catch (e) {}
 
-      let services = clinicDbServices || matchedClinic?.services || matchedDoc?.services || activeClinic?.services || session?.profile?.services;
       if (!services || !Array.isArray(services)) {
-        services = clinicId === 'demo'
-          ? ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
-          : ['digitalPrescription', 'certificates', 'billing'];
+        services = ['digitalPrescription'];
       }
+
+      window.currentClinicServices = services;
 
       const hasReceptionist = services.includes('receptionist');
       const hasApptQueue = services.includes('appointment');
@@ -309,31 +323,42 @@
         modeEl.textContent = hasReceptionist ? 'Dual-Role (Doctor + Reception)' : 'Doctor-Only Direct Mode';
       }
 
-      // Patient Queue Tab: visible if receptionist or queue service is active
+      // Patient Queue Tab: visible ONLY if receptionist and queue service are active
       const apptTab = document.getElementById('nav-appointments');
       if (apptTab) {
-        apptTab.style.display = (hasReceptionist || hasApptQueue) ? 'flex' : 'none';
+        apptTab.style.display = (hasReceptionist && hasApptQueue) || (hasApptQueue && hasReceptionist) ? 'flex' : 'none';
       }
 
-      // Reception desk quick link in topbar
+      // Reception desk quick link in topbar: visible ONLY if receptionist service is enabled
       const recBtn = document.getElementById('btn-open-reception-portal');
       if (recBtn) {
         recBtn.style.display = hasReceptionist ? 'inline-flex' : 'none';
       }
 
-      // Certificates Tab: visible if certificates service is enabled
+      // Certificates Tab: visible ONLY if certificates service is enabled
       const certTab = document.getElementById('nav-certificates');
       if (certTab) {
         certTab.style.display = hasCertificates ? 'flex' : 'none';
       }
+      const certStatusbar = document.getElementById('statusbar-cert-shortcut');
+      if (certStatusbar) {
+        certStatusbar.style.display = hasCertificates ? 'inline' : 'none';
+      }
+
+      // If currently on a disabled view, switch back to dashboard immediately
+      if (currentView === 'appointments' && (!hasApptQueue || !hasReceptionist)) {
+        currentView = 'dashboard';
+      }
+      if (currentView === 'certificates' && !hasCertificates) {
+        currentView = 'dashboard';
+      }
 
       // If Admin is logged in, show quick Admin Portal link
       const adminLink = document.getElementById('btn-open-admin-portal');
-      if (adminLink && session.role === 'admin') {
+      if (adminLink && session?.role === 'admin') {
         adminLink.style.display = 'inline-flex';
       }
     }
-
 
     /* ---- Logout Handlers ---- */
     document.getElementById('btn-doc-logout').addEventListener('click', logoutUser);
@@ -370,8 +395,10 @@
       `).join('');
 
       clinicsList.querySelectorAll('.clinic-switch-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          switchDoctorClinic(btn.dataset.id);
+        btn.addEventListener('click', async () => {
+          await switchDoctorClinic(btn.dataset.id);
+          const newSession = initAuth();
+          showAppScreen(newSession);
         });
       });
     }
@@ -395,6 +422,16 @@
 
     /* ---- Navigation Router ---- */
     function navigateTo(viewName, selection = null) {
+      const services = window.currentClinicServices || [];
+      if (viewName === 'appointments' && (!services.includes('appointment') || !services.includes('receptionist'))) {
+        showToast('Patient Queue service is not enabled for this clinic.', 'error');
+        return;
+      }
+      if (viewName === 'certificates' && !services.includes('certificates')) {
+        showToast('Medical Certificates service is not enabled for this clinic.', 'error');
+        return;
+      }
+
       if (selection) {
         currentSelection = selection;
       } else if (viewName === 'case') {

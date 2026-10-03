@@ -225,7 +225,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
   let filterDate = '';
 
   // New Visit Form State
-  let isNewVisitOpen = false;
+  let isNewVisitOpen = Boolean(selection?.autoOpenNewVisit);
   let editingVisitId = null;
 
   // Attached Lab Report State (Photos 1 & 2)

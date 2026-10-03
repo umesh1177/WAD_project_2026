@@ -6,6 +6,7 @@ const getAppointments = async (req, res) => {
     const { date, status, clinicId } = req.query;
     const activeClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || clinicId || 'demo';
     const query = {};
+    if (activeClinicId) query.clinicId = activeClinicId;
     if (date) query.date = date;
     if (status) query.status = status;
 
@@ -21,7 +22,9 @@ const createAppointment = async (req, res) => {
     const {
       token,
       patientId,
+      patientName,
       name,
+      familyId,
       familyHead,
       phone,
       area,
@@ -33,30 +36,33 @@ const createAppointment = async (req, res) => {
       status
     } = req.body;
 
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.body.clinicId || 'demo';
     const today = date || new Date().toISOString().slice(0, 10);
+    const patName = (patientName || name || 'Patient').trim();
 
     let finalToken = token;
     if (!finalToken) {
-      const count = await Appointment.countDocuments({ date: today });
+      const count = await Appointment.countDocuments({ date: today, clinicId });
       finalToken = `T-${String(count + 1).padStart(2, '0')}`;
     }
 
     const newAppointment = new Appointment({
       token: finalToken,
       patientId: patientId || '',
-      name: (name || '').trim().toUpperCase(),
-      familyHead: familyHead || '',
+      patientName: patName.toUpperCase(),
+      name: patName.toUpperCase(),
+      familyId: familyId || '',
+      familyHead: familyHead || patName,
       phone: phone || '',
       area: area || '',
       age: age || '',
       gender: gender || 'Male',
-      complaint: complaint || '',
+      complaint: complaint || 'General OPD Consultation',
       vitals: vitals || {},
       status: status || 'Waiting',
       date: today,
       clinicId,
-      arrivedAt: new Date().toISOString()
+      arrivedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
     });
 
     await newAppointment.save();

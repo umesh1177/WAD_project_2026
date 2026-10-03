@@ -6,6 +6,7 @@ const { todayISO, pad } = require('../utils/generateId');
 // Default built-in certificate templates
 const DEFAULT_TEMPLATES = [
   {
+    id: 'tpl-1',
     templateName: 'Medical Fitness Certificate',
     title: 'MEDICAL FITNESS CERTIFICATE',
     body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, has been examined by me. The patient has clinically recovered from {DIAGNOSIS} and is now found medically fit in all respects to resume normal daily duties.',
@@ -13,6 +14,7 @@ const DEFAULT_TEMPLATES = [
     isDefault: true,
   },
   {
+    id: 'tpl-2',
     templateName: 'Medical Leave & Rest Certificate',
     title: 'MEDICAL SICKNESS & LEAVE CERTIFICATE',
     body: 'This is to certify that {PATIENT_NAME}, aged {AGE}, is suffering from {DIAGNOSIS} and has been under my medical care. The patient is advised complete bed rest and absence from work/studies from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days) for proper recovery.',
@@ -20,6 +22,7 @@ const DEFAULT_TEMPLATES = [
     isDefault: true,
   },
   {
+    id: 'tpl-3',
     templateName: 'Medical Examination & Treatment Certificate',
     title: 'CERTIFICATE OF MEDICAL EXAMINATION',
     body: 'This is to certify that {PATIENT_NAME} was medically examined and provided treatment for {DIAGNOSIS} on {TODAY_DATE} at this clinic. The patient has been given necessary medications and medical advice.',
@@ -27,6 +30,7 @@ const DEFAULT_TEMPLATES = [
     isDefault: true,
   },
   {
+    id: 'tpl-4',
     templateName: 'Light Duty / Work Exemption Certificate',
     title: 'MEDICAL EXEMPTION / LIGHT WORK CERTIFICATE',
     body: 'This is to certify that {PATIENT_NAME} is undergoing medical management for {DIAGNOSIS}. The patient is advised to avoid heavy physical exertion, lifting, or prolonged standing from {FROM_DATE} to {TO_DATE}, and is recommended only light duties.',
@@ -35,11 +39,11 @@ const DEFAULT_TEMPLATES = [
   },
 ];
 
-// Get all certificates
+// Get all certificates for the current clinic
 const getCertificates = async (req, res) => {
   try {
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const certs = await Certificate.find().sort({ createdAt: -1 });
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.query.clinicId || 'demo';
+    const certs = await Certificate.find({ clinicId }).sort({ createdAt: -1 }).lean();
     res.json({ success: true, count: certs.length, data: certs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -49,7 +53,7 @@ const getCertificates = async (req, res) => {
 // Issue new certificate
 const createCertificate = async (req, res) => {
   try {
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.body.clinicId || 'demo';
     const {
       patientName,
       patientAge,
@@ -70,7 +74,7 @@ const createCertificate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Patient name, diagnosis, and dates are required' });
     }
 
-    const count = await Certificate.countDocuments();
+    const count = await Certificate.countDocuments({ clinicId });
     const year = new Date().getFullYear();
     let certNo = `CERT-${year}-${pad(count + 1, 4)}`;
 
@@ -166,23 +170,28 @@ const deleteCertificate = async (req, res) => {
   }
 };
 
-// Get all certificate templates
+// Get all certificate templates for the current clinic
 const getTemplates = async (req, res) => {
   try {
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const customTemplates = await CertificateTemplate.find().sort({ createdAt: -1 });
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.query.clinicId || 'demo';
+    const customTemplates = await CertificateTemplate.find({ clinicId }).sort({ createdAt: -1 }).lean();
 
-    const allTemplates = [...DEFAULT_TEMPLATES, ...customTemplates];
+    const formattedCustom = customTemplates.map(t => ({
+      ...t,
+      id: t._id.toString()
+    }));
+
+    const allTemplates = [...DEFAULT_TEMPLATES, ...formattedCustom];
     res.json({ success: true, count: allTemplates.length, data: allTemplates });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Add new custom certificate template
+// Add new custom certificate template for the current clinic
 const createTemplate = async (req, res) => {
   try {
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.body.clinicId || 'demo';
     const { templateName, title, body, category } = req.body;
 
     if (!templateName || !body) {

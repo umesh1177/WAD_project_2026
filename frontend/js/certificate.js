@@ -771,6 +771,7 @@ export async function renderCertificateView(container) {
 
       const certRecord = {
         certNo: currentCertNo,
+        clinicId,
         patientName: certPat.trim().toUpperCase(),
         patientAge: certPatAge.trim(),
         patientGender: certPatGender,
@@ -1020,6 +1021,7 @@ export async function renderCertificateView(container) {
         title: tplTitle,
         body: tplBody,
         category: tplCat,
+        clinicId,
         isDefault: false,
         createdAt: todayISO(),
       };

@@ -284,18 +284,28 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
 
         // Navigate doctor directly to consultation view with preselected patient!
         if (typeof onSelectPatientForConsultation === 'function') {
-          onSelectPatientForConsultation({ familyId: famId, patientId: patId });
+          onSelectPatientForConsultation({
+            familyId: famId,
+            patientId: patId,
+            autoOpenNewVisit: true,
+            complaint: item?.complaint || 'General OPD Consultation'
+          });
         } else {
           // Trigger navigation via global nav-case
           const caseNav = document.getElementById('nav-case');
           if (caseNav) {
             // Set global selection
-            window.__SELECTED_PATIENT_FOR_VISIT = { familyId: famId, patientId: patId };
+            window.__SELECTED_PATIENT_FOR_VISIT = {
+              familyId: famId,
+              patientId: patId,
+              autoOpenNewVisit: true,
+              complaint: item?.complaint || 'General OPD Consultation'
+            };
             caseNav.click();
           }
         }
 
-        showToast(`🩺 Opened consultation for Token ${token}`);
+        showToast(`🩺 Opened consultation workspace for Token ${token}`);
       });
     });
 
