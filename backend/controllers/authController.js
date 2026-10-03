@@ -36,7 +36,12 @@ const generateToken = (user) => {
 // Login user (Admin, Doctor, Receptionist)
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, expectedRole } = req.body;
+    const allowedRoles = ['admin', 'doctor', 'receptionist'];
+
+    if (expectedRole && !allowedRoles.includes(expectedRole)) {
+      return res.status(400).json({ success: false, message: 'Invalid portal role.' });
+    }
 
     if (!username || !password) {
       return res.status(400).json({ success: false, message: 'Please provide both username and password' });
@@ -54,6 +59,13 @@ const login = async (req, res) => {
     });
 
     if (user) {
+      if (expectedRole && user.role !== expectedRole) {
+        return res.status(403).json({
+          success: false,
+          error: 'ROLE_MISMATCH',
+          message: 'Invalid credentials. Please verify your username, password, and selected portal.',
+        });
+      }
       const isMatch = (user.password === password) || (await bcrypt.compare(password, user.password).catch(() => false));
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Invalid username or password' });
@@ -90,6 +102,13 @@ const login = async (req, res) => {
 
     // Default admin fallback
     if ((u === 'admin' || u === 'admin@dhyeyclinic.com') && password === 'admin123') {
+      if (expectedRole && expectedRole !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          error: 'ROLE_MISMATCH',
+          message: 'Invalid credentials. Please verify your username, password, and selected portal.',
+        });
+      }
       const existingAdmin = await User.findOne({ username: 'admin' });
       if (!existingAdmin) {
         await User.create({

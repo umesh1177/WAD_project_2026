@@ -14,7 +14,7 @@
           return;
         }
         const session = JSON.parse(raw);
-        if (!session || !session.token || (session.role !== 'receptionist' && session.role !== 'admin' && session.role !== 'doctor')) {
+        if (!session || !session.token || session.role !== 'receptionist') {
           window.location.replace('../login.html?auth=receptionist_required');
           return;
         }

@@ -561,18 +561,22 @@
         /* Floating Toast Container */
         .toast-box-container {
             position: fixed;
-            top: 24px;
-            right: 24px;
+            top: 16px;
+            left: 16px;
+            right: 16px;
             z-index: 99999;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            align-items: center;
+            pointer-events: none;
         }
 
         .toast-item {
             background: #1e293b;
             color: #ffffff;
-            padding: 12px 18px;
+            width: min(100%, 620px);
+            padding: 14px 18px;
             border-radius: 10px;
             font-size: 13px;
             font-weight: 700;
@@ -581,6 +585,7 @@
             gap: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
             animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: auto;
         }
 
         .toast-item.success { border-left: 4px solid #10b981; }
@@ -603,6 +608,55 @@
             }
             .form-content-panel {
                 padding: 36px 28px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            body {
+                align-items: flex-start;
+                padding: 12px;
+            }
+
+            .login-layout-card {
+                margin: 8px auto;
+                border-radius: 18px;
+            }
+
+            .form-content-panel {
+                padding: 28px 18px;
+            }
+
+            .form-header-box {
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            .form-header-box > a {
+                align-self: flex-start;
+            }
+
+            #roleSelector {
+                grid-template-columns: 1fr !important;
+            }
+
+            .role-btn {
+                min-height: 44px;
+            }
+
+            .quick-chips-wrap {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .quick-chip {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .toast-box-container {
+                top: 10px;
+                left: 10px;
+                right: 10px;
             }
         }
     </style>
@@ -931,7 +985,10 @@
             submitBtn.innerHTML = `<span>Signing In...</span> <i class="fa-solid fa-circle-notch fa-spin"></i>`;
 
             try {
-                const sessionData = await loginUser(u, p);
+                const sessionData = await loginUser(u, p, role);
+                if (sessionData.role !== role) {
+                    throw new Error('Invalid credentials. Please verify your username, password, and selected portal.');
+                }
                 window.showToast(`Signed in as ${sessionData.profile?.name || u}! Redirecting...`, 'success');
 
                 setTimeout(() => {
