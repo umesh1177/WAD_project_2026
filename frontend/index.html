@@ -29,14 +29,6 @@
       } catch (e) {
         window.location.replace('pages/login.html?auth=login_required');
       }
-
-      // Prevent browser Back button from navigating back to login without logging out
-      try {
-        history.pushState(null, document.title, location.href);
-        window.addEventListener('popstate', function () {
-          history.pushState(null, document.title, location.href);
-        });
-      } catch (e) {}
     })();
   </script>
   <!-- PWA Meta Tags & Manifest -->
@@ -740,5 +732,6 @@
     });
 
   </script>
+  <script src="js/back-logout-guard.js"></script>
 </body>
 </html>

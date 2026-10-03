@@ -4,35 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In &middot; Dhyey Clinic Management System</title>
-    <script>
-        (function() {
-            if (window.location.search.includes('logout=true')) {
-                try {
-                    localStorage.removeItem('clinic-auth-session');
-                    sessionStorage.clear();
-                } catch (e) {}
-                return;
-            }
-            function redirectIfActiveSession() {
-                try {
-                    const raw = localStorage.getItem('clinic-auth-session');
-                    if (!raw) return;
-                    const session = JSON.parse(raw);
-                    if (session && session.token) {
-                        if (session.role === 'admin') {
-                            window.location.replace('admin/dashboard.html');
-                        } else if (session.role === 'receptionist') {
-                            window.location.replace('receptionist/dashboard.html');
-                        } else {
-                            window.location.replace('../index.html');
-                        }
-                    }
-                } catch (e) {}
-            }
-            redirectIfActiveSession();
-            window.addEventListener('pageshow', redirectIfActiveSession);
-        })();
-    </script>
     <!-- PWA Meta Tags & Manifest -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#42645f" />
@@ -819,17 +790,8 @@
             sessionStorage.clear();
         }
 
-        // Check if user is already signed in
+        // Existing session initialized for user reference
         const existingSession = initAuth();
-        if (existingSession && !window.location.search.includes('logout=true')) {
-            if (existingSession.role === 'admin') {
-                window.location.replace('admin/dashboard.html');
-            } else if (existingSession.role === 'receptionist') {
-                window.location.replace('receptionist/dashboard.html');
-            } else {
-                window.location.replace('../index.html');
-            }
-        }
 
         // Handle URL parameters for authentication warnings
         const urlParams = new URLSearchParams(window.location.search);

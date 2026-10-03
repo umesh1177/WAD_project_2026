@@ -21,14 +21,6 @@
         window.location.replace('../login.html?auth=admin_required');
         return;
       }
-
-      // Prevent browser Back button from navigating back to login without logging out
-      try {
-        history.pushState(null, document.title, location.href);
-        window.addEventListener('popstate', function () {
-          history.pushState(null, document.title, location.href);
-        });
-      } catch (e) {}
     })();
   </script>
   <!-- PWA Meta Tags & Manifest -->
@@ -128,5 +120,6 @@
   <div class="toast-container" id="toastContainer"></div>
   <script src="../../js/admin.js"></script>
   <script type="module" src="../../js/pwa.js"></script>
+  <script src="../../js/back-logout-guard.js"></script>
 </body>
 </html>
