@@ -200,13 +200,19 @@ html, body {
   font-size: 20px;
 }
 
-.cms-brand-text {
+.cms-brand-text,
+#sidebar-clinic-name,
+#topbar-clinic-title,
+.cms-topbar-title,
+#rec-clinic-name,
+#statusbar-clinic-title,
+#statusbar-clinic-title b {
   font-family: 'Manrope', sans-serif;
   font-weight: 800;
   font-size: 16px;
   letter-spacing: -0.3px;
   line-height: 1.1;
-  color: var(--text);
+  color: #dc2626 !important;
 }
 
 .cms-brand-subtitle {

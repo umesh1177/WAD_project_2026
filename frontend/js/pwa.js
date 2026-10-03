@@ -130,7 +130,7 @@ function renderInstallBanner() {
       <i class="fa-solid fa-hospital"></i>
     </div>
     <div style="flex: 1; min-width: 0;">
-      <div style="font-weight: 800; font-size: 13px; margin-bottom: 2px;">Install Dhyey Clinic</div>
+      <div style="font-weight: 800; font-size: 13px; margin-bottom: 2px; color: #dc2626;">Install Dhyey Clinic</div>
       <div style="font-size: 11.5px; color: var(--text-muted, #64748b);">Fast access, offline records & desktop shortcut.</div>
     </div>
     <div style="display: flex; gap: 6px;">
