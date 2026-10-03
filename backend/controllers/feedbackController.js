@@ -32,10 +32,10 @@ const createFeedback = async (req, res, next) => {
       });
     }
 
-    const doctorId = req.user?.id || req.user?._id || 'demo-doc';
-    const activeDoctorName = doctorName || req.user?.name || 'Dr. Chirag Paghdal';
-    const activeClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const activeClinicName = clinicName || 'Dhyey Clinic & Hospital';
+    const doctorId = req.user?.id || req.user?._id || req.body.doctorId || 'demo-doc';
+    const activeDoctorName = doctorName || req.body.name || metaDetails?.senderName || metaDetails?.name || req.user?.name || req.user?.username || (clinicName === 'Landing Page Visitor' ? 'Website Visitor' : 'Dr. Chirag Paghdal');
+    const activeClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.body.clinicId || 'demo';
+    const activeClinicName = clinicName || req.body.clinic || req.user?.clinicName || (metaDetails?.source?.includes('Landing') ? 'Landing Page Visitor' : 'Dhyey Clinic & Hospital');
 
     const ticketNo = await generateTicketNo();
 

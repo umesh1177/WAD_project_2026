@@ -2,11 +2,14 @@ const mongoose = require('mongoose');
 const Patient = require('../models/Patient');
 const Family = require('../models/Family');
 const Consultation = require('../models/Consultation');
+const { getClinicQuery } = require('../utils/clinicHelper');
 
 const getPatients = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
+    const clinicQuery = await getClinicQuery(rawClinicId);
     const { familyId, search } = req.query;
-    const query = {};
+    const query = { ...clinicQuery };
     if (familyId) query.familyId = familyId;
     if (search && search.trim()) {
       query.name = { $regex: search.trim(), $options: 'i' };
@@ -21,21 +24,36 @@ const getPatients = async (req, res) => {
 
 const getPatientById = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { patId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { patId: id }] };
     }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
+    }
 
     const patient = await Patient.findOne(query);
     if (!patient) return res.status(404).json({ success: false, message: 'Patient not found' });
 
-    let visitQuery = { $or: [{ patientId: patient.patId }, ...(mongoose.Types.ObjectId.isValid(patient._id) ? [{ patientId: patient._id }, { patientId: String(patient._id) }] : [])] };
+    let visitQuery = {
+      $or: [{ patientId: patient.patId }, ...(mongoose.Types.ObjectId.isValid(patient._id) ? [{ patientId: patient._id }, { patientId: String(patient._id) }] : [])]
+    };
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      Object.assign(visitQuery, clinicQuery);
+    }
     const visits = await Consultation.find(visitQuery).sort({ date: -1 });
 
     let famQuery = { famId: patient.familyId };
     if (mongoose.Types.ObjectId.isValid(patient.familyId)) {
       famQuery = { $or: [{ famId: patient.familyId }, { _id: patient.familyId }] };
+    }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      Object.assign(famQuery, clinicQuery);
     }
     const family = await Family.findOne(famQuery);
 
@@ -61,31 +79,33 @@ const createPatientMember = async (req, res) => {
       phone
     } = req.body;
 
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.body.clinicId || 'demo';
+    const clinicQuery = await getClinicQuery(rawClinicId);
 
     let fam = await Family.findOne({
-      $or: [{ famId: familyId }, ...(mongoose.Types.ObjectId.isValid(familyId) ? [{ _id: familyId }] : [])]
+      $or: [{ famId: familyId }, ...(mongoose.Types.ObjectId.isValid(familyId) ? [{ _id: familyId }] : [])],
+      ...clinicQuery
     });
 
     let finalFamId = fam ? fam.famId : familyId;
 
     let finalPatId = patId;
     if (!finalPatId) {
-      const count = await Patient.countDocuments({ familyId: finalFamId });
+      const count = await Patient.countDocuments({ familyId: finalFamId, ...clinicQuery });
       let seq = count + 1;
       finalPatId = `${finalFamId}-${String(seq).padStart(2, '0')}`;
-      let exists = await Patient.findOne({ patId: finalPatId });
+      let exists = await Patient.findOne({ patId: finalPatId, ...clinicQuery });
       while (exists) {
         seq++;
         finalPatId = `${finalFamId}-${String(seq).padStart(2, '0')}`;
-        exists = await Patient.findOne({ patId: finalPatId });
+        exists = await Patient.findOne({ patId: finalPatId, ...clinicQuery });
       }
     }
 
-    // Check if patient already exists
-    let existingPat = await Patient.findOne({ patId: finalPatId });
+    // Check if patient already exists in this clinic
+    let existingPat = await Patient.findOne({ patId: finalPatId, ...clinicQuery });
     if (existingPat) {
-      Object.assign(existingPat, req.body);
+      Object.assign(existingPat, req.body, { clinicId: rawClinicId });
       await existingPat.save();
       return res.status(200).json({ success: true, data: existingPat });
     }
@@ -102,7 +122,7 @@ const createPatientMember = async (req, res) => {
       society: society || fam?.society || '',
       area: area || fam?.area || '',
       phone: phone || fam?.phone || '',
-      clinicId
+      clinicId: rawClinicId
     });
 
     await newPatient.save();
@@ -114,10 +134,15 @@ const createPatientMember = async (req, res) => {
 
 const updatePatient = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { patId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { patId: id }] };
+    }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
     }
 
     const updated = await Patient.findOneAndUpdate(query, { $set: req.body }, { new: true });
@@ -141,7 +166,8 @@ const updatePatient = async (req, res) => {
       if (req.body.allergy !== undefined) updateData.allergy = req.body.allergy;
 
       if (Object.keys(updateData).length > 0) {
-        await Family.findOneAndUpdate(famQuery, { $set: updateData });
+        const clinicQuery = rawClinicId ? await getClinicQuery(rawClinicId) : {};
+        await Family.findOneAndUpdate({ ...famQuery, ...clinicQuery }, { $set: updateData });
       }
     }
 
@@ -153,16 +179,23 @@ const updatePatient = async (req, res) => {
 
 const deletePatient = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { patId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { patId: id }] };
     }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
+    }
 
     const pat = await Patient.findOneAndDelete(query);
     if (pat) {
+      const clinicQuery = rawClinicId ? await getClinicQuery(rawClinicId) : {};
       await Consultation.deleteMany({
-        $or: [{ patientId: pat.patId }, ...(mongoose.Types.ObjectId.isValid(pat._id) ? [{ patientId: pat._id }] : [])]
+        $or: [{ patientId: pat.patId }, ...(mongoose.Types.ObjectId.isValid(pat._id) ? [{ patientId: pat._id }] : [])],
+        ...clinicQuery
       });
     }
     res.json({ success: true, message: 'Patient deleted successfully' });

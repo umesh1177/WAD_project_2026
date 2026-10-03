@@ -1,16 +1,19 @@
 const mongoose = require('mongoose');
 const Appointment = require('../models/Appointment');
+const { getClinicQuery } = require('../utils/clinicHelper');
 
 const getAppointments = async (req, res) => {
   try {
     const { date, status, clinicId } = req.query;
-    const activeClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || clinicId || 'demo';
-    const query = {};
-    if (activeClinicId) query.clinicId = activeClinicId;
-    if (date) query.date = date;
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || clinicId || 'demo';
+    const clinicQuery = await getClinicQuery(rawClinicId);
+    const query = { ...clinicQuery };
+    if (date) {
+      query.$or = [{ date: date }, { appointmentDate: date }];
+    }
     if (status) query.status = status;
 
-    const appointments = await Appointment.find(query).sort({ date: -1, arrivedAt: -1, createdAt: -1 });
+    const appointments = await Appointment.find(query).sort({ createdAt: -1 });
     res.json({ success: true, count: appointments.length, data: appointments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -31,20 +34,44 @@ const createAppointment = async (req, res) => {
       age,
       gender,
       complaint,
+      reason,
       vitals,
       date,
+      appointmentDate,
       status
     } = req.body;
 
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.body.clinicId || 'demo';
-    const today = date || new Date().toISOString().slice(0, 10);
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.body.clinicId || 'demo';
+    const clinicQuery = await getClinicQuery(rawClinicId);
+    const today = date || appointmentDate || new Date().toISOString().slice(0, 10);
     const patName = (patientName || name || 'Patient').trim();
+    const finalComplaint = complaint || reason || 'General OPD Consultation';
 
     let finalToken = token;
     if (!finalToken) {
-      const count = await Appointment.countDocuments({ date: today, clinicId });
-      finalToken = `T-${String(count + 1).padStart(2, '0')}`;
+      const count = await Appointment.countDocuments({
+        $or: [{ date: today }, { appointmentDate: today }],
+        ...clinicQuery
+      });
+      let seq = count + 1;
+      finalToken = `T-${String(seq).padStart(2, '0')}`;
+      let exists = await Appointment.findOne({
+        token: finalToken,
+        $or: [{ date: today }, { appointmentDate: today }],
+        ...clinicQuery
+      });
+      while (exists) {
+        seq++;
+        finalToken = `T-${String(seq).padStart(2, '0')}`;
+        exists = await Appointment.findOne({
+          token: finalToken,
+          $or: [{ date: today }, { appointmentDate: today }],
+          ...clinicQuery
+        });
+      }
     }
+
+    const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     const newAppointment = new Appointment({
       token: finalToken,
@@ -57,12 +84,15 @@ const createAppointment = async (req, res) => {
       area: area || '',
       age: age || '',
       gender: gender || 'Male',
-      complaint: complaint || 'General OPD Consultation',
+      complaint: finalComplaint,
+      reason: finalComplaint,
       vitals: vitals || {},
       status: status || 'Waiting',
       date: today,
-      clinicId,
-      arrivedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+      appointmentDate: today,
+      clinicId: rawClinicId,
+      arrivedAt: currentTime,
+      appointmentTime: currentTime
     });
 
     await newAppointment.save();
@@ -107,3 +137,4 @@ const deleteAppointment = async (req, res) => {
 };
 
 module.exports = { getAppointments, createAppointment, updateAppointment, deleteAppointment };
+

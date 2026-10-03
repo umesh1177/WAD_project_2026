@@ -199,8 +199,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
   const matchedAdminClinic = adminClinics.find(c => c.id === clinicId || c.name === activeClinicObj?.name || c.id === activeClinicObj?.id);
   const matchedAdminDoc = adminDocs.find(d => d.email === session?.profile?.username || d.username === session?.profile?.username || d.clinicId === clinicId);
 
-  let clinicServices = matchedAdminClinic?.services || matchedAdminDoc?.services || activeClinicObj?.services || session?.profile?.services;
-  if (!clinicServices || !Array.isArray(clinicServices)) {
+  let clinicServices = window.currentClinicServices || session?.profile?.services || activeClinicObj?.services || matchedAdminClinic?.services || matchedAdminDoc?.services;
+  if (!clinicServices || !Array.isArray(clinicServices) || clinicServices.length === 0) {
     clinicServices = clinicId === 'demo'
       ? ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
       : ['digitalPrescription', 'certificates', 'billing'];
@@ -214,6 +214,34 @@ export async function renderConsultationView(container, selection, onSelectPatie
   const initResolved = resolvePatientAndFamily(db, familyId, patientId);
   let family = initResolved.family;
   let patient = initResolved.patient;
+
+  async function loadLivePatientVisits(pat) {
+    if (!pat) return;
+    const pIdVal = pat.patId || pat.id || pat._id;
+    try {
+      const liveRes = await apiFetch(`/consultations?patientId=${encodeURIComponent(pIdVal)}`);
+      if (liveRes?.data && Array.isArray(liveRes.data)) {
+        pat.visits = liveRes.data.map((c) => ({
+          ...c,
+          id: c._id || c.caseId || c.id,
+          _id: c._id,
+          caseId: c.caseId || c._id || c.id,
+          date: (c.date || '').slice(0, 10),
+          time: c.time || '',
+          charge: Number(c.charge || 0),
+          received: Number(c.received !== undefined ? c.received : (c.paid !== undefined ? c.paid : 0)),
+          paid: Number(c.paid !== undefined ? c.paid : (c.received !== undefined ? c.received : 0)),
+          due: Number(c.due !== undefined ? c.due : Math.max(0, Number(c.charge || 0) - Number(c.received || c.paid || 0))),
+          labReport: c.labReport && typeof c.labReport === 'object' ? c.labReport : null,
+        }));
+        pat.visits.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+      }
+    } catch (e) {}
+  }
+
+  if (patient) {
+    await loadLivePatientVisits(patient);
+  }
 
   // Views state: 'case' | 'family-due'
   let currentSubView = 'case';
@@ -589,18 +617,14 @@ export async function renderConsultationView(container, selection, onSelectPatie
                       ${filterDate ? `<button type="button" id="btn-show-all-dates-empty" class="cms-btn cms-btn-ghost cms-btn-sm" style="margin-top: 8px; border: 1px solid var(--border);"><i class="fa-solid fa-arrow-rotate-left"></i> Show All Visits</button>` : ''}
                     </div>`
                   : visits
-                      .map((v, idx) => {
+                      .map((v) => {
                         const visitKey = v.id || v.caseId;
                         // If this card is currently opened in inline editable mode (Matching user photo)
                         if (inlineEditingVisitId && (inlineEditingVisitId === visitKey || inlineEditingVisitId === v.caseId || inlineEditingVisitId === v.id)) {
                           return renderHistoryCardEditableHTML(v);
                         }
-                        // Latest 2 entries: Full Card View (unless due filter is active, where all due are full cards)
-                        if (idx < 2 || (showDueCasesOnTop && Number(v.due) > 0)) {
-                          return renderHistoryCardFullHTML(v);
-                        }
-                        // Older entries: Compact Row View with Hover Expand
-                        return renderHistoryRowCompactHTML(v);
+                        // Render full readable card for all historical visits
+                        return renderHistoryCardFullHTML(v);
                       })
                       .join('')
               }
@@ -983,12 +1007,12 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
               <div style="display: flex; align-items: center; gap: 6px;">
                 <label style="font-weight: 800; font-size: 12px; color: var(--text);">PAID ₹</label>
-                <input type="number" class="cms-input inline-edit-paid" style="width: 80px; padding: 4px 8px; font-weight: 800; font-family: var(--font-mono); background: #fff; border-color: #0f5132;" value="${v.received !== undefined && v.received !== null ? v.received : ''}" placeholder="0" min="0" step="10" />
+                <input type="number" class="cms-input inline-edit-paid" style="width: 80px; padding: 4px 8px; font-weight: 800; font-family: var(--font-mono); background: #fff; border-color: #0f5132;" value="${v.received !== undefined && v.received !== null ? v.received : (v.paid !== undefined && v.paid !== null ? v.paid : '')}" placeholder="0" min="0" step="10" />
               </div>
 
               <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 12px;">
                 <span>DUE:</span>
-                <span class="inline-edit-due-label font-mono" style="font-size: 13px; font-weight: 800; color: ${Number(v.due) > 0 ? '#b91c1c' : '#15803d'};">₹${Number(v.due) || 0}</span>
+                <span class="inline-edit-due-label font-mono" style="font-size: 13px; font-weight: 800; color: ${Math.max(0, Number(v.charge || 0) - Number(v.received !== undefined ? v.received : (v.paid !== undefined ? v.paid : 0))) > 0 ? '#b91c1c' : '#15803d'};">₹${Math.max(0, Number(v.charge || 0) - Number(v.received !== undefined ? v.received : (v.paid !== undefined ? v.paid : 0)))}</span>
               </div>
             </div>
 
@@ -1563,12 +1587,13 @@ export async function renderConsultationView(container, selection, onSelectPatie
   // ATTACH DOM EVENT HANDLERS
   // ==========================================
   function attachEventHandlers() {
-    setupPatientSearch(container, db, (fId, pId) => {
+    setupPatientSearch(container, db, async (fId, pId) => {
       familyId = fId;
       patientId = pId;
       const res = resolvePatientAndFamily(db, fId, pId);
       family = res.family;
       patient = res.patient;
+      await loadLivePatientVisits(patient);
       isNewVisitOpen = false;
       editingVisitId = null;
       showDueCasesOnTop = false;
@@ -1579,7 +1604,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
     // Quick select recent patients in empty state
     container.querySelectorAll('.quick-select-pat-item').forEach((item) => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', async () => {
         const fId = item.getAttribute('data-famid');
         const pId = item.getAttribute('data-patid');
         familyId = fId;
@@ -1587,6 +1612,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
         const res = resolvePatientAndFamily(db, fId, pId);
         family = res.family;
         patient = res.patient;
+        await loadLivePatientVisits(patient);
         isNewVisitOpen = false;
         editingVisitId = null;
         showDueCasesOnTop = false;
@@ -1908,6 +1934,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
     if (chargeInput) chargeInput.addEventListener('input', updateFinancials);
     if (paidInput) paidInput.addEventListener('input', updateFinancials);
+    updateFinancials();
 
     // Form Submit Handler
     const form = container.querySelector('#form-case-entry');
@@ -1957,6 +1984,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
         if (!patient.visits) patient.visits = [];
 
+        let targetVisitToPrint = null;
         if (editingVisitId) {
           // Update existing visit
           const vIdx = patient.visits.findIndex((v) => (v.id === editingVisitId || v.caseId === editingVisitId || v._id === editingVisitId));
@@ -1981,6 +2009,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
               due,
             };
             patient.visits[vIdx] = updatedVisit;
+            targetVisitToPrint = updatedVisit;
 
             const targetId = updatedVisit._id || updatedVisit.caseId || editingVisitId;
             try {
@@ -2045,16 +2074,8 @@ export async function renderConsultationView(container, selection, onSelectPatie
           }
 
           patient.visits.unshift(newVisit);
+          targetVisitToPrint = newVisit;
           showToast(`✨ Visit #${nextVisitNum} saved!`);
-
-          // Open Prescription Print Preview only if Digital Prescription service is enabled
-          if (hasDigitalRx) {
-            if (onPrintRequested) {
-              onPrintRequested(patient, newVisit);
-            } else {
-              openPrescriptionModal(patient, newVisit);
-            }
-          }
         }
 
         await window.syncVisitsToDB();
@@ -2062,6 +2083,17 @@ export async function renderConsultationView(container, selection, onSelectPatie
         editingVisitId = null;
         attachedLabReport = null;
         renderView();
+
+        // Open Prescription Print Preview modal
+        if (targetVisitToPrint && hasDigitalRx) {
+          setTimeout(() => {
+            if (onPrintRequested) {
+              onPrintRequested(patient, targetVisitToPrint);
+            } else {
+              openPrescriptionModal(patient, targetVisitToPrint);
+            }
+          }, 50);
+        }
       });
     }
 
@@ -2219,6 +2251,7 @@ export async function renderConsultationView(container, selection, onSelectPatie
 
       if (inlineChInput) inlineChInput.addEventListener('input', updateInlineDue);
       if (inlinePdInput) inlinePdInput.addEventListener('input', updateInlineDue);
+      updateInlineDue();
 
       // Inline Delete Case button handler
       container.querySelectorAll('.btn-inline-delete-case').forEach((btn) => {

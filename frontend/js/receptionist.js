@@ -369,79 +369,94 @@ function setupReceptionistMemberForm(container) {
 }
 
 // ---- Direct Queue Push (No popup required) ----
-async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation') {
+async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation', prefilledData = null) {
   const curSession = getAuthSession();
   const cId = curSession?.profile?.activeClinicId || clinicId || 'demo';
-  const localDb = getLocalDB(cId);
 
-  let patName = 'Patient';
-  let famHead = 'Self';
-  let phone = '';
-  let area = '';
-  let age = '';
-  let gender = 'Male';
+  let patName = prefilledData?.name || prefilledData?.patientName || 'Patient';
+  let famHead = prefilledData?.familyHead || prefilledData?.headName || 'Self';
+  let phone = prefilledData?.phone || '';
+  let area = prefilledData?.area || '';
+  let age = prefilledData?.age || '';
+  let gender = prefilledData?.gender || 'Male';
+  let finalFamId = familyId || prefilledData?.familyId || '';
+  let finalPatId = patientId || prefilledData?.patId || prefilledData?.id || '';
 
-  // Check local database
-  const fam = localDb?.families?.[familyId];
-  if (fam) {
-    famHead = fam.headName || '';
-    phone = fam.phone || '';
-    area = fam.area || fam.society || '';
-    const pat = fam.patients?.[patientId] || Object.values(fam.patients || {}).find(p => p.patId === patientId || p.id === patientId || p._id === patientId);
-    if (pat) {
-      patName = pat.name || patName;
-      age = pat.age || age;
-      gender = pat.gender || gender;
-      if (pat.phone) phone = pat.phone;
+  // If details are missing, look up from local DB / API
+  if (!prefilledData || !prefilledData.name || patName === 'Patient') {
+    try {
+      const [patRes, famRes] = await Promise.all([
+        apiFetch('/patients').catch(() => ({ data: [] })),
+        apiFetch('/families').catch(() => ({ data: [] }))
+      ]);
+      const allPats = patRes.data || [];
+      const allFams = famRes.data || [];
+
+      const foundPat = allPats.find(p =>
+        (finalPatId && (p.patId === finalPatId || p._id === finalPatId || p.id === finalPatId)) ||
+        (finalFamId && (p.familyId === finalFamId || (p.familyId && (p.familyId.famId === finalFamId || p.familyId._id === finalFamId))))
+      );
+
+      if (foundPat) {
+        patName = foundPat.name || patName;
+        age = foundPat.age || age;
+        gender = foundPat.gender || gender;
+        if (foundPat.phone) phone = foundPat.phone;
+        if (foundPat.area) area = foundPat.area;
+        if (!finalPatId) finalPatId = foundPat.patId || foundPat._id || foundPat.id;
+        if (!finalFamId) finalFamId = typeof foundPat.familyId === 'object' ? (foundPat.familyId.famId || foundPat.familyId._id) : foundPat.familyId;
+      }
+
+      const foundFam = allFams.find(f =>
+        (finalFamId && (f.famId === finalFamId || f._id === finalFamId || f.id === finalFamId))
+      );
+      if (foundFam) {
+        famHead = foundFam.headName || famHead;
+        if (!phone && foundFam.phone) phone = foundFam.phone;
+        if (!area && (foundFam.area || foundFam.society)) area = [foundFam.society, foundFam.area].filter(Boolean).join(', ');
+      }
+    } catch (e) {
+      console.warn('Queue lookup fallback error:', e);
     }
   }
-
-  // Check API
-  try {
-    const pRes = await apiFetch('/patients');
-    const allPats = pRes.data || [];
-    const patient = allPats.find(p => p._id === patientId || p.patId === patientId || p.id === patientId || (fam && p.name === patName));
-    if (patient) {
-      patName = patient.name || patName;
-      age = patient.age || age;
-      gender = patient.gender || gender;
-      if (patient.phone) phone = patient.phone;
-      if (patient.area) area = patient.area;
-      if (patient.familyId?.headName) famHead = patient.familyId.headName;
-    }
-  } catch (err) {}
 
   try {
     const res = await apiFetch('/appointments', {
       method: 'POST',
       body: {
-        patientId: patientId || 'PAT-0001',
+        patientId: finalPatId || 'PAT-0001',
         patientName: patName,
         name: patName,
-        familyId: familyId || 'FAM-0001',
+        familyId: finalFamId || 'FAM-0001',
         familyHead: famHead || patName,
-        age,
-        gender,
-        phone,
-        area,
-        complaint,
-        vitals: {},
+        age: age || '',
+        gender: gender || 'Male',
+        phone: phone || '',
+        area: area || '',
+        complaint: complaint || 'General OPD Consultation',
+        reason: complaint || 'General OPD Consultation',
+        vitals: prefilledData?.vitals || {},
         date: todayISO(),
+        appointmentDate: todayISO(),
         status: 'Waiting',
         clinicId: cId
       }
     });
+
     if (res && res.data?.token) {
       showToast(`✅ Token ${res.data.token} generated: ${patName} added to Patient Queue!`);
     } else {
-      showToast(`✅ ${patName} added to Patient Queue`);
+      showToast(`✅ ${patName} added to Patient Queue!`);
     }
   } catch (err) {
-    console.warn('Backend queue push sync note:', err);
-    showToast('Failed to add to patient queue', 'error');
+    console.error('Backend queue push error:', err);
+    showToast(`Failed to add to patient queue: ${err.message || 'Error'}`, 'error');
   }
+
+  updateQueueBadge();
   navigateTo('queue');
 }
+
 
 // ---- Dashboard View ----
 async function renderDashboard(container) {
@@ -450,12 +465,17 @@ async function renderDashboard(container) {
   let queue = [];
   try {
     const patRes = await apiFetch('/patients');
-    if (patRes.success) {
+    const famRes = await apiFetch('/families');
+    if (patRes.success && Array.isArray(patRes.data)) {
       totalPatients = patRes.data.length;
+    }
+    if (famRes.success && Array.isArray(famRes.data)) {
+      familiesCount = famRes.data.length;
+    } else if (patRes.success && Array.isArray(patRes.data)) {
       familiesCount = new Set(patRes.data.map(p => p.familyId && p.familyId._id ? p.familyId._id : p.familyId)).size;
     }
     const aptRes = await apiFetch('/appointments');
-    if (aptRes.success) queue = aptRes.data || [];
+    if (aptRes.success && Array.isArray(aptRes.data)) queue = aptRes.data;
   } catch (e) { }
 
   const waiting = queue.filter(q => !q.status || q.status === 'Waiting');
@@ -791,103 +811,160 @@ async function openQueueDetailModal(token) {
 // ---- Search & Direct Push View ----
 async function renderSearchView(container) {
   let allPats = [];
+  let allFams = [];
   try {
-    const res = await apiFetch('/patients');
-    if (res.success && res.data) {
-      allPats = res.data.map(p => ({
-        ...p,
-        id: p._id || p.patId,
-        familyId: p.familyId ? (p.familyId._id || p.familyId) : '',
-        familyHead: p.familyId && p.familyId.headName ? p.familyId.headName : (p.familyHead || 'Self'),
-        familyPhone: p.phone,
-        area: p.area
-      }));
+    const [pRes, fRes] = await Promise.all([
+      apiFetch('/patients').catch(() => ({ data: [] })),
+      apiFetch('/families').catch(() => ({ data: [] }))
+    ]);
+    if (fRes.success && Array.isArray(fRes.data)) {
+      allFams = fRes.data;
     }
-  } catch (e) { }
+    if (pRes.success && Array.isArray(pRes.data)) {
+      const famMap = {};
+      allFams.forEach(f => {
+        const fid = f.famId || f._id || f.id;
+        if (fid) famMap[fid] = f;
+      });
+
+      allPats = pRes.data.map(p => {
+        const rawFid = p.familyId ? (typeof p.familyId === 'object' ? (p.familyId.famId || p.familyId._id || p.familyId.id) : p.familyId) : '';
+        const matchedFam = famMap[rawFid] || (typeof p.familyId === 'object' ? p.familyId : null);
+        return {
+          ...p,
+          id: p._id || p.patId,
+          patId: p.patId || p._id || p.id,
+          familyId: rawFid,
+          familyHead: matchedFam?.headName || p.familyHead || p.name || 'Self',
+          familyPhone: p.phone || matchedFam?.phone || '',
+          phone: p.phone || matchedFam?.phone || '',
+          area: p.area || matchedFam?.area || matchedFam?.society || 'General',
+          society: p.society || matchedFam?.society || ''
+        };
+      });
+    }
+  } catch (e) {
+    console.error('Error fetching patients for search:', e);
+  }
 
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:16px;">
-      <div class="cms-card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-        <form id="rec-search-form" class="cms-search-box" style="flex:1;min-width:280px;">
-          <span class="cms-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-          <input type="text" id="rec-search-input" class="cms-search-input" placeholder="Type patient name, ID, family head, mobile number..." value="${globalSearchQuery}" autofocus />
-        </form>
-        <div style="font-size:13px;font-weight:700;color:var(--text-muted);">
-          <span id="rec-search-count">${allPats.length}</span> registered patients
+      <div class="cms-card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:280px;">
+          <div class="cms-search-box" style="flex:1;position:relative;">
+            <span class="cms-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input type="text" id="rec-search-input" class="cms-search-input" placeholder="Type patient name, ID, family head, mobile number..." value="${globalSearchQuery}" autofocus style="width:100%;padding-left:36px;" />
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--text-muted);">
+            <span id="rec-search-count">${allPats.length}</span> registered patients
+          </div>
+          <button type="button" onclick="recNav('family')" class="cms-btn cms-btn-primary cms-btn-sm" style="font-size:12px;padding:7px 14px;">
+            <i class="fa-solid fa-user-plus"></i> Register New Family (F1)
+          </button>
         </div>
       </div>
-      <div id="rec-search-results" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+      <div id="rec-search-results" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px;">
         ${buildSearchCards(allPats, globalSearchQuery)}
       </div>
     </div>
   `;
 
-  container.querySelector('#rec-search-input')?.addEventListener('input', e => {
-    globalSearchQuery = e.target.value;
-    const grid = container.querySelector('#rec-search-results');
-    if (grid) {
-      grid.innerHTML = buildSearchCards(allPats, globalSearchQuery);
-      wireSearchPushBtns(container);
-    }
-  });
-  wireSearchPushBtns(container);
+  const inputEl = container.querySelector('#rec-search-input');
+  const countEl = container.querySelector('#rec-search-count');
+  const resultsGrid = container.querySelector('#rec-search-results');
+
+  if (inputEl) {
+    inputEl.focus();
+    inputEl.addEventListener('input', (e) => {
+      globalSearchQuery = e.target.value;
+      if (resultsGrid) {
+        resultsGrid.innerHTML = buildSearchCards(allPats, globalSearchQuery);
+        wireSearchPushBtns(resultsGrid, allPats);
+      }
+      const filteredCount = getFilteredPatients(allPats, globalSearchQuery).length;
+      if (countEl) countEl.textContent = filteredCount;
+    });
+  }
+
+  wireSearchPushBtns(resultsGrid, allPats);
+}
+
+function getFilteredPatients(list, q) {
+  const ql = (q || '').trim().toLowerCase();
+  if (!ql) return list;
+  return list.filter(p =>
+    (p.name || '').toLowerCase().includes(ql) ||
+    (p.patId || p.id || '').toLowerCase().includes(ql) ||
+    (p.familyHead || '').toLowerCase().includes(ql) ||
+    (p.familyId || '').toLowerCase().includes(ql) ||
+    (p.phone || p.familyPhone || '').includes(ql) ||
+    (p.area || '').toLowerCase().includes(ql) ||
+    (p.society || '').toLowerCase().includes(ql)
+  );
 }
 
 function buildSearchCards(list, q) {
-  const ql = (q || '').trim().toLowerCase();
-  const filtered = list.filter(p => {
-    if (!ql) return true;
-    return (p.name || '').toLowerCase().includes(ql)
-      || (p.patId || p.id || '').toLowerCase().includes(ql)
-      || (p.familyHead || '').toLowerCase().includes(ql)
-      || (p.familyId || '').toLowerCase().includes(ql)
-      || (p.phone || p.familyPhone || '').includes(ql)
-      || (p.area || '').toLowerCase().includes(ql);
-  });
+  const filtered = getFilteredPatients(list, q);
 
-  if (!filtered.length) return `
-    <div style="grid-column:1/-1;" class="cms-card" style="text-align:center;padding:40px;">
-      <i class="fa-solid fa-user-xmark" style="font-size:32px;opacity:0.4;display:block;margin-bottom:8px;"></i>
-      <div style="font-size:15px;font-weight:700;color:var(--text);">No matching patient found</div>
-      <p style="font-size:12px;margin-top:4px;color:var(--text-muted);">Register a new family to add this patient.</p>
-      <button type="button" onclick="recNav('family')" class="cms-btn cms-btn-primary" style="margin-top:12px;font-size:12.5px;padding:8px 18px;">
-        <i class="fa-solid fa-id-card"></i> Register Family Head (F1)
-      </button>
-    </div>
-  `;
+  if (!filtered.length) {
+    return `
+      <div style="grid-column:1/-1;" class="cms-card" style="text-align:center;padding:45px 20px;">
+        <i class="fa-solid fa-user-xmark" style="font-size:36px;opacity:0.4;display:block;margin-bottom:10px;color:var(--text-muted);"></i>
+        <div style="font-size:16px;font-weight:800;color:var(--text);">No matching patient found</div>
+        <p style="font-size:12.5px;margin-top:4px;color:var(--text-muted);">
+          ${q ? `No patient or family found matching "<b>${q}</b>".` : 'No registered patients found for this clinic.'}
+        </p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;">
+          <button type="button" onclick="recNav('family')" class="cms-btn cms-btn-primary" style="font-size:12.5px;padding:8px 18px;">
+            <i class="fa-solid fa-id-card"></i> Register Family Head (F1)
+          </button>
+          <button type="button" onclick="recNav('member')" class="cms-btn cms-btn-ghost" style="font-size:12.5px;padding:8px 18px;border:1px solid var(--border);">
+            <i class="fa-solid fa-user-plus"></i> Add Member (F2)
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
   return filtered.map(p => `
-    <div class="cms-card" style="display:flex;flex-direction:column;gap:12px;justify-content:space-between;transition:transform .15s,box-shadow .15s;"
+    <div class="cms-card" style="display:flex;flex-direction:column;gap:12px;justify-content:space-between;border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;transition:transform .15s,box-shadow .15s;"
       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-md)'"
       onmouseout="this.style.transform='';this.style.boxShadow=''">
       <div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
           <div>
-            <span class="cms-pill cms-badge-paid font-mono" style="font-size:10px;">${p.patId || p.id}</span>
-            <div style="font-size:15px;font-weight:800;color:var(--text);margin:5px 0 2px;">${p.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${p.age ? p.age + ' yrs' : ''} ${p.gender ? '· ' + p.gender : ''} · <b>${p.relation || 'Self'}</b></div>
+            <span class="cms-pill cms-badge-paid font-mono" style="font-size:11px;font-weight:800;">${p.patId || p.id}</span>
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin:6px 0 2px;">${p.name}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${p.age ? p.age + ' Yrs' : 'Adult'} ${p.gender ? '· ' + p.gender : ''} · <b style="color:var(--primary);">${p.relation || 'Self'}</b></div>
           </div>
-          ${p.bloodGroup ? `<span class="cms-pill" style="background:var(--danger-soft);color:var(--danger);font-size:10.5px;">${p.bloodGroup}</span>` : ''}
+          ${p.bloodGroup ? `<span class="cms-pill" style="background:var(--danger-soft);color:var(--danger);font-size:10.5px;font-weight:700;">${p.bloodGroup}</span>` : ''}
         </div>
-        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:8px 10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);">
-          <div><i class="fa-solid fa-people-roof" style="color:var(--primary);"></i> Head: <b style="color:var(--text);">${p.familyHead}</b></div>
-          <div style="margin-top:2px;"><i class="fa-solid fa-phone"></i> ${p.phone || p.familyPhone || '-'} &bull; ${p.area || 'General'}</div>
+        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:9px 11px;margin-top:10px;font-size:11.5px;color:var(--text-muted);border:1px solid var(--border-subtle, var(--border));">
+          <div><i class="fa-solid fa-people-roof" style="color:var(--primary);width:16px;"></i> Head: <b style="color:var(--text);">${p.familyHead}</b> ${p.familyId ? `(FAM ${p.familyId})` : ''}</div>
+          <div style="margin-top:3px;"><i class="fa-solid fa-phone" style="color:var(--primary);width:16px;"></i> ${p.phone || p.familyPhone || '-'} &bull; ${p.area || 'General'}</div>
         </div>
       </div>
       <button type="button" class="cms-btn cms-btn-primary btn-push-queue"
         data-patid="${p.patId || p.id}" data-famid="${p.familyId}"
-        style="font-size:12.5px;justify-content:center;">
+        style="font-size:12.5px;justify-content:center;padding:8px 14px;font-weight:700;">
         <i class="fa-solid fa-arrow-right-to-bracket"></i> Add to Patient Queue
       </button>
     </div>
   `).join('');
 }
 
-function wireSearchPushBtns(container) {
-  (container || document).querySelectorAll('.btn-push-queue').forEach(btn => {
+function wireSearchPushBtns(containerEl, allPatsList) {
+  if (!containerEl) return;
+  containerEl.querySelectorAll('.btn-push-queue').forEach(btn => {
     btn.addEventListener('click', () => {
-      directPushToQueue(btn.dataset.famid, btn.dataset.patid);
+      const patId = btn.getAttribute('data-patid');
+      const famId = btn.getAttribute('data-famid');
+      const matched = (allPatsList || []).find(p => p.patId === patId || p.id === patId || p._id === patId);
+      directPushToQueue(famId, patId, 'General OPD Consultation', matched);
     });
   });
 }
+
 

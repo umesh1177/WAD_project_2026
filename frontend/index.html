@@ -208,7 +208,6 @@
     import { renderCertificateView } from './js/certificate.js';
     import { renderFeedbackView } from './js/feedback.js';
     import { renderAppointmentsView } from './js/appointment.js';
-    import { renderFollowUpsView } from './js/followUp.js';
     import { renderReportsView } from './js/reports.js';
     import { renderMastersView } from './js/masters.js';
 
@@ -500,8 +499,6 @@
         renderCertificateView(container);
       } else if (currentView === 'feedback') {
         renderFeedbackView(container);
-      } else if (currentView === 'followups') {
-        renderFollowUpsView(container);
       } else if (currentView === 'reports') {
         renderReportsView(container);
       }
@@ -537,56 +534,50 @@
       }
     }
 
-    function searchPatients(q) {
-      const curSession = initAuth();
-      const db = getLocalDB(curSession?.profile?.activeClinicId || 'demo');
+    async function searchPatients(q) {
       const results = [];
       const query = (q || '').toLowerCase().trim();
       if (!query) return results;
 
-      for (const fam of Object.values(db.families || {})) {
-        // Match family head
-        const famMatches = (fam.id && fam.id.toLowerCase().includes(query)) ||
-                           (fam.headName && fam.headName.toLowerCase().includes(query)) ||
-                           (fam.phone && fam.phone.includes(query)) ||
-                           (fam.area && fam.area.toLowerCase().includes(query)) ||
-                           (fam.society && fam.society.toLowerCase().includes(query));
+      try {
+        const res = await apiFetch('/families');
+        if (res && res.data && Array.isArray(res.data)) {
+          for (const fam of res.data) {
+            const fid = fam.famId || fam.id || fam._id;
+            const headName = fam.headName || fam.name || '';
+            const famMatches = (fid && String(fid).toLowerCase().includes(query)) ||
+                               (headName && headName.toLowerCase().includes(query)) ||
+                               (fam.phone && String(fam.phone).includes(query)) ||
+                               (fam.area && fam.area.toLowerCase().includes(query)) ||
+                               (fam.society && fam.society.toLowerCase().includes(query));
 
-        for (const pat of Object.values(fam.patients || {})) {
-          let patMatches = famMatches ||
-                           (pat.id && pat.id.toLowerCase().includes(query)) ||
-                           (pat.name && pat.name.toLowerCase().includes(query)) ||
-                           (pat.phone && pat.phone.includes(query));
+            const patientsList = Array.isArray(fam.patients) ? fam.patients : Object.values(fam.patients || {});
+            for (const pat of patientsList) {
+              const pid = pat.patId || pat.id || pat._id;
+              const pname = pat.name || '';
+              let patMatches = famMatches ||
+                               (pid && String(pid).toLowerCase().includes(query)) ||
+                               (pname && pname.toLowerCase().includes(query)) ||
+                               (pat.phone && String(pat.phone).includes(query));
 
-          let matchedCase = null;
-          if (!patMatches && pat.visits) {
-            for (const v of pat.visits) {
-              if ((v.caseId && String(v.caseId).toLowerCase().includes(query)) ||
-                  (v.complaint && v.complaint.toLowerCase().includes(query)) ||
-                  (v.diagnosis && v.diagnosis.toLowerCase().includes(query))) {
-                patMatches = true;
-                matchedCase = v.caseId;
-                break;
+              if (patMatches) {
+                results.push({
+                  familyId: fid,
+                  headName: headName,
+                  patientId: pid,
+                  patientName: pname,
+                  age: pat.age,
+                  gender: pat.gender,
+                  relation: pat.relation,
+                  phone: pat.phone || fam.phone,
+                  area: pat.area || fam.area,
+                  matchedCase: null
+                });
               }
             }
           }
-
-          if (patMatches) {
-            results.push({
-              familyId: fam.id,
-              headName: fam.headName,
-              patientId: pat.id,
-              patientName: pat.name,
-              age: pat.age,
-              gender: pat.gender,
-              relation: pat.relation,
-              phone: pat.phone || fam.phone,
-              area: pat.area || fam.area,
-              matchedCase
-            });
-          }
         }
-      }
+      } catch (e) {}
       return results;
     }
 
@@ -653,20 +644,24 @@
       });
     }
 
+    let searchDebounce = null;
     searchInput.addEventListener('input', (e) => {
       const q = e.target.value.trim();
+      clearTimeout(searchDebounce);
       if (!q) {
         searchDropdown.style.display = 'none';
         return;
       }
-      const results = searchPatients(q);
-      renderSearchDropdown(results, q);
+      searchDebounce = setTimeout(async () => {
+        const results = await searchPatients(q);
+        renderSearchDropdown(results, q);
+      }, 200);
     });
 
-    searchInput.addEventListener('focus', (e) => {
+    searchInput.addEventListener('focus', async (e) => {
       const q = e.target.value.trim();
       if (q) {
-        const results = searchPatients(q);
+        const results = await searchPatients(q);
         renderSearchDropdown(results, q);
       }
     });
@@ -677,12 +672,12 @@
       }
     });
 
-    searchForm.addEventListener('submit', (e) => {
+    searchForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const q = searchInput.value.toLowerCase().trim();
       if (!q) return;
 
-      const results = searchPatients(q);
+      const results = await searchPatients(q);
       if (results.length > 0) {
         const topResult = results[0];
         navigateTo('case', { familyId: topResult.familyId, patientId: topResult.patientId });

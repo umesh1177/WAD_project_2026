@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema({
   clinicId: { type: String },
   clinic: { type: String },
   clinics: [{ id: String, name: String }],
-  activeClinicId: { type: String, default: 'demo' },
+  activeClinicId: { type: String },
   services: [{ type: String }],
   specialty: { type: String },
   registration: { type: String },

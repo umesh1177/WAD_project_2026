@@ -364,7 +364,14 @@ const updateClinic = async (req, res) => {
             } else {
                 existingRec.clinicId = clinic.clinicId;
                 existingRec.clinic = clinic.name;
+                existingRec.activeClinicId = clinic.clinicId;
+                existingRec.clinics = [{ id: clinic.clinicId, name: clinic.name }];
                 existingRec.name = data.receptionist.name || existingRec.name;
+                if (data.receptionist.phone) existingRec.phone = data.receptionist.phone;
+                if (data.receptionist.shift) existingRec.shift = data.receptionist.shift;
+                if (data.receptionist.password) {
+                    existingRec.password = data.receptionist.password;
+                }
                 await existingRec.save();
             }
         }

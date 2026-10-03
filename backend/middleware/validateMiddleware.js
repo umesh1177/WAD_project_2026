@@ -58,15 +58,17 @@ const validatePatient = (req, res, next) => {
 
 // ---- Appointment ----
 const validateAppointment = (req, res, next) => {
-  const { patientName, date, clinicId } = req.body;
+  const { patientName, name, patId, patientId } = req.body;
 
-  if (!isNonEmpty(patientName) && !isNonEmpty(req.body.patId))
+  if (!isNonEmpty(patientName) && !isNonEmpty(name) && !isNonEmpty(patId) && !isNonEmpty(patientId))
     return validationError(res, 'Patient information is required for the appointment.', 'patientName');
-  if (!isNonEmpty(date))
-    return validationError(res, 'Appointment date is required.', 'date');
+  if (!isNonEmpty(req.body.date) && !isNonEmpty(req.body.appointmentDate)) {
+    req.body.date = new Date().toISOString().slice(0, 10);
+  }
 
   next();
 };
+
 
 // ---- Consultation ----
 const validateConsultation = (req, res, next) => {
@@ -74,16 +76,6 @@ const validateConsultation = (req, res, next) => {
 
   if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
     return validationError(res, 'Patient ID is required to create a consultation.', 'patId');
-
-  next();
-};
-
-// ---- Prescription ----
-const validatePrescription = (req, res, next) => {
-  const { patId, medicines } = req.body;
-
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the prescription.', 'patId');
 
   next();
 };
@@ -110,18 +102,6 @@ const validateCertificate = (req, res, next) => {
   next();
 };
 
-// ---- Medicine / Inventory ----
-const validateMedicine = (req, res, next) => {
-  const { name } = req.body;
-
-  if (!isNonEmpty(name))
-    return validationError(res, 'Medicine name is required.', 'name');
-  if (String(name).trim().length < 2)
-    return validationError(res, 'Medicine name must be at least 2 characters.', 'name');
-
-  next();
-};
-
 // ---- Feedback / Support ----
 const validateFeedback = (req, res, next) => {
   const { subject, message } = req.body;
@@ -130,18 +110,6 @@ const validateFeedback = (req, res, next) => {
     return validationError(res, 'Feedback subject is required.', 'subject');
   if (!isNonEmpty(message))
     return validationError(res, 'Feedback message is required.', 'message');
-
-  next();
-};
-
-// ---- Follow-Up ----
-const validateFollowUp = (req, res, next) => {
-  const { patId, followUpDate } = req.body;
-
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required for the follow-up.', 'patId');
-  if (!isNonEmpty(followUpDate))
-    return validationError(res, 'Follow-up date is required.', 'followUpDate');
 
   next();
 };
@@ -172,28 +140,14 @@ const validatePayment = (req, res, next) => {
   next();
 };
 
-// ---- History ----
-const validateHistory = (req, res, next) => {
-  const { patId } = req.body;
-
-  if (!isNonEmpty(patId) && !isNonEmpty(req.body.patientId))
-    return validationError(res, 'Patient ID is required to save medical history.', 'patId');
-
-  next();
-};
-
 module.exports = {
   validateFamily,
   validatePatient,
   validateAppointment,
   validateConsultation,
-  validatePrescription,
   validateBill,
   validateCertificate,
-  validateMedicine,
   validateFeedback,
-  validateFollowUp,
   validateDiagnosis,
   validatePayment,
-  validateHistory,
 };

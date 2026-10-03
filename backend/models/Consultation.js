@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const consultationSchema = new mongoose.Schema({
-  caseId: { type: String, required: true, unique: true },
+  caseId: { type: String, required: true },
   patientId: { type: String, required: true },
   familyId: { type: String },
   clinicId: { type: String, default: 'demo' },
@@ -13,6 +13,7 @@ const consultationSchema = new mongoose.Schema({
   sugar: { type: String },
   other: { type: String },
   reference: { type: String },
+  refDr: { type: String },
   complaint: { type: String },
   investigation: { type: String },
   dietary: { type: String },
@@ -44,5 +45,8 @@ const consultationSchema = new mongoose.Schema({
   received: { type: Number, default: 0 },
   due: { type: Number, default: 0 }
 }, { timestamps: true, strict: false });
+
+consultationSchema.index({ clinicId: 1, patientId: 1, date: -1 });
+consultationSchema.index({ clinicId: 1, caseId: 1 });
 
 module.exports = mongoose.model('Consultation', consultationSchema);

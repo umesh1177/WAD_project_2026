@@ -18,12 +18,14 @@ const getUserFilter = (id) => {
 
 // Generate JWT Token
 const generateToken = (user) => {
+  const resolvedClinicId = user.clinicId || user.activeClinicId || (user.clinics && user.clinics[0] ? user.clinics[0].id : 'demo');
   return jwt.sign(
     {
       id: user._id || user.id,
       username: user.username,
       role: user.role,
-      activeClinicId: user.activeClinicId || user.clinicId || 'demo',
+      activeClinicId: resolvedClinicId,
+      clinicId: resolvedClinicId,
       name: user.name || user.username,
     },
     process.env.JWT_SECRET || 'wad_clinic_super_secure_jwt_token_2026_key',
@@ -61,6 +63,9 @@ const login = async (req, res) => {
         return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact the administrator.' });
       }
 
+      const resolvedClinicId = user.clinicId || user.activeClinicId || (user.clinics && user.clinics[0] ? user.clinics[0].id : 'demo');
+      const resolvedClinicName = user.clinic || (user.clinics && user.clinics[0] ? user.clinics[0].name : 'Dhyey Main Clinic');
+
       const token = generateToken(user);
       return res.json({
         success: true,
@@ -73,8 +78,11 @@ const login = async (req, res) => {
           email: user.email,
           degree: user.degree,
           regNo: user.regNo || user.registration,
-          clinics: user.clinics && user.clinics.length > 0 ? user.clinics : [{ id: user.clinicId || 'demo', name: user.clinic || 'Dhyey Main Clinic' }],
-          activeClinicId: user.activeClinicId || user.clinicId || 'demo',
+          clinic: resolvedClinicName,
+          clinicName: resolvedClinicName,
+          clinicId: resolvedClinicId,
+          activeClinicId: resolvedClinicId,
+          clinics: user.clinics && user.clinics.length > 0 ? user.clinics : [{ id: resolvedClinicId, name: resolvedClinicName }],
           services: user.services || ['receptionist', 'appointment', 'digitalPrescription', 'certificates', 'billing']
         },
       });

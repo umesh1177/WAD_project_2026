@@ -2,12 +2,15 @@ const mongoose = require('mongoose');
 const Family = require('../models/Family');
 const Patient = require('../models/Patient');
 const Consultation = require('../models/Consultation');
+const { getClinicQuery, resolveClinicMatchValues } = require('../utils/clinicHelper');
 
 const getFamilies = async (req, res) => {
   try {
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
-    const families = await Family.find().sort({ createdAt: -1 });
-    const allPatients = await Patient.find();
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
+    const clinicQuery = await getClinicQuery(rawClinicId);
+    
+    const families = await Family.find(clinicQuery).sort({ createdAt: -1 });
+    const allPatients = await Patient.find(clinicQuery);
 
     // Map patients to their families
     const familiesWithPatients = families.map((f) => {
@@ -27,19 +30,29 @@ const getFamilies = async (req, res) => {
 
 const getFamilyById = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { famId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { famId: id }] };
+    }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
     }
 
     const family = await Family.findOne(query);
     if (!family) return res.status(404).json({ success: false, message: 'Family not found' });
 
     const famObj = family.toObject();
-    famObj.patients = await Patient.find({
+    const patQuery = {
       $or: [{ familyId: family.famId }, { familyId: family._id }]
-    });
+    };
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      Object.assign(patQuery, clinicQuery);
+    }
+    famObj.patients = await Patient.find(patQuery);
 
     res.json({ success: true, data: famObj });
   } catch (error) {
@@ -63,16 +76,17 @@ const createFamily = async (req, res) => {
       sequence
     } = req.body;
 
-    const clinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || 'demo';
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.body.clinicId || 'demo';
+    const clinicQuery = await getClinicQuery(rawClinicId);
 
     let finalFamId = famId;
     if (!finalFamId) {
-      const count = await Family.countDocuments();
+      const count = await Family.countDocuments(clinicQuery);
       finalFamId = `FAM-${String(count + 1).padStart(4, '0')}`;
     }
 
-    // Check if family already exists
-    let existingFam = await Family.findOne({ famId: finalFamId });
+    // Check if family already exists in this clinic
+    let existingFam = await Family.findOne({ famId: finalFamId, ...clinicQuery });
     if (existingFam) {
       existingFam.headName = headName || existingFam.headName;
       existingFam.society = society !== undefined ? society : existingFam.society;
@@ -95,14 +109,14 @@ const createFamily = async (req, res) => {
       registeredBy: registeredBy || 'Self',
       year: year || new Date().getFullYear(),
       sequence: sequence || 1,
-      clinicId
+      clinicId: rawClinicId
     });
 
     await newFamily.save();
 
     // Create the Head member patient
     const headPatId = `${finalFamId}-01`;
-    let headPatient = await Patient.findOne({ patId: headPatId });
+    let headPatient = await Patient.findOne({ patId: headPatId, ...clinicQuery });
     if (!headPatient) {
       headPatient = new Patient({
         patId: headPatId,
@@ -116,7 +130,7 @@ const createFamily = async (req, res) => {
         society: society || '',
         area: area || '',
         phone: phone || '',
-        clinicId
+        clinicId: rawClinicId
       });
       await headPatient.save();
     }
@@ -137,10 +151,15 @@ const createFamily = async (req, res) => {
 
 const updateFamily = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { famId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { famId: id }] };
+    }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
     }
 
     const updated = await Family.findOneAndUpdate(query, { $set: req.body }, { new: true });
@@ -160,8 +179,9 @@ const updateFamily = async (req, res) => {
     if (allergy !== undefined) patUpdate.allergy = allergy;
 
     if (Object.keys(patUpdate).length > 0) {
+      const clinicQuery = rawClinicId ? await getClinicQuery(rawClinicId) : {};
       await Patient.findOneAndUpdate(
-        { familyId: updated.famId, relation: 'Head' },
+        { familyId: updated.famId, relation: 'Head', ...clinicQuery },
         { $set: patUpdate },
         { new: true }
       );
@@ -175,16 +195,22 @@ const updateFamily = async (req, res) => {
 
 const deleteFamily = async (req, res) => {
   try {
+    const rawClinicId = req.headers['x-clinic-id'] || req.user?.activeClinicId || req.user?.clinicId || req.query.clinicId;
     const { id } = req.params;
     let query = { famId: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
       query = { $or: [{ _id: id }, { famId: id }] };
     }
+    if (rawClinicId) {
+      const clinicQuery = await getClinicQuery(rawClinicId);
+      query = { $and: [query, clinicQuery] };
+    }
 
     const fam = await Family.findOneAndDelete(query);
     if (fam) {
-      await Patient.deleteMany({ familyId: fam.famId });
-      await Consultation.deleteMany({ familyId: fam.famId });
+      const clinicQuery = rawClinicId ? await getClinicQuery(rawClinicId) : {};
+      await Patient.deleteMany({ familyId: fam.famId, ...clinicQuery });
+      await Consultation.deleteMany({ familyId: fam.famId, ...clinicQuery });
     }
     res.json({ success: true, message: 'Family and associated records deleted' });
   } catch (error) {

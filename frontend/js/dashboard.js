@@ -11,7 +11,7 @@ import { apiFetch, todayISO, fmtDate, fmtMoney, getLocalDB, getAuthSession } fro
 export async function renderDashboard(container, onSelectPatient, onNavigate) {
   let dateFilter = todayISO();
   let datePreset = 'today'; // 'today' | 'yesterday' | 'week' | 'month' | 'custom'
-  let activeTab = 'visits'; // 'visits' | 'appointments' | 'followups' | 'billing' | 'patients' | 'dues'
+  let activeTab = 'visits'; // 'visits' | 'collections' | 'dues' | 'patients'
   let searchQuery = '';
 
   function getYesterdayISO() {
@@ -38,25 +38,44 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
     const db = getLocalDB(clinicId);
 
     let appointments = [];
-    let followUps = [];
     let bills = [];
-    let familiesMap = { ...(db.families || {}) };
+    let familiesMap = {};
     let backendVisits = [];
 
-    // Real-time Database: Fetch live Families & Patients
+    // Real-time Database: Fetch live Families & Patients for active clinic
     try {
-      const famRes = await apiFetch('/families');
-      if (famRes && famRes.data && Array.isArray(famRes.data) && famRes.data.length > 0) {
+      const [famRes, patRes] = await Promise.all([
+        apiFetch('/families').catch(() => ({ data: [] })),
+        apiFetch('/patients').catch(() => ({ data: [] }))
+      ]);
+
+      if (famRes && famRes.data && Array.isArray(famRes.data)) {
         famRes.data.forEach((f) => {
           const fid = f.famId || f.id || f._id;
           if (fid) {
             familiesMap[fid] = {
-              ...(familiesMap[fid] || {}),
               ...f,
               id: fid,
               headName: f.headName || f.name,
-              patients: f.patients || familiesMap[fid]?.patients || {},
+              patients: f.patients || [],
             };
+          }
+        });
+      }
+
+      if (patRes && patRes.data && Array.isArray(patRes.data)) {
+        patRes.data.forEach((p) => {
+          const fId = p.familyId;
+          const pId = p.patId || p.id || p._id;
+          if (fId && familiesMap[fId]) {
+            if (!familiesMap[fId].patients) familiesMap[fId].patients = [];
+            if (Array.isArray(familiesMap[fId].patients)) {
+              if (!familiesMap[fId].patients.some((ep) => (ep.patId || ep.id || ep._id) === pId)) {
+                familiesMap[fId].patients.push(p);
+              }
+            } else if (typeof familiesMap[fId].patients === 'object') {
+              familiesMap[fId].patients[pId] = p;
+            }
           }
         });
       }
@@ -82,72 +101,124 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       appointments = db.appointments || [];
     }
 
-    // Real-time Database: Fetch Follow-ups
-    try {
-      const fuRes = await apiFetch('/followups');
-      if (fuRes && fuRes.data && Array.isArray(fuRes.data) && fuRes.data.length > 0) {
-        followUps = fuRes.data;
-      } else {
-        followUps = db.followups || [];
-      }
-    } catch (e) {
-      followUps = db.followups || [];
-    }
-
     const families = Object.values(familiesMap);
     const flatPatients = [];
     const visitMap = new Map();
 
-    families.forEach((fam) => {
-      Object.values(fam.patients || {}).forEach((pat) => {
-        const visits = Array.isArray(pat.visits) ? pat.visits : [];
-        const totalDue = visits.reduce((s, v) => s + (Number(v.due) || 0), 0);
-        const lastVisit = visits.length > 0 ? visits[visits.length - 1] : null;
+    // Map all backend visits
+    backendVisits.forEach((bv, idx) => {
+      const vKey = bv.caseId || bv._id || bv.id || `bv-${idx}`;
+      const vDate = (bv.date || '').slice(0, 10);
+      const vCharge = Number(bv.charge || 0);
+      const vReceived = Number(bv.received !== undefined ? bv.received : (bv.paid !== undefined ? bv.paid : 0));
+      const vDue = Math.max(0, vCharge - vReceived);
 
-        flatPatients.push({
-          fam,
-          pat,
-          totalDue,
-          lastVisit,
-          visitCount: visits.length,
-        });
-
-        visits.forEach((v, idx) => {
-          const vKey = v.caseId || v.id || `${fam.id}-${pat.id}-${v.date}-${idx}`;
-          visitMap.set(vKey, {
-            ...v,
-            isFirstVisit: idx === 0,
-            famId: fam.id,
-            famHead: fam.headName,
-            patId: pat.id,
-            patName: pat.name,
-            patAge: pat.age,
-            patGender: pat.gender,
-            patPhone: pat.phone || fam.phone || '',
-            area: fam.area || '',
-          });
-        });
+      visitMap.set(vKey, {
+        ...bv,
+        date: vDate,
+        charge: vCharge,
+        received: vReceived,
+        due: vDue,
+        caseId: bv.caseId || vKey,
+        famId: bv.familyId || '',
+        patId: bv.patientId || '',
+        patName: bv.patientName || 'Patient',
+        patAge: bv.patientAge || '',
+        patGender: bv.patientGender || '',
+        patPhone: bv.patientPhone || '',
+        complaint: bv.complaint || '',
+        diagnosis: bv.diagnosis || '',
+        area: '',
       });
     });
 
-    // Merge backend consultations if available
-    backendVisits.forEach((bv, idx) => {
-      const vKey = bv.caseId || bv._id || bv.id || `bv-${idx}`;
-      if (!visitMap.has(vKey)) {
-        const patObj = flatPatients.find((p) => p.pat.id === bv.patientId || p.pat.name === bv.patientName);
-        visitMap.set(vKey, {
-          ...bv,
-          isFirstVisit: false,
-          famId: bv.familyId || patObj?.fam?.id || '',
-          famHead: patObj?.fam?.headName || bv.patientName || 'Family Head',
-          patId: bv.patientId || patObj?.pat?.id || '',
-          patName: bv.patientName || patObj?.pat?.name || 'Patient',
-          patAge: bv.patientAge || patObj?.pat?.age || '',
-          patGender: bv.patientGender || patObj?.pat?.gender || '',
-          patPhone: bv.patientPhone || patObj?.pat?.phone || '',
-          area: patObj?.fam?.area || '',
+    families.forEach((fam) => {
+      const famId = fam.famId || fam.id || fam._id || '';
+      const famHead = fam.headName || fam.name || 'Family Head';
+      const famArea = fam.area || fam.society || '';
+      const patList = Array.isArray(fam.patients) ? fam.patients : Object.values(fam.patients || {});
+
+      patList.forEach((pat) => {
+        const patId = pat.patId || pat.id || pat._id || '';
+        const patName = pat.name || 'Patient';
+        const patPhone = pat.phone || fam.phone || '';
+        const patAge = pat.age || '';
+        const patGender = pat.gender || 'Male';
+        const patRelation = pat.relation || 'Head';
+        const patBloodGroup = pat.bloodGroup || '';
+
+        // Match visits for this patient
+        const patVisits = Array.from(visitMap.values()).filter(
+          (v) =>
+            (patId && (v.patId === patId || String(v.patientId) === String(patId))) ||
+            (pat._id && (String(v.patientId) === String(pat._id) || String(v.patId) === String(pat._id)))
+        );
+
+        if (Array.isArray(pat.visits)) {
+          pat.visits.forEach((v, idx) => {
+            const vKey = v.caseId || v.id || `${famId}-${patId}-${v.date}-${idx}`;
+            if (!visitMap.has(vKey)) {
+              const vDate = (v.date || '').slice(0, 10);
+              const vCharge = Number(v.charge || 0);
+              const vReceived = Number(v.received !== undefined ? v.received : (v.paid !== undefined ? v.paid : 0));
+              const vDue = Math.max(0, vCharge - vReceived);
+              const vObj = {
+                ...v,
+                date: vDate,
+                charge: vCharge,
+                received: vReceived,
+                due: vDue,
+                caseId: v.caseId || vKey,
+                isFirstVisit: idx === 0,
+                famId,
+                famHead,
+                patId,
+                patName,
+                patAge,
+                patGender,
+                patPhone,
+                area: famArea,
+              };
+              visitMap.set(vKey, vObj);
+              patVisits.push(vObj);
+            }
+          });
+        }
+
+        // Link metadata for any visits
+        patVisits.forEach((v) => {
+          v.famId = famId;
+          v.famHead = famHead;
+          v.patId = patId;
+          v.patName = patName;
+          v.patAge = patAge;
+          v.patGender = patGender;
+          v.patPhone = patPhone;
+          v.area = famArea;
         });
-      }
+
+        const totalDue = patVisits.reduce((s, v) => s + (Number(v.due) || 0), 0);
+        const lastVisit = patVisits.length > 0 ? patVisits[0] : null;
+
+        flatPatients.push({
+          fam: { ...fam, id: famId, famId, headName: famHead, area: famArea },
+          pat: {
+            ...pat,
+            id: patId,
+            patId: patId,
+            name: patName,
+            relation: patRelation,
+            age: patAge,
+            gender: patGender,
+            phone: patPhone,
+            area: famArea,
+            bloodGroup: patBloodGroup,
+          },
+          totalDue,
+          lastVisit,
+          visitCount: patVisits.length,
+        });
+      });
     });
 
     const allVisits = Array.from(visitMap.values());
@@ -159,25 +230,76 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       flatPatients,
       allVisits,
       appointments,
-      followUps,
       bills,
     };
   }
 
-  async function render() {
-    const data = await loadData();
-    const { families, flatPatients, allVisits, appointments, followUps, bills } = data;
-
-    let targetVisits = [];
-    if (datePreset === 'week') {
+  function getTargetVisits(allVisits) {
+    const curToday = todayISO();
+    if (datePreset === 'yesterday') {
+      const yDate = getYesterdayISO();
+      return allVisits.filter((v) => (v.date || '').slice(0, 10) === yDate);
+    } else if (datePreset === 'week') {
       const weekAgo = getDaysAgoISO(7);
-      targetVisits = allVisits.filter((v) => v.date >= weekAgo && v.date <= dateFilter);
+      return allVisits.filter((v) => {
+        const d = (v.date || '').slice(0, 10);
+        return d >= weekAgo && d <= curToday;
+      });
     } else if (datePreset === 'month') {
       const monthStart = getMonthStartISO();
-      targetVisits = allVisits.filter((v) => v.date >= monthStart && v.date <= dateFilter);
+      return allVisits.filter((v) => {
+        const d = (v.date || '').slice(0, 10);
+        return d >= monthStart && d <= curToday;
+      });
+    } else if (datePreset === 'today') {
+      return allVisits.filter((v) => (v.date || '').slice(0, 10) === curToday);
     } else {
-      targetVisits = allVisits.filter((v) => v.date === dateFilter);
+      return allVisits.filter((v) => (v.date || '').slice(0, 10) === dateFilter);
     }
+  }
+
+  function getPresetBadgeText() {
+    if (datePreset === 'today') return 'Today';
+    if (datePreset === 'yesterday') return 'Yesterday';
+    if (datePreset === 'week') return 'Last 7 Days';
+    if (datePreset === 'month') return 'This Month';
+    return fmtDate(dateFilter);
+  }
+
+  function getCollectionsTitle() {
+    if (datePreset === 'today') return 'Total Today Collections';
+    if (datePreset === 'yesterday') return 'Yesterday Collections';
+    if (datePreset === 'week') return 'Last 7 Days Collections';
+    if (datePreset === 'month') return 'This Month Collections';
+    return `Collections on ${fmtDate(dateFilter)}`;
+  }
+
+  function getToolbarTitle() {
+    if (activeTab === 'visits') {
+      if (datePreset === 'today') return `OPD Consultations Today (${fmtDate(todayISO())})`;
+      if (datePreset === 'yesterday') return `OPD Consultations Yesterday (${fmtDate(getYesterdayISO())})`;
+      if (datePreset === 'week') return `OPD Consultations in Last 7 Days`;
+      if (datePreset === 'month') return `OPD Consultations in This Month`;
+      return `OPD Consultations on ${fmtDate(dateFilter)}`;
+    }
+    if (activeTab === 'collections') {
+      if (datePreset === 'today') return `Daily Collections Today (${fmtDate(todayISO())})`;
+      if (datePreset === 'yesterday') return `Daily Collections Yesterday (${fmtDate(getYesterdayISO())})`;
+      if (datePreset === 'week') return `Daily Collections in Last 7 Days`;
+      if (datePreset === 'month') return `Daily Collections in This Month`;
+      return `Daily Collections on ${fmtDate(dateFilter)}`;
+    }
+    if (activeTab === 'dues') {
+      return `Outstanding Due Balance & Defaulters List`;
+    }
+    return `Registered Patient Population`;
+  }
+
+  async function render() {
+    const data = await loadData();
+    const { families, flatPatients, allVisits } = data;
+
+    const targetVisits = getTargetVisits(allVisits);
 
     const newPatientsCount = targetVisits.filter((v) => v.isFirstVisit).length;
     const reVisitsCount = targetVisits.length - newPatientsCount;
@@ -187,15 +309,6 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
     const dateDue = targetVisits.reduce((s, v) => s + (Number(v.due) || 0), 0);
     const totalClinicDue = flatPatients.reduce((s, p) => s + p.totalDue, 0);
     const defaultersCount = flatPatients.filter((p) => p.totalDue > 0).length;
-
-    const targetApts = appointments.filter((a) => (a.date || a.appointmentDate) === dateFilter);
-    const aptsPending = targetApts.filter((a) => (a.status || '').toLowerCase() !== 'completed').length;
-    const aptsCompleted = targetApts.length - aptsPending;
-
-    const targetFollowUps = followUps.filter((f) => {
-      const fDate = f.date || f.followUpDate || f.scheduledDate;
-      return fDate === dateFilter || (fDate <= dateFilter && (f.status || '').toLowerCase() !== 'completed');
-    });
 
     container.innerHTML = `
       <div class="cms-dash-container" style="max-width: 100%; width: 100%;">
@@ -245,7 +358,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
           <div class="cms-kpi-card tone-opd ${activeTab === 'visits' ? 'active' : ''}" data-tab="visits">
             <div class="cms-kpi-top">
               <div class="cms-kpi-icon"><i class="fa-solid fa-stethoscope"></i></div>
-              <span class="cms-kpi-badge" style="background: #e0f2fe; color: #0369a1;">${datePreset === 'today' ? 'Today' : datePreset.toUpperCase()}</span>
+              <span class="cms-kpi-badge" style="background: #e0f2fe; color: #0369a1;">${getPresetBadgeText()}</span>
             </div>
             <div class="cms-kpi-value-group">
               <div class="cms-kpi-val">${targetVisits.length} <span style="font-size: 13.5px; font-weight: 600; color: var(--text-muted);">Visits</span></div>
@@ -258,7 +371,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             </div>
           </div>
 
-          <!-- KPI 2: Total Today Collections (Replaced Booked Appointments) -->
+          <!-- KPI 2: Total Collections -->
           <div class="cms-kpi-card tone-revenue ${activeTab === 'collections' ? 'active' : ''}" data-tab="collections">
             <div class="cms-kpi-top">
               <div class="cms-kpi-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
@@ -266,7 +379,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             </div>
             <div class="cms-kpi-value-group">
               <div class="cms-kpi-val" style="color: #059669;">${fmtMoney(dateReceived)}</div>
-              <div class="cms-kpi-title">Total Today Collections</div>
+              <div class="cms-kpi-title">${getCollectionsTitle()}</div>
             </div>
             <div class="cms-kpi-meta">
               <span>Billed: <b>${fmtMoney(dateBilled)}</b></span>
@@ -275,7 +388,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             </div>
           </div>
 
-          <!-- KPI 3: Total Due Balance (Replaced Pending Follow-ups) -->
+          <!-- KPI 3: Total Due Balance -->
           <div class="cms-kpi-card tone-dues ${activeTab === 'dues' ? 'active' : ''}" data-tab="dues">
             <div class="cms-kpi-top">
               <div class="cms-kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -337,12 +450,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
 
             <div class="cms-dash-toolbar">
               <div style="font-weight: 800; font-size: 13.5px; color: var(--text);">
-                ${
-                  activeTab === 'visits' ? `OPD Consultations on ${fmtDate(dateFilter)}` :
-                  activeTab === 'collections' ? `Daily Collections &amp; Received Fees on ${fmtDate(dateFilter)}` :
-                  activeTab === 'dues' ? `Outstanding Due Balance &amp; Defaulters List` :
-                  `Registered Patient Population`
-                }
+                ${getToolbarTitle()}
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="text" id="dash-tab-search" class="cms-input cms-dash-search-input" placeholder="Search table..." value="${searchQuery}" style="min-width: 250px;" />
@@ -372,16 +480,16 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       if (q) {
         list = list.filter(
           (v) =>
-            v.patName.toLowerCase().includes(q) ||
-            v.caseId.toLowerCase().includes(q) ||
+            (v.patName || '').toLowerCase().includes(q) ||
+            (v.caseId || '').toLowerCase().includes(q) ||
             (v.complaint || '').toLowerCase().includes(q) ||
             (v.diagnosis || '').toLowerCase().includes(q) ||
-            v.patId.toLowerCase().includes(q)
+            (v.patId || '').toLowerCase().includes(q)
         );
       }
 
       if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-clipboard-question" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No patient visits recorded on this date.</div>`;
+        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-clipboard-question" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No patient visits recorded for this selected date filter.</div>`;
       }
 
       return `
@@ -409,7 +517,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
                 <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">${v.caseId}</td>
                 <td>
                   <b>${v.patName}</b>
-                  <div style="font-size: 11px; color: var(--text-muted);">${v.famHead} &middot; PT ${v.patId}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">${v.famHead} &middot; PT ${v.patId || '—'}</div>
                 </td>
                 <td style="white-space: nowrap;">${v.patAge || '—'} / ${v.patGender ? v.patGender[0] : '—'}</td>
                 <td>${v.complaint || '—'}</td>
@@ -444,7 +552,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       }
 
       if (list.length === 0) {
-        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-receipt" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No payment collections or billings recorded for this date.</div>`;
+        return `<div style="padding: 40px; text-align: center; color: var(--text-muted);"><i class="fa-solid fa-receipt" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>No payment collections or billings recorded for this date filter.</div>`;
       }
 
       return `
@@ -471,7 +579,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
                 <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">${v.caseId}</td>
                 <td>
                   <b>${v.patName}</b>
-                  <div style="font-size: 11px; color: var(--text-muted);">PT ${v.patId}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">PT ${v.patId || '—'}</div>
                 </td>
                 <td>${v.famHead || '—'}</td>
                 <td>${v.area || '—'}</td>
@@ -497,9 +605,9 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       if (q) {
         list = list.filter(
           ({ fam, pat }) =>
-            pat.name.toLowerCase().includes(q) ||
-            pat.id.toLowerCase().includes(q) ||
-            fam.headName.toLowerCase().includes(q) ||
+            (pat.name || '').toLowerCase().includes(q) ||
+            (pat.patId || pat.id || '').toLowerCase().includes(q) ||
+            (fam.headName || '').toLowerCase().includes(q) ||
             (fam.area || '').toLowerCase().includes(q) ||
             (pat.phone || fam.phone || '').includes(q)
         );
@@ -515,7 +623,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
         <table class="cms-table">
           <thead>
             <tr>
-              <th style="width: 110px;">Patient ID</th>
+              <th style="width: 140px;">Patient ID</th>
               <th>Patient Name</th>
               <th style="width: 90px;">Relation</th>
               <th>Family Head</th>
@@ -530,8 +638,8 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             ${list
               .map(
                 ({ fam, pat, totalDue, visitCount }) => `
-              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.id}">
-                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.id}</td>
+              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.patId || pat.id}">
+                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.patId || pat.id || '—'}</td>
                 <td>
                   <b style="color: var(--text);">${pat.name}</b>
                 </td>
@@ -542,7 +650,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
                 <td style="text-align: center;"><span class="cms-pill cms-badge-neutral font-mono">${visitCount}</span></td>
                 <td class="font-mono" style="text-align: right; font-weight: 800; color: #dc2626; font-size: 13.5px; white-space: nowrap;">${fmtMoney(totalDue)}</td>
                 <td style="text-align: right; white-space: nowrap;">
-                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: #dc2626; font-weight: 700; border: 1px solid #fecaca; background: #fff5f5;">
+                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.patId || pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: #dc2626; font-weight: 700; border: 1px solid #fecaca; background: #fff5f5;">
                     Open Due <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </td>
@@ -560,9 +668,9 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
       if (q) {
         list = list.filter(
           ({ fam, pat }) =>
-            pat.name.toLowerCase().includes(q) ||
-            pat.id.toLowerCase().includes(q) ||
-            fam.headName.toLowerCase().includes(q) ||
+            (pat.name || '').toLowerCase().includes(q) ||
+            (pat.patId || pat.id || '').toLowerCase().includes(q) ||
+            (fam.headName || '').toLowerCase().includes(q) ||
             (fam.area || '').toLowerCase().includes(q) ||
             (pat.phone || fam.phone || '').includes(q)
         );
@@ -572,7 +680,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
         <table class="cms-table">
           <thead>
             <tr>
-              <th style="width: 100px;">Patient ID</th>
+              <th style="width: 140px;">Patient ID</th>
               <th>Patient Name</th>
               <th style="width: 90px;">Relation</th>
               <th>Family Head</th>
@@ -587,8 +695,8 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
             ${list
               .map(
                 ({ fam, pat, visitCount }) => `
-              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.id}">
-                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.id}</td>
+              <tr class="cms-clickable-row" data-famid="${fam.id}" data-patid="${pat.patId || pat.id}">
+                <td class="font-mono" style="font-weight: 800; color: var(--primary); white-space: nowrap;">PT ${pat.patId || pat.id || '—'}</td>
                 <td><b>${pat.name}</b></td>
                 <td>${pat.relation || 'Head'}</td>
                 <td>${fam.headName}</td>
@@ -597,7 +705,7 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
                 <td><span class="font-mono">${pat.bloodGroup || '—'}</span></td>
                 <td style="text-align: center;"><span class="cms-pill cms-badge-neutral font-mono">${visitCount}</span></td>
                 <td style="text-align: right; white-space: nowrap;">
-                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: var(--primary); font-weight: 700;">
+                  <button type="button" class="cms-btn cms-btn-ghost btn-open-case-direct" data-famid="${fam.id}" data-patid="${pat.patId || pat.id}" style="padding: 4px 8px; font-size: 11.5px; color: var(--primary); font-weight: 700;">
                     Case <i class="fa-solid fa-arrow-right"></i>
                   </button>
                 </td>
@@ -614,6 +722,15 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
   }
 
   function attachEventListeners(data) {
+    const handleNav = (viewName, sel = null) => {
+      if (onNavigate) {
+        onNavigate(viewName, sel);
+      } else {
+        const navItem = document.querySelector(`.cms-nav-item[data-view="${viewName}"]`);
+        if (navItem) navItem.click();
+      }
+    };
+
     container.querySelectorAll('.cms-dash-preset-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const preset = btn.getAttribute('data-preset');
@@ -629,9 +746,11 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
     const dateInput = container.querySelector('#dash-date-picker');
     if (dateInput) {
       dateInput.addEventListener('change', (e) => {
-        dateFilter = e.target.value;
-        datePreset = 'custom';
-        render();
+        if (e.target.value) {
+          dateFilter = e.target.value;
+          datePreset = 'custom';
+          render();
+        }
       });
     }
 
@@ -657,23 +776,12 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
         searchQuery = e.target.value;
         const tableMount = container.querySelector('#dash-active-table-body');
         if (tableMount) {
-          const targetVisits = data.allVisits.filter((v) => v.date === dateFilter);
-          const targetApts = data.appointments.filter((a) => (a.date || a.appointmentDate) === dateFilter);
-          const targetFollowUps = data.followUps.filter((f) => (f.date || f.followUpDate) === dateFilter);
-          tableMount.innerHTML = renderActiveTableHTML(data, targetVisits, targetApts, targetFollowUps);
-          attachTableInteractions();
+          const targetVisits = getTargetVisits(data.allVisits);
+          tableMount.innerHTML = renderActiveTableHTML(data, targetVisits);
+          attachTableInteractions(handleNav);
         }
       });
     }
-
-    const handleNav = (viewName, sel = null) => {
-      if (onNavigate) {
-        onNavigate(viewName, sel);
-      } else {
-        const navItem = document.querySelector(`.cms-nav-item[data-view="${viewName}"]`);
-        if (navItem) navItem.click();
-      }
-    };
 
     container.querySelector('#btn-quick-new-visit')?.addEventListener('click', () => {
       handleNav('case');
@@ -710,19 +818,6 @@ export async function renderDashboard(container, onSelectPatient, onNavigate) {
         if (famId && patId) {
           if (onSelectPatient) onSelectPatient(famId, patId);
           else if (handleNav) handleNav('case', { familyId: famId, patientId: patId });
-        }
-      });
-    });
-
-    container.querySelectorAll('.btn-start-apt-consultation').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const famId = btn.getAttribute('data-famid');
-        const patId = btn.getAttribute('data-patid');
-        if (famId && patId) {
-          if (onSelectPatient) onSelectPatient(famId, patId);
-          else if (handleNav) handleNav('case', { familyId: famId, patientId: patId });
-        } else if (handleNav) {
-          handleNav('case');
         }
       });
     });

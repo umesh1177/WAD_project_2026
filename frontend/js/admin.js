@@ -213,7 +213,10 @@ async function fetchLogsFromDB() {
 
 async function fetchFeedbackFromDB() {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/feedback`, { headers: getAuthHeader() });
+    let res = await fetch(`${API_BASE_URL}/api/feedback/admin/all`, { headers: getAuthHeader() });
+    if (!res.ok) {
+      res = await fetch(`${API_BASE_URL}/api/feedback`, { headers: getAuthHeader() });
+    }
     if (res.ok) {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
@@ -935,51 +938,77 @@ function renderFeedbackInbox() {
         </div>
         <select class="form-select" id="feedbackStatus">
           <option value="">All Statuses</option>
-          <option>Open</option>
-          <option>In-Progress</option>
-          <option>Resolved</option>
+          <option value="Pending">Pending</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+          <option value="Closed">Closed</option>
         </select>
         <select class="form-select" id="feedbackCategory">
           <option value="">All Categories</option>
-          <option>Prescription</option>
-          <option>Billing</option>
-          <option>Reception</option>
-          <option>Doctor Care</option>
-          <option>Other</option>
+          <option value="clinic_request">Clinic Registration Request</option>
+          <option value="feature_request">Feature Request</option>
+          <option value="bug_report">Bug Report</option>
+          <option value="general_feedback">General Feedback</option>
+          <option value="Prescription">Prescription</option>
+          <option value="Billing">Billing</option>
+          <option value="Reception">Reception</option>
+          <option value="Doctor Care">Doctor Care</option>
+          <option value="Other">Other</option>
         </select>
       </div>
       <div id="feedbackTable" style="margin-top:16px"></div>
     </section>
-    <div id="feedbackModalMount"></div>
   `);
 
   const update = () => {
-    const term = (document.getElementById('feedbackSearch')?.value || '').toLowerCase();
+    const term = (document.getElementById('feedbackSearch')?.value || '').toLowerCase().trim();
     const status = document.getElementById('feedbackStatus')?.value || '';
     const category = document.getElementById('feedbackCategory')?.value || '';
 
     const filtered = activeFeedbackTickets.filter(item => {
-      const matchesTerm = `${item.ticketId || item._id || ''} ${item.name || ''} ${item.phone || ''} ${item.message || ''} ${item.clinicName || ''}`.toLowerCase().includes(term);
-      const matchesStatus = !status || item.status === status;
-      const matchesCat = !category || item.category === category;
+      const submitter = item.doctorName || item.name || item.metaDetails?.senderName || item.metaDetails?.name || '';
+      const ticketId = item.ticketNo || item.ticketId || item._id || '';
+      const phone = item.phone || item.email || item.metaDetails?.phone || item.metaDetails?.email || '';
+      const message = item.message || item.feedback || item.subject || '';
+      const clinicName = item.clinicName || '';
+
+      const matchesTerm = `${ticketId} ${submitter} ${phone} ${message} ${clinicName}`.toLowerCase().includes(term);
+      const matchesStatus = !status || item.status === status || (status === 'In Progress' && item.status === 'In-Progress');
+      const matchesCat = !category || item.category === category || item.categoryLabel === category;
       return matchesTerm && matchesStatus && matchesCat;
     });
 
     document.getElementById('feedbackTable').innerHTML = table(
-      ['Ticket ID', 'Submitted By', 'Category', 'Clinic', 'Message', 'Status', 'Action'],
-      filtered.map(f => `
-        <tr data-feedback-id="${f._id || f.ticketId}">
-          <td><strong>${f.ticketId || f._id?.slice(-6) || 'TKT'}</strong><br><small>${new Date(f.createdAt || Date.now()).toLocaleDateString('en-IN')}</small></td>
-          <td><strong>${f.name || 'Anonymous'}</strong><br><small>${f.phone || f.email || 'N/A'}</small></td>
-          <td><span class="role-badge role-badge-doctor">${f.category || 'General'}</span></td>
-          <td>${f.clinicName || 'Dhyey Main Clinic'}</td>
-          <td><small style="max-width:250px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeFeedbackHtml(f.message || f.feedback || '')}</small></td>
-          <td><span class="status-pill ${f.status === 'Resolved' ? '' : f.status === 'In-Progress' ? 'paused' : 'account-status-suspended'}">${f.status || 'Open'}</span></td>
+      ['Ticket ID', 'Submitted By', 'Category', 'Clinic', 'Subject & Message', 'Status', 'Action'],
+      filtered.map(f => {
+        const ticketId = f.ticketNo || f.ticketId || (f._id ? f._id.slice(-6) : 'TKT');
+        const submitterName = f.doctorName || f.name || f.metaDetails?.senderName || f.metaDetails?.name || (f.clinicName === 'Landing Page Visitor' ? 'Landing Visitor' : 'Dr. / Staff User');
+        const submitterContact = f.metaDetails?.phone || f.phone || f.metaDetails?.email || f.email || (f.doctorId && f.doctorId !== 'demo-doc' ? `ID: ${f.doctorId}` : 'N/A');
+        const isLandingVisitor = (f.clinicName === 'Landing Page Visitor') || (f.metaDetails?.source && String(f.metaDetails.source).toLowerCase().includes('landing')) || (f.doctorName === 'Landing Page Visitor') || (f.doctorName === 'Website Visitor');
+        const dateStr = new Date(f.createdAt || Date.now()).toLocaleDateString('en-IN');
+        const statusBadgeClass = f.status === 'Resolved' ? '' : (f.status === 'In Progress' || f.status === 'In-Progress') ? 'paused' : 'account-status-suspended';
+        const fid = f._id || f.ticketNo || f.ticketId;
+
+        return `
+        <tr data-feedback-id="${fid}">
+          <td><strong>${ticketId}</strong><br><small style="color:var(--text-muted)">${dateStr}</small></td>
+          <td><strong>${escapeFeedbackHtml(submitterName)}</strong><br><small style="color:var(--text-muted)">${escapeFeedbackHtml(submitterContact)}</small></td>
+          <td><span class="role-badge role-badge-doctor">${escapeFeedbackHtml(f.categoryLabel || f.category || 'General')}</span></td>
+          <td>${escapeFeedbackHtml(f.clinicName || 'Dhyey Main Clinic')}</td>
           <td>
-            <button class="btn-secondary" data-action="view-feedback" data-feedback-id="${f._id || f.ticketId}" style="padding:4px 8px;font-size:11px"><i class="fa-solid fa-eye"></i> View</button>
+            <strong>${escapeFeedbackHtml(f.subject || 'Inquiry / Feedback')}</strong><br>
+            <small style="max-width:240px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)">${escapeFeedbackHtml(f.message || f.feedback || '')}</small>
+          </td>
+          <td><span class="status-pill ${statusBadgeClass}">${f.status || 'Pending'}</span></td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button class="btn-secondary" data-action="view-feedback" data-feedback-id="${fid}" style="padding:4px 8px;font-size:11px"><i class="fa-solid fa-eye"></i> View</button>
+              ${!isLandingVisitor ? `<button class="btn-primary" data-action="reply-feedback" data-feedback-id="${fid}" style="padding:4px 8px;font-size:11px"><i class="fa-solid fa-reply"></i> Give Response</button>` : ''}
+            </div>
           </td>
         </tr>
-      `).join(''),
+      `;
+      }).join(''),
       'No complaints or feedback found.'
     );
   };
@@ -988,6 +1017,173 @@ function renderFeedbackInbox() {
   document.getElementById('feedbackStatus')?.addEventListener('change', update);
   document.getElementById('feedbackCategory')?.addEventListener('change', update);
   update();
+}
+
+function openFeedbackViewModal(feedbackId) {
+  const f = activeFeedbackTickets.find(item => item._id === feedbackId || item.ticketNo === feedbackId || item.ticketId === feedbackId);
+  if (!f) {
+    showToast('Feedback ticket not found.', 'error');
+    return;
+  }
+  const modal = document.getElementById('detailsModal');
+  const ticketId = f.ticketNo || f.ticketId || (f._id ? f._id.slice(-6) : 'TKT');
+  const submitterName = f.doctorName || f.name || f.metaDetails?.senderName || f.metaDetails?.name || (f.clinicName === 'Landing Page Visitor' ? 'Landing Visitor' : 'Dr. / Staff User');
+  const submitterContact = f.metaDetails?.phone || f.phone || f.metaDetails?.email || f.email || (f.doctorId && f.doctorId !== 'demo-doc' ? `ID: ${f.doctorId}` : 'N/A');
+  const isLandingVisitor = (f.clinicName === 'Landing Page Visitor') || (f.metaDetails?.source && String(f.metaDetails.source).toLowerCase().includes('landing')) || (f.doctorName === 'Landing Page Visitor') || (f.doctorName === 'Website Visitor');
+  const dateStr = new Date(f.createdAt || Date.now()).toLocaleString('en-IN');
+  const statusBadgeClass = f.status === 'Resolved' ? '' : (f.status === 'In Progress' || f.status === 'In-Progress') ? 'paused' : 'account-status-suspended';
+  const replies = Array.isArray(f.replies) ? f.replies : [];
+
+  modal.innerHTML = `
+    <div class="detail-modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" style="margin-bottom:4px"><i class="fa-solid fa-comments"></i> Support Ticket: ${ticketId}</h2>
+          <span style="font-size:12px;color:var(--text-muted)">Submitted on ${dateStr}</span>
+        </div>
+        <button class="modal-close-btn" data-action="close-details" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-grid">
+          <div class="detail-item"><small>Submitted By</small><strong>${escapeFeedbackHtml(submitterName)}</strong></div>
+          <div class="detail-item"><small>Contact / Email</small><strong>${escapeFeedbackHtml(submitterContact)}</strong></div>
+          <div class="detail-item"><small>Clinic</small><strong>${escapeFeedbackHtml(f.clinicName || 'Dhyey Main Clinic')}</strong></div>
+          <div class="detail-item"><small>Category</small><strong>${escapeFeedbackHtml(f.categoryLabel || f.category || 'General Feedback')}</strong></div>
+          <div class="detail-item"><small>Priority</small><strong><span class="status-pill">${f.priority || 'Normal'}</span></strong></div>
+          <div class="detail-item"><small>Current Status</small><strong><span class="status-pill ${statusBadgeClass}">${f.status || 'Pending'}</span></strong></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3><i class="fa-solid fa-envelope-open-text"></i> ${escapeFeedbackHtml(f.subject || 'Ticket Message')}</h3>
+        <div style="background:var(--bg-page,#f8fafc);border:1px solid var(--border-color,#e2e8f0);padding:14px;border-radius:var(--radius-md,8px);line-height:1.6;font-size:13px;white-space:pre-wrap;">${escapeFeedbackHtml(f.message || f.feedback || 'No description provided.')}</div>
+      </div>
+
+      ${replies.length > 0 ? `
+        <div class="detail-section">
+          <h3><i class="fa-solid fa-reply-all"></i> Conversation & Admin Responses (${replies.length})</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${replies.map(r => `
+              <div style="background:${r.senderRole === 'admin' ? 'rgba(9,92,84,0.06)' : '#fff'};border:1px solid ${r.senderRole === 'admin' ? 'var(--primary-teal-border,#095c5433)' : 'var(--border-color,#e2e8f0)'};border-radius:8px;padding:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                  <strong style="font-size:12px;color:${r.senderRole === 'admin' ? 'var(--primary-teal,#095c54)' : '#334155'}">
+                    <i class="fa-solid ${r.senderRole === 'admin' ? 'fa-user-shield' : 'fa-user-doctor'}"></i> ${escapeFeedbackHtml(r.senderName || (r.senderRole === 'admin' ? 'System Administrator' : 'Doctor'))}
+                  </strong>
+                  <small style="color:var(--text-muted);font-size:11px">${new Date(r.createdAt || Date.now()).toLocaleString('en-IN')}</small>
+                </div>
+                <div style="font-size:13px;line-height:1.5;white-space:pre-wrap">${escapeFeedbackHtml(r.message)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${!isLandingVisitor ? `
+        <div class="detail-section">
+          <h3><i class="fa-solid fa-reply"></i> Send Response to Doctor / Clinic</h3>
+          <form id="feedbackModalReplyForm" style="display:flex;flex-direction:column;gap:10px">
+            <textarea class="form-textarea" id="modalReplyMsg" required rows="3" placeholder="Type administrative reply / resolution message to this doctor..."></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Update Status:</label>
+                <select class="form-select" id="modalReplyStatus" style="padding:4px 8px;font-size:12px">
+                  <option value="Resolved" ${f.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                  <option value="In Progress" ${f.status === 'In Progress' || f.status === 'In-Progress' ? 'selected' : ''}>In Progress</option>
+                  <option value="Closed" ${f.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                  <option value="Pending" ${f.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                </select>
+              </div>
+              <button class="btn-primary" type="submit" style="padding:6px 14px;font-size:12px"><i class="fa-solid fa-paper-plane"></i> Send Reply</button>
+            </div>
+          </form>
+        </div>
+      ` : `
+        <div class="detail-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Update Status:</label>
+              <select class="form-select" id="visitorStatusSelect" style="padding:4px 8px;font-size:12px">
+                <option value="Pending" ${f.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                <option value="In Progress" ${f.status === 'In Progress' || f.status === 'In-Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Resolved" ${f.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                <option value="Closed" ${f.status === 'Closed' ? 'selected' : ''}>Closed</option>
+              </select>
+            </div>
+            <button class="btn-secondary" id="saveVisitorStatusBtn" style="padding:6px 14px;font-size:12px"><i class="fa-solid fa-check"></i> Update Status</button>
+          </div>
+        </div>
+      `}
+
+      <div class="modal-footer">
+        <button class="btn-secondary" data-action="close-details">Close</button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+
+  if (!isLandingVisitor) {
+    document.getElementById('feedbackModalReplyForm')?.addEventListener('submit', async e => {
+      e.preventDefault();
+      const replyMsg = document.getElementById('modalReplyMsg')?.value?.trim();
+      const newStatus = document.getElementById('modalReplyStatus')?.value || 'Resolved';
+      if (!replyMsg) {
+        showToast('Please enter a reply message.', 'error');
+        return;
+      }
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const fid = f._id || f.ticketNo || f.ticketId;
+        const res = await fetch(`${API_BASE_URL}/api/feedback/${fid}/reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+          body: JSON.stringify({ message: replyMsg, status: newStatus })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Failed to send reply.');
+        await fetchFeedbackFromDB();
+        await logActivity('Responded to feedback ticket', 'Feedback', ticketId, 'Success', `Status: ${newStatus}`);
+        showToast(`Response sent to doctor and ticket marked as ${newStatus}!`);
+        closeDetails();
+        renderFeedbackInbox();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  } else {
+    document.getElementById('saveVisitorStatusBtn')?.addEventListener('click', async () => {
+      const newStatus = document.getElementById('visitorStatusSelect')?.value;
+      const fid = f._id || f.ticketNo || f.ticketId;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/feedback/${fid}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) throw new Error(json.message || 'Failed to update status.');
+        await fetchFeedbackFromDB();
+        showToast(`Ticket status updated to ${newStatus}.`);
+        closeDetails();
+        renderFeedbackInbox();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
+}
+
+function openFeedbackReplyModal(feedbackId) {
+  openFeedbackViewModal(feedbackId);
+  setTimeout(() => {
+    document.getElementById('modalReplyMsg')?.focus();
+  }, 100);
 }
 
 // Analysis Views
@@ -1533,6 +1729,11 @@ function openEditClinicModal(clinicId) {
                   <label class="form-label">Duty Shift</label>
                   <input class="form-input" id="edit_rec_shift" name="receptionistShift" value="${existingRec.shift || 'General Shift (08:30 AM - 08:30 PM)'}">
                 </div>
+                <div class="form-group full-width">
+                  <label class="form-label">Receptionist Login Password <span class="req">*</span></label>
+                  <input class="form-input" id="edit_rec_pwd" name="receptionistPassword" type="password" minlength="3" placeholder="Enter password (e.g. 123)">
+                  <small class="clinic-form-help">Set or reset login password for this clinic's Reception Desk account.</small>
+                </div>
               </div>
             </div>
 
@@ -1618,11 +1819,13 @@ function openEditClinicModal(clinicId) {
 
     let receptionistData = null;
     if (isRecSelected) {
+      const recPwd = data.get('receptionistPassword')?.trim();
       receptionistData = {
         name: data.get('receptionistName')?.trim() || `${name} Front Desk`,
         email: data.get('receptionistEmail')?.trim() || existingRec.email,
         phone: String(data.get('receptionistPhone') || phone).replace(/\D/g, ''),
         shift: data.get('receptionistShift')?.trim() || 'General Shift',
+        password: recPwd || undefined,
         status: 'Active'
       };
     }
@@ -2249,9 +2452,14 @@ document.addEventListener('click', async event => {
     if (clinicId) openEditClinicModal(clinicId);
   }
 
-  if (action === 'delete-clinic') {
-    const clinicId = event.target.closest('[data-clinic]')?.dataset.clinic;
-    if (clinicId) deleteClinic(clinicId);
+  if (action === 'view-feedback') {
+    const fid = event.target.closest('[data-feedback-id]')?.dataset.feedbackId;
+    if (fid) openFeedbackViewModal(fid);
+  }
+
+  if (action === 'reply-feedback') {
+    const fid = event.target.closest('[data-feedback-id]')?.dataset.feedbackId;
+    if (fid) openFeedbackReplyModal(fid);
   }
 
   if (action === 'account-info') showToast('Administrator account · MongoDB connected');

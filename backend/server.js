@@ -12,14 +12,11 @@ const { aggregateClinicStats } = require('./services/reportService');
 const authRoutes = require('./routes/authRoutes');
 const familyRoutes = require('./routes/familyRoutes');
 const patientRoutes = require('./routes/patientRoutes');
-const historyRoutes = require('./routes/historyRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
 const consultationRoutes = require('./routes/consultationRoutes');
 const diagnosisRoutes = require('./routes/diagnosisRoutes');
-const prescriptionRoutes = require('./routes/prescriptionRoutes');
 const certificateRoutes = require('./routes/certificateRoutes');
 const masterRoutes = require('./routes/masterRoutes');
-const followUpRoutes = require('./routes/followUpRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const clinicRoutes = require('./routes/clinicRoutes');
 const app = express();
@@ -29,7 +26,6 @@ const Family = require('./models/Family');
 const Patient = require('./models/Patient');
 const Consultation = require('./models/Consultation');
 const Appointment = require('./models/Appointment');
-const FollowUp = require('./models/FollowUp');
 const { todayISO } = require('./utils/generateId');
 
 const seedDemoData = async () => {
@@ -44,7 +40,6 @@ const seedDemoData = async () => {
       await Patient.deleteMany({ clinicId: 'demo' });
       await Consultation.deleteMany({ clinicId: 'demo' });
       await Appointment.deleteMany({ clinicId: 'demo' });
-      await FollowUp.deleteMany({ clinicId: 'demo' });
 
       // Family 1 - Vastrapur
       await new Family({
@@ -262,14 +257,6 @@ const seedDemoData = async () => {
         { patientId: '00060001', patientName: 'MEHTA RAJESHBHAI CHANDRAKANT', appointmentDate: curDate, appointmentTime: '06:15 PM', reason: 'Cholesterol & Lipid Profile Review', status: 'scheduled', clinicId: 'demo' },
       ]);
 
-      // Seed FollowUps
-      await FollowUp.insertMany([
-        { patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', followUpDate: curDate, reason: 'Platelet Count & Dengue Serology Recheck', status: 'Pending', clinicId: 'demo' },
-        { patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', followUpDate: curDate, reason: 'Endoscopy & H. Pylori Report Review', status: 'Pending', clinicId: 'demo' },
-        { patientId: '00030003', patientName: 'DESAI KANTABEN KANTILAL', followUpDate: '2026-10-04', reason: 'Bilateral Knee Joint Pain Follow-up', status: 'Pending', clinicId: 'demo' },
-        { patientId: '00040001', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', followUpDate: '2026-10-06', reason: 'Migraine Prophylaxis Assessment', status: 'Pending', clinicId: 'demo' },
-      ]);
-
       console.log('[Database Seeding]: Rich demo dataset seeded successfully.');
     }
   } catch (err) {
@@ -380,20 +367,15 @@ app.use('/api/families', familyRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/patient', patientRoutes);
-app.use('/api/history', historyRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/appointment', appointmentRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/consultation', consultationRoutes);
 app.use('/api/diagnoses', diagnosisRoutes);
 app.use('/api/diagnosis', diagnosisRoutes);
-app.use('/api/prescriptions', prescriptionRoutes);
-app.use('/api/prescription', prescriptionRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/certificate', certificateRoutes);
 app.use('/api/masters', masterRoutes);
-app.use('/api/followups', followUpRoutes);
-app.use('/api/followup', followUpRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/support', feedbackRoutes);
 app.use('/api/clinics', clinicRoutes);

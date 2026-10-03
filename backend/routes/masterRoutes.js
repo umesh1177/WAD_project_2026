@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const masterController = require('../controllers/masterController');
 
+router.post('/reset', masterController.resetMasters);
+
 router.route('/')
   .get(masterController.getMasters)
   .post(masterController.createMaster);

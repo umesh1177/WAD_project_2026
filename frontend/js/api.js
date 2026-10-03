@@ -332,16 +332,18 @@ export function addSharedMasterItem(type, item, currentDb = null) {
   const cleanItem = sanitizeSharedItem(item);
   const list = getSharedMasterCollection(type);
   const exists = list.some(existing => (existing.name && cleanItem.name && existing.name.toLowerCase() === cleanItem.name.toLowerCase()) || (existing.id && existing.id === cleanItem.id));
+  const session = getAuthSession();
+  const clinicId = session?.profile?.activeClinicId || 'demo';
 
   if (!exists) {
     list.unshift(cleanItem);
     saveSharedMasterCollection(type, list);
 
-    // Persist to MongoDB backend
+    // Persist to MongoDB backend for this specific clinic
     try {
       apiFetch('/masters', {
         method: 'POST',
-        body: { type, ...cleanItem }
+        body: { tabId: type, clinicId, item: cleanItem }
       }).catch(() => {});
     } catch (e) {}
 
@@ -352,9 +354,7 @@ export function addSharedMasterItem(type, item, currentDb = null) {
       if (!currentDb.clinicShortcuts[type]) currentDb.clinicShortcuts[type] = {};
       if (cleanItem.name && !currentDb.clinicShortcuts[type][cleanItem.name]) {
         currentDb.clinicShortcuts[type][cleanItem.name] = '-';
-        const session = getAuthSession();
-        const activeId = session?.profile?.activeClinicId || 'demo';
-        saveLocalDB(currentDb, activeId);
+        saveLocalDB(currentDb, clinicId);
       }
     }
   }
@@ -365,6 +365,9 @@ export function updateSharedMasterItem(type, updatedItem) {
   const cleanItem = sanitizeSharedItem(updatedItem);
   const list = getSharedMasterCollection(type);
   const idx = list.findIndex(item => (cleanItem.id && item.id === cleanItem.id) || (cleanItem.name && item.name && item.name.toLowerCase() === cleanItem.name.toLowerCase()));
+  const session = getAuthSession();
+  const clinicId = session?.profile?.activeClinicId || 'demo';
+
   if (idx !== -1) {
     list[idx] = { ...list[idx], ...cleanItem };
     saveSharedMasterCollection(type, list);
@@ -373,12 +376,12 @@ export function updateSharedMasterItem(type, updatedItem) {
     saveSharedMasterCollection(type, list);
   }
 
-  // Persist to MongoDB backend
+  // Persist to MongoDB backend for this specific clinic
   try {
     const targetId = cleanItem.id || cleanItem.name;
     apiFetch('/masters/' + encodeURIComponent(targetId), {
       method: 'PUT',
-      body: { type, ...cleanItem }
+      body: { tabId: type, clinicId, item: cleanItem }
     }).catch(() => {});
   } catch (e) {}
 
@@ -390,12 +393,14 @@ export function deleteSharedMasterItem(type, filterFn) {
   const toDelete = list.filter(item => !filterFn(item));
   const updated = list.filter(item => filterFn(item));
   saveSharedMasterCollection(type, updated);
+  const session = getAuthSession();
+  const clinicId = session?.profile?.activeClinicId || 'demo';
 
-  // Persist deletion to MongoDB backend
+  // Persist deletion to MongoDB backend for this specific clinic
   toDelete.forEach(item => {
     try {
       const targetId = item.id || item.name;
-      apiFetch('/masters/' + encodeURIComponent(targetId), {
+      apiFetch('/masters/' + encodeURIComponent(targetId) + '?tabId=' + encodeURIComponent(type) + '&clinicId=' + encodeURIComponent(clinicId), {
         method: 'DELETE'
       }).catch(() => {});
     } catch (e) {}
@@ -725,13 +730,6 @@ function seedLocalDatabase() {
       { id: 'apt4', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', patientId: '00040001', phone: '9876543213', date: curDate, time: '04:00 PM', reason: 'Severe Migraine Headache SOS', status: 'Arrived' },
       { id: 'apt5', patientName: 'PRAJAPATI MANISHBHAI KANUBHAI', patientId: '00050001', phone: '9876543214', date: curDate, time: '05:30 PM', reason: 'Routine BP & Blood Sugar Check', status: 'Scheduled' },
       { id: 'apt6', patientName: 'MEHTA RAJESHBHAI CHANDRAKANT', patientId: '00060001', phone: '9876543215', date: curDate, time: '06:15 PM', reason: 'Cholesterol & Lipid Profile Review', status: 'Scheduled' },
-    ],
-    followups: [
-      { id: 'fu1', patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', date: curDate, reason: 'Platelet Count & Dengue Serology Recheck', status: 'Pending' },
-      { id: 'fu2', patientId: '00030001', patientName: 'DESAI BHUPENDRABHAI KANTILAL', date: curDate, reason: 'Endoscopy & H. Pylori Report Review', status: 'Pending' },
-      { id: 'fu3', patientId: '00030003', patientName: 'DESAI KANTABEN KANTILAL', date: '2026-10-04', reason: 'Bilateral Knee Joint Pain Follow-up', status: 'Scheduled' },
-      { id: 'fu4', patientId: '00040001', patientName: 'SHAH JIGNESHBHAI PRAVINCHANDRA', date: '2026-10-06', reason: 'Migraine Prophylaxis Assessment', status: 'Scheduled' },
-      { id: 'fu5', patientId: '00060001', patientName: 'MEHTA RAJESHBHAI CHANDRAKANT', date: '2026-10-08', reason: 'Fasting Blood Sugar & HbA1c Review', status: 'Scheduled' },
     ],
     bills: [
       { id: 'b1', billNo: 'INV-2026-001', billDate: curDate, patientId: '00010001', patientName: 'PATEL RAMESHBHAI GOVINDBHAI', caseId: '00012026000101', totalCharge: 600, paidAmount: 600, dueAmount: 0, status: 'Paid' },
@@ -1425,12 +1423,6 @@ function fallbackLocalHandler(endpoint, config) {
   // Fallback for billing & bills
   if (endpoint.startsWith('/billing') || endpoint.startsWith('/bills')) {
     const list = db.bills || [];
-    return { success: true, count: list.length, data: list };
-  }
-
-  // Fallback for followups
-  if (endpoint.startsWith('/followups') || endpoint.startsWith('/followup')) {
-    const list = db.followups || [];
     return { success: true, count: list.length, data: list };
   }
 

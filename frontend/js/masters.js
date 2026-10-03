@@ -28,7 +28,6 @@ export const AVAILABLE_SHORTCUT_TARGETS = [
   { category: 'Navigation', title: 'Inventory & Pharmacy Stock', target: 'inventory', keyHint: 'Alt+I' },
   { category: 'Navigation', title: 'Medicine Directory List', target: 'medicines', keyHint: 'Alt+M' },
   { category: 'Navigation', title: 'Medical Certificate Generator', target: 'certificates', keyHint: 'F6' },
-  { category: 'Navigation', title: 'Follow-up Tracker', target: 'followups', keyHint: 'Alt+U' },
   { category: 'Navigation', title: 'Clinical Reports & Analytics', target: 'reports', keyHint: 'F5' },
   { category: 'Navigation', title: 'Send Complaint & Feedback Helpdesk', target: 'feedback', keyHint: 'F8' },
   { category: 'Navigation', title: 'Clinical Master Data Setup', target: 'masters', keyHint: 'F7' },
@@ -71,81 +70,90 @@ export const AVAILABLE_SHORTCUT_TARGETS = [
 export async function renderMastersView(container) {
   const session = getAuthSession();
   const clinicId = session?.profile?.activeClinicId || 'demo';
-    const db = { 
-    dietary: {}, clinicShortcuts: { medicines:{}, complaints:{}, investigations:{}, allergies:{}, relations:{}, areas:{}, societies:{} }, 
+  const db = { 
+    dietary: {},
+    clinicShortcuts: { medicines:{}, complaints:{}, investigations:{}, allergies:{}, relations:{}, areas:{}, societies:{} }, 
     customShortcuts: [] 
   };
+
   try {
     const mRes = await apiFetch(`/masters?clinicId=${encodeURIComponent(clinicId)}`);
-    if (mRes && mRes.data && Array.isArray(mRes.data)) {
-      // Sort so demo items load first, and clinic-specific items override demo items
-      const sortedMasters = mRes.data.slice().sort((a, b) => {
-        if (a.clinicId === clinicId && b.clinicId !== clinicId) return 1;
-        if (a.clinicId !== clinicId && b.clinicId === clinicId) return -1;
-        return 0;
-      });
-
-      sortedMasters.forEach(item => {
-        if (item.type === 'custom_shortcuts') {
-          try {
-            const parsed = item.value ? JSON.parse(item.value) : (Array.isArray(item.items) ? item.items : null);
-            if (Array.isArray(parsed) && parsed.length > 0) db.customShortcuts = parsed;
-          } catch(e) {}
-        } else if (item.type === 'clinic_shortcuts') {
-          try {
-            const parsed = item.value ? JSON.parse(item.value) : (item.items?.[0] || null);
-            if (parsed && typeof parsed === 'object') db.clinicShortcuts = { ...db.clinicShortcuts, ...parsed };
-          } catch(e) {}
-        } else if (item.type === 'dietary') {
-          const dCode = item.code || item.name;
-          if (dCode) {
-            db.dietary[dCode] = {
-              _id: item._id,
-              id: item._id || dCode,
-              code: dCode,
-              disease: item.disease || item.name,
-              eat: item.eat || item.description || '',
-              avoid: item.avoid || ''
-            };
+    const tabs = mRes?.tabs || (Array.isArray(mRes?.data) ? mRes.data : []);
+    if (Array.isArray(tabs) && tabs.length > 0) {
+      tabs.forEach((tab) => {
+        if (tab.tabId === 'dietary') {
+          (tab.items || []).forEach((item) => {
+            const dCode = item.code || item.name;
+            if (dCode) {
+              db.dietary[dCode] = {
+                _id: item._id,
+                id: item.id || item._id || dCode,
+                code: dCode,
+                disease: item.disease || item.name || '',
+                eat: item.eat || item.description || '',
+                avoid: item.avoid || '',
+                createdAt: item.createdAt || todayISO()
+              };
+            }
+          });
+        } else if (tab.tabId === 'shortcuts') {
+          db.customShortcuts = (tab.items || []).map((sc, idx) => ({
+            id: sc.id || `sc_${idx + 1}`,
+            key: sc.key || sc.keyHint || 'F1',
+            target: sc.target || '',
+            title: sc.title || '',
+            category: sc.category || 'Navigation'
+          }));
+        } else {
+          // Tab collections: complaints, investigations, medicines, allergies, relations, areas, societies
+          if (!db.clinicShortcuts[tab.tabId]) db.clinicShortcuts[tab.tabId] = {};
+          (tab.items || []).forEach((it) => {
+            if (it.name && it.code) {
+              db.clinicShortcuts[tab.tabId][it.name] = it.code;
+              if (it.id) db.clinicShortcuts[tab.tabId][it.id] = it.code;
+            }
+          });
+          if (Array.isArray(tab.items) && tab.items.length > 0) {
+            saveSharedMasterCollection(tab.tabId, tab.items);
           }
         }
       });
     }
-  } catch(e){}
+  } catch(e){
+    console.warn('Error loading clinic master data from DB:', e);
+  }
 
   window.syncMasters = async () => {
     try {
-      // 1. Sync custom shortcuts to DB
+      // 1. Sync custom shortcuts to DB for this clinic
       await apiFetch('/masters', {
         method: 'POST',
         body: {
-          type: 'custom_shortcuts',
-          name: 'custom_shortcuts',
+          tabId: 'shortcuts',
           clinicId: clinicId,
-          items: db.customShortcuts || [],
-          value: JSON.stringify(db.customShortcuts || [])
+          item: {
+            items: db.customShortcuts || []
+          }
         }
       });
 
-      // 2. Sync clinic-specific item codes / shortcuts to DB
-      await apiFetch('/masters', {
-        method: 'POST',
-        body: {
-          type: 'clinic_shortcuts',
-          name: 'clinic_shortcuts',
-          clinicId: clinicId,
-          items: [db.clinicShortcuts || {}],
-          value: JSON.stringify(db.clinicShortcuts || {})
-        }
-      });
-
-      // 3. Sync dietary items
+      // 2. Sync dietary items
       for (let k in db.dietary) {
         let d = db.dietary[k];
-        if (!d._id) {
-          let r = await apiFetch('/masters', { method: 'POST', body: Object.assign({}, d, { type: 'dietary', value: d.disease, clinicId: clinicId }) });
-          if (r.success && r.data?._id) d._id = r.data._id;
-        }
+        await apiFetch('/masters', {
+          method: 'POST',
+          body: {
+            tabId: 'dietary',
+            clinicId: clinicId,
+            item: {
+              id: d.code,
+              code: d.code,
+              disease: d.disease,
+              eat: d.eat,
+              avoid: d.avoid
+            }
+          }
+        });
       }
     } catch(e) {
       console.warn('syncMasters error:', e);
@@ -178,7 +186,6 @@ export async function renderMastersView(container) {
       { id: 'sc9', key: 'Alt+N', target: 'open_new_case', title: '+ Open New Case Form', category: 'Form' },
       { id: 'sc10', key: 'Esc', target: 'close_modal', title: 'Close Modal / Unfocus', category: 'Action' },
     ];
-    window.syncMasters();
   }
 
   // Ensure persistent IDs on custom shortcuts
@@ -1537,6 +1544,18 @@ export async function renderMastersView(container) {
           updatedAt: todayISO(),
         };
 
+        if (isEdit) {
+          apiFetch('/masters/' + encodeURIComponent(code), {
+            method: 'PUT',
+            body: { tabId: 'dietary', clinicId, item: { id: code, code, disease: code, eat, avoid } }
+          }).catch(() => {});
+        } else {
+          apiFetch('/masters', {
+            method: 'POST',
+            body: { tabId: 'dietary', clinicId, item: { id: code, code, disease: code, eat, avoid } }
+          }).catch(() => {});
+        }
+
         window.syncMasters();
         showToast(`✨ Dietary template "${code}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'complaints') {
@@ -1556,14 +1575,13 @@ export async function renderMastersView(container) {
         }
 
         if (isEdit) {
-          updateSharedMasterItem('complaints', { id: itemData?.id, name, updatedAt: todayISO() });
+          updateSharedMasterItem('complaints', { id: itemData?.id, name, code, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, createdAt: todayISO() }, db);
+          addSharedMasterItem('complaints', { id: `c_${Date.now()}`, name, code, createdAt: todayISO() }, db);
         }
         if (!db.customComplaints) db.customComplaints = [];
         if (!db.customComplaints.includes(name)) db.customComplaints.push(name);
 
-        window.syncMasters();
         showToast(`✨ Complaint "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'investigations') {
         const code = backdrop.querySelector('#modal-inv-code').value.trim().toUpperCase();
@@ -1582,14 +1600,13 @@ export async function renderMastersView(container) {
         }
 
         if (isEdit) {
-          updateSharedMasterItem('investigations', { id: itemData?.id, name, updatedAt: todayISO() });
+          updateSharedMasterItem('investigations', { id: itemData?.id, name, code, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, createdAt: todayISO() }, db);
+          addSharedMasterItem('investigations', { id: `inv_${Date.now()}`, name, code, createdAt: todayISO() }, db);
         }
         if (!db.customInvestigations) db.customInvestigations = [];
         if (!db.customInvestigations.includes(name)) db.customInvestigations.push(name);
 
-        window.syncMasters();
         showToast(`✨ Investigation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'areas') {
         const name = backdrop.querySelector('#modal-area-name').value.trim();
@@ -1602,7 +1619,6 @@ export async function renderMastersView(container) {
           addSharedMasterItem('areas', { id: `a_${Date.now()}`, name, city, createdAt: todayISO() }, db);
         }
 
-        window.syncMasters();
         showToast(`✨ Area "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'medicines') {
         const code = backdrop.querySelector('#modal-med-code').value.trim().toUpperCase();
@@ -1621,12 +1637,11 @@ export async function renderMastersView(container) {
         }
 
         if (isEdit) {
-          updateSharedMasterItem('medicines', { id: itemData?.id, name, updatedAt: todayISO() });
+          updateSharedMasterItem('medicines', { id: itemData?.id, name, code, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, createdAt: todayISO() }, db);
+          addSharedMasterItem('medicines', { id: `m_${Date.now()}`, name, code, createdAt: todayISO() }, db);
         }
 
-        window.syncMasters();
         showToast(`✨ Medicine "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'allergies') {
         const code = backdrop.querySelector('#modal-allergy-code').value.trim().toUpperCase();
@@ -1645,12 +1660,11 @@ export async function renderMastersView(container) {
         }
 
         if (isEdit) {
-          updateSharedMasterItem('allergies', { id: itemData?.id, name, updatedAt: todayISO() });
+          updateSharedMasterItem('allergies', { id: itemData?.id, name, code, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, createdAt: todayISO() }, db);
+          addSharedMasterItem('allergies', { id: `al_${Date.now()}`, name, code, createdAt: todayISO() }, db);
         }
 
-        window.syncMasters();
         showToast(`✨ Allergy "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'relations') {
         const code = backdrop.querySelector('#modal-rel-code').value.trim().toUpperCase();
@@ -1669,12 +1683,11 @@ export async function renderMastersView(container) {
         }
 
         if (isEdit) {
-          updateSharedMasterItem('relations', { id: itemData?.id, name, updatedAt: todayISO() });
+          updateSharedMasterItem('relations', { id: itemData?.id, name, code, updatedAt: todayISO() });
         } else {
-          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, createdAt: todayISO() }, db);
+          addSharedMasterItem('relations', { id: `r_${Date.now()}`, name, code, createdAt: todayISO() }, db);
         }
 
-        window.syncMasters();
         showToast(`✨ Relation "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'societies') {
         const name = backdrop.querySelector('#modal-soc-name').value.trim();
@@ -1687,7 +1700,6 @@ export async function renderMastersView(container) {
           addSharedMasterItem('societies', { id: `s_${Date.now()}`, name, area, createdAt: todayISO() }, db);
         }
 
-        window.syncMasters();
         showToast(`✨ Society "${name}" ${isEdit ? 'updated' : 'added'} successfully!`);
       } else if (type === 'shortcuts') {
         const key = backdrop.querySelector('#modal-sc-key').value.trim().toUpperCase();
@@ -1704,14 +1716,23 @@ export async function renderMastersView(container) {
           if (idx !== -1) {
             db.customShortcuts[idx] = { ...db.customShortcuts[idx], key, target, title, category };
           }
+          apiFetch('/masters/' + encodeURIComponent(itemData?.id || key), {
+            method: 'PUT',
+            body: { tabId: 'shortcuts', clinicId, item: { id: itemData?.id || key, key, target, title, category } }
+          }).catch(() => {});
         } else {
-          db.customShortcuts.push({
+          const newSc = {
             id: `sc_${Date.now()}`,
             key,
             target,
             title,
             category,
-          });
+          };
+          db.customShortcuts.push(newSc);
+          apiFetch('/masters', {
+            method: 'POST',
+            body: { tabId: 'shortcuts', clinicId, item: newSc }
+          }).catch(() => {});
         }
 
         window.syncMasters();
@@ -1878,6 +1899,7 @@ export async function renderMastersView(container) {
               if (v.id === id || v.code === code || k === code) delete db.dietary[k];
             });
           }
+          apiFetch('/masters/' + encodeURIComponent(code || id) + '?tabId=dietary&clinicId=' + encodeURIComponent(clinicId), { method: 'DELETE' }).catch(() => {});
           showToast(`🗑️ Dietary template "${recordTitle}" deleted.`);
         } else if (type === 'complaints') {
           if (db.clinicShortcuts?.complaints) {
@@ -1954,6 +1976,7 @@ export async function renderMastersView(container) {
             if (code && sc.key && sc.key.toLowerCase() === code.toLowerCase()) return false;
             return true;
           });
+          apiFetch('/masters/' + encodeURIComponent(id || code) + '?tabId=shortcuts&clinicId=' + encodeURIComponent(clinicId), { method: 'DELETE' }).catch(() => {});
           showToast(`🗑️ Shortcut "${recordTitle}" deleted.`);
         }
 
