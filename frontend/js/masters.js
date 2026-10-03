@@ -1526,11 +1526,20 @@ export async function renderMastersView(container) {
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
 
+      const modalSaveBtn = backdrop.querySelector('button[type="submit"]');
+      if (modalSaveBtn) {
+        if (modalSaveBtn.disabled) return;
+        modalSaveBtn.disabled = true;
+      }
+
       if (type === 'dietary') {
         const code = backdrop.querySelector('#modal-dietary-code').value.trim().toUpperCase();
         const eat = backdrop.querySelector('#modal-dietary-eat').value.trim();
         const avoid = backdrop.querySelector('#modal-dietary-avoid').value.trim();
-        if (!code || !eat || !avoid) return;
+        if (!code || !eat || !avoid) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
 
         if (!db.dietary) db.dietary = {};
         const existing = db.dietary[code];
@@ -1561,7 +1570,19 @@ export async function renderMastersView(container) {
       } else if (type === 'complaints') {
         const code = backdrop.querySelector('#modal-complaint-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-complaint-name').value.trim();
-        if (!name) return;
+        if (!name) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
+
+        if (!isEdit) {
+          const sharedComp = getSharedMasterCollection('complaints');
+          if (sharedComp.some(c => c.name && c.name.trim().toLowerCase() === name.toLowerCase())) {
+            showToast(`⚠️ Complaint "${name}" is already in Master Catalogue!`, 'warning');
+            if (modalSaveBtn) modalSaveBtn.disabled = false;
+            return;
+          }
+        }
 
         if (!db.clinicShortcuts) db.clinicShortcuts = {};
         if (!db.clinicShortcuts.complaints) db.clinicShortcuts.complaints = {};
@@ -1586,7 +1607,19 @@ export async function renderMastersView(container) {
       } else if (type === 'investigations') {
         const code = backdrop.querySelector('#modal-inv-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-inv-name').value.trim();
-        if (!name) return;
+        if (!name) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
+
+        if (!isEdit) {
+          const sharedInv = getSharedMasterCollection('investigations');
+          if (sharedInv.some(i => i.name && i.name.trim().toLowerCase() === name.toLowerCase())) {
+            showToast(`⚠️ Investigation "${name}" is already in Master Catalogue!`, 'warning');
+            if (modalSaveBtn) modalSaveBtn.disabled = false;
+            return;
+          }
+        }
 
         if (!db.clinicShortcuts) db.clinicShortcuts = {};
         if (!db.clinicShortcuts.investigations) db.clinicShortcuts.investigations = {};
@@ -1611,7 +1644,10 @@ export async function renderMastersView(container) {
       } else if (type === 'areas') {
         const name = backdrop.querySelector('#modal-area-name').value.trim();
         const city = backdrop.querySelector('#modal-area-city').value.trim();
-        if (!name || !city) return;
+        if (!name || !city) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
 
         if (isEdit) {
           updateSharedMasterItem('areas', { id: itemData?.id, name, city, updatedAt: todayISO() });
@@ -1623,7 +1659,19 @@ export async function renderMastersView(container) {
       } else if (type === 'medicines') {
         const code = backdrop.querySelector('#modal-med-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-med-name').value.trim();
-        if (!name) return;
+        if (!name) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
+
+        if (!isEdit) {
+          const sharedMeds = getSharedMasterCollection('medicines');
+          if (sharedMeds.some(m => m.name && m.name.trim().toLowerCase() === name.toLowerCase())) {
+            showToast(`⚠️ Medicine "${name}" is already in Master Catalogue!`, 'warning');
+            if (modalSaveBtn) modalSaveBtn.disabled = false;
+            return;
+          }
+        }
 
         if (!db.clinicShortcuts) db.clinicShortcuts = {};
         if (!db.clinicShortcuts.medicines) db.clinicShortcuts.medicines = {};
@@ -1646,7 +1694,19 @@ export async function renderMastersView(container) {
       } else if (type === 'allergies') {
         const code = backdrop.querySelector('#modal-allergy-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-allergy-name').value.trim();
-        if (!name) return;
+        if (!name) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
+
+        if (!isEdit) {
+          const sharedAllergies = getSharedMasterCollection('allergies');
+          if (sharedAllergies.some(a => a.name && a.name.trim().toLowerCase() === name.toLowerCase())) {
+            showToast(`⚠️ Allergy "${name}" is already in Master Catalogue!`, 'warning');
+            if (modalSaveBtn) modalSaveBtn.disabled = false;
+            return;
+          }
+        }
 
         if (!db.clinicShortcuts) db.clinicShortcuts = {};
         if (!db.clinicShortcuts.allergies) db.clinicShortcuts.allergies = {};
@@ -1669,7 +1729,19 @@ export async function renderMastersView(container) {
       } else if (type === 'relations') {
         const code = backdrop.querySelector('#modal-rel-code').value.trim().toUpperCase();
         const name = backdrop.querySelector('#modal-rel-name').value.trim();
-        if (!name) return;
+        if (!name) {
+          if (modalSaveBtn) modalSaveBtn.disabled = false;
+          return;
+        }
+
+        if (!isEdit) {
+          const sharedRel = getSharedMasterCollection('relations');
+          if (sharedRel.some(r => r.name && r.name.trim().toLowerCase() === name.toLowerCase())) {
+            showToast(`⚠️ Relation "${name}" is already in Master Catalogue!`, 'warning');
+            if (modalSaveBtn) modalSaveBtn.disabled = false;
+            return;
+          }
+        }
 
         if (!db.clinicShortcuts) db.clinicShortcuts = {};
         if (!db.clinicShortcuts.relations) db.clinicShortcuts.relations = {};

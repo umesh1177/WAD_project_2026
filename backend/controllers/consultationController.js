@@ -70,6 +70,48 @@ const createConsultation = async (req, res) => {
       }
     }
 
+    // Check for rapid duplicate submission (double-click within 10 seconds for same patient & complaint)
+    if (patientId) {
+      const recentCutoff = new Date(Date.now() - 10000);
+      const duplicateRecent = await Consultation.findOne({
+        patientId,
+        clinicId,
+        complaint: complaint || '',
+        createdAt: { $gte: recentCutoff }
+      });
+      if (duplicateRecent) {
+        return res.status(200).json({
+          success: true,
+          message: 'Consultation already recorded (prevented duplicate click)',
+          data: duplicateRecent
+        });
+      }
+    }
+
+    // Deduplicate prescribed medicines so no medicine name appears twice
+    const seenMeds = new Set();
+    const uniquePrescription = [];
+    for (const rx of (prescription || [])) {
+      if (!rx || !rx.name || !rx.name.trim()) continue;
+      const norm = rx.name.trim().toLowerCase();
+      if (!seenMeds.has(norm)) {
+        seenMeds.add(norm);
+        uniquePrescription.push(rx);
+      }
+    }
+
+    // Deduplicate treatment rows
+    const seenTreatments = new Set();
+    const uniqueTreatment = [];
+    for (const tr of (treatment || [])) {
+      if (!tr || !tr.name || !tr.name.trim()) continue;
+      const norm = tr.name.trim().toLowerCase();
+      if (!seenTreatments.has(norm)) {
+        seenTreatments.add(norm);
+        uniqueTreatment.push(tr);
+      }
+    }
+
     // Generate clean, unique caseId for new consultation
     let finalCaseId = caseId;
     if (!finalCaseId || String(finalCaseId).startsWith('v_') || String(finalCaseId).includes('undefined')) {
@@ -105,8 +147,8 @@ const createConsultation = async (req, res) => {
       dietary,
       diagnosis,
       vitals: vitals || {},
-      treatment: treatment || [],
-      prescription: prescription || [],
+      treatment: uniqueTreatment,
+      prescription: uniquePrescription,
       labReport: (labReport && typeof labReport === 'object') ? labReport : (labReport || null),
       charge: chargeNum,
       paid: paidNum,

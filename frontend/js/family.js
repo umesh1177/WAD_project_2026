@@ -411,8 +411,15 @@ export async function renderFamilyRegistration(container, onSelectPatient, onAdd
   });
 
   // Form Submit Handler (Handles Create AND Update)
+  let isSubmittingFamily = false;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (isSubmittingFamily) {
+      showToast('⏳ Registration in progress, please wait...', 'warning');
+      return;
+    }
+
     const headName = headNameInput.value.trim().toUpperCase();
     const age = ageInput.value.trim();
     const bloodGroup = bgInput.value.trim();
@@ -444,172 +451,210 @@ export async function renderFamilyRegistration(container, onSelectPatient, onAdd
       }
     }
 
+    // Check if duplicate family is already registered
+    if (!editingFamId) {
+      if (phone) {
+        const clean = phone.replace(/\D/g, '');
+        const existingByPhone = Object.values(db.families || {}).find(f => f.phone && f.phone.replace(/\D/g, '') === clean);
+        if (existingByPhone) {
+          showToast(`⚠️ A family with mobile number ${phone} is already registered! (Head: ${existingByPhone.headName}, FAM ID: ${existingByPhone.famId || existingByPhone.id})`, 'error');
+          phoneInput.focus();
+          return;
+        }
+      }
+
+      if (headName && area) {
+        const existingByName = Object.values(db.families || {}).find(f => f.headName && f.headName.trim().toUpperCase() === headName && f.area && f.area.trim().toLowerCase() === area.toLowerCase());
+        if (existingByName) {
+          showToast(`⚠️ Family Head "${headName}" in area "${area}" is already registered (FAM ID: ${existingByName.famId || existingByName.id})!`, 'warning');
+          headNameInput.focus();
+          return;
+        }
+      }
+    }
+
     // Auto-learn new values entered for society, area, and allergy
     checkAndLearnDatalist(society, 'society');
     checkAndLearnDatalist(area, 'area');
     checkAndLearnDatalist(allergy, 'allergy');
 
-    // ==========================================
-    // UPDATE EXISTING FAMILY HEAD
-    // ==========================================
-    if (editingFamId) {
-      const targetFamId = editingFamId;
+    isSubmittingFamily = true;
+    const btnSubmit = container.querySelector('#btn-submit-family');
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.style.opacity = '0.7';
+    }
+
+    try {
+      // ==========================================
+      // UPDATE EXISTING FAMILY HEAD
+      // ==========================================
+      if (editingFamId) {
+        const targetFamId = editingFamId;
+        try {
+          await apiFetch(`/families/${targetFamId}`, {
+            method: 'PUT',
+            body: {
+              headName,
+              age,
+              bloodGroup,
+              society,
+              registeredBy,
+              allergy,
+              area,
+              phone,
+            },
+          });
+        } catch (err) {
+          console.warn('Backend API update error, continuing with local DB', err);
+        }
+
+        // Sync local DB
+        if (db.families && db.families[targetFamId]) {
+          const fam = db.families[targetFamId];
+          fam.headName = headName;
+          fam.society = society;
+          fam.registeredBy = registeredBy;
+          fam.area = area;
+          fam.phone = phone;
+
+          // Find & update Head patient
+          if (fam.patients) {
+            const headPatKey = Object.keys(fam.patients).find(k => fam.patients[k].relation === 'Head') || Object.keys(fam.patients)[0];
+            if (headPatKey && fam.patients[headPatKey]) {
+              const hp = fam.patients[headPatKey];
+
+              try {
+                await apiFetch('/patients/' + (hp._id || hp.patId || hp.id), {
+                  method: 'PUT',
+                  body: { name: headName, age, bloodGroup, allergy, society, area, phone }
+                });
+              } catch (e) { }
+
+              hp.name = headName;
+              hp.age = age;
+              hp.bloodGroup = bloodGroup;
+              hp.allergy = allergy;
+              hp.society = society;
+              hp.area = area;
+              hp.phone = phone;
+            }
+          }
+        }
+
+        showToast(`Family Head for FAM ${targetFamId} updated successfully!`);
+        clearEditMode();
+        renderFamilyList();
+        return;
+      }
+
+      // ==========================================
+      // CREATE NEW FAMILY HEAD
+      // ==========================================
+      const curYr = new Date().getFullYear();
+      const curSeq = (db.counters?.family || Object.keys(db.families || {}).length) + 1;
+      const computedFamId = generateFamilyId(clinicId, curYr, curSeq);
+
+      // Try backend API first
+      let createdFamId = null;
+      let createdPatId = null;
+
       try {
-        await apiFetch(`/families/${targetFamId}`, {
-          method: 'PUT',
+        const res = await apiFetch('/families', {
+          method: 'POST',
           body: {
+            famId: computedFamId,
             headName,
             age,
             bloodGroup,
             society,
             registeredBy,
-            allergy,
             area,
+            allergy,
             phone,
           },
         });
+        if (res && res.success && res.data) {
+          createdFamId = res.data.family?.famId || res.data.family?.id;
+          createdPatId = res.data.headPatient?.patId || res.data.headPatient?.id;
+        }
       } catch (err) {
-        console.warn('Backend API update error, continuing with local DB', err);
+        showToast(err.message || 'Error saving family', 'error');
+        return;
       }
 
-      // Sync local DB
-      if (db.families && db.families[targetFamId]) {
-        const fam = db.families[targetFamId];
-        fam.headName = headName;
-        fam.society = society;
-        fam.registeredBy = registeredBy;
-        fam.area = area;
-        fam.phone = phone;
+      const finalFamId = createdFamId || computedFamId;
+      const finalPatId = createdPatId || generatePatientId(finalFamId, 1);
 
-        // Find & update Head patient
-        if (fam.patients) {
-          const headPatKey = Object.keys(fam.patients).find(k => fam.patients[k].relation === 'Head') || Object.keys(fam.patients)[0];
-          if (headPatKey && fam.patients[headPatKey]) {
-            const hp = fam.patients[headPatKey];
+      const pat = {
+        id: finalPatId,
+        patId: finalPatId,
+        familyId: finalFamId,
+        name: headName,
+        relation: 'Head',
+        age,
+        bloodGroup,
+        society,
+        allergy,
+        area,
+        phone,
+        visits: [],
+      };
 
-            try {
-              await apiFetch('/patients/' + (hp._id || hp.patId || hp.id), {
-                method: 'PUT',
-                body: { name: headName, age, bloodGroup, allergy, society, area, phone }
-              });
-            } catch (e) { }
+      const fam = {
+        id: finalFamId,
+        famId: finalFamId,
+        headName,
+        society,
+        registeredBy,
+        area,
+        phone,
+        year: curYr,
+        sequence: curSeq,
+        createdAt: todayISO(),
+        patients: { [finalPatId]: pat },
+      };
 
-            hp.name = headName;
-            hp.age = age;
-            hp.bloodGroup = bloodGroup;
-            hp.allergy = allergy;
-            hp.society = society;
-            hp.area = area;
-            hp.phone = phone;
-          }
+      if (!db.counters) db.counters = { family: 0, patient: 0, visit: 0 };
+      db.counters.family = Math.max(db.counters.family || 0, curSeq);
+      db.counters.patient = (db.counters.patient || 0) + 1;
+      if (!db.families) db.families = {};
+      db.families[finalFamId] = fam;
+
+      showToast(`Family ID ${finalFamId} registered successfully!`);
+      form.reset();
+      updateSubmitButtonText();
+
+      // Update live preview ID for next family
+      const nextSeqAfterSave = (db.counters?.family || Object.keys(db.families || {}).length) + 1;
+      if (previewIdTextEl) {
+        previewIdTextEl.textContent = generateFamilyId(clinicId, curYr, nextSeqAfterSave);
+      }
+
+      // Refresh the registered families directory list immediately
+      currentPage = 1;
+      renderFamilyList();
+
+      // Redirection according to 'Registration Done By'
+      if (registeredBy === 'Family Member') {
+        if (onAddedFamily) {
+          onAddedFamily(finalFamId, finalPatId);
+        } else if (onSelectPatient) {
+          onSelectPatient(finalFamId, finalPatId);
+        }
+      } else {
+        // Self selected -> Redirect directly to patient record (case) tab
+        if (onSelectPatient) {
+          onSelectPatient(finalFamId, finalPatId);
+        } else if (onAddedFamily) {
+          onAddedFamily(finalFamId, finalPatId);
         }
       }
-
-      showToast(`Family Head for FAM ${targetFamId} updated successfully!`);
-      clearEditMode();
-      renderFamilyList();
-      return;
-    }
-
-    // ==========================================
-    // CREATE NEW FAMILY HEAD
-    // ==========================================
-    const curYr = new Date().getFullYear();
-    const curSeq = (db.counters?.family || Object.keys(db.families || {}).length) + 1;
-    const computedFamId = generateFamilyId(clinicId, curYr, curSeq);
-
-    // Try backend API first
-    let createdFamId = null;
-    let createdPatId = null;
-
-    try {
-      const res = await apiFetch('/families', {
-        method: 'POST',
-        body: {
-          famId: computedFamId,
-          headName,
-          age,
-          bloodGroup,
-          society,
-          registeredBy,
-          area,
-          allergy,
-          phone,
-        },
-      });
-      if (res && res.success && res.data) {
-        createdFamId = res.data.family?.famId || res.data.family?.id;
-        createdPatId = res.data.headPatient?.patId || res.data.headPatient?.id;
-      }
-    } catch (err) {
-      console.warn('Backend API error, continuing with local DB sync', err);
-    }
-
-    const finalFamId = createdFamId || computedFamId;
-    const finalPatId = createdPatId || generatePatientId(finalFamId, 1);
-
-    const pat = {
-      id: finalPatId,
-      patId: finalPatId,
-      familyId: finalFamId,
-      name: headName,
-      relation: 'Head',
-      age,
-      bloodGroup,
-      society,
-      allergy,
-      area,
-      phone,
-      visits: [],
-    };
-
-    const fam = {
-      id: finalFamId,
-      famId: finalFamId,
-      headName,
-      society,
-      registeredBy,
-      area,
-      phone,
-      year: curYr,
-      sequence: curSeq,
-      createdAt: todayISO(),
-      patients: { [finalPatId]: pat },
-    };
-
-    if (!db.counters) db.counters = { family: 0, patient: 0, visit: 0 };
-    db.counters.family = Math.max(db.counters.family || 0, curSeq);
-    db.counters.patient = (db.counters.patient || 0) + 1;
-    if (!db.families) db.families = {};
-    db.families[finalFamId] = fam;
-
-    showToast(`Family ID ${finalFamId} registered successfully!`);
-    form.reset();
-    updateSubmitButtonText();
-
-    // Update live preview ID for next family
-    const nextSeqAfterSave = (db.counters?.family || Object.keys(db.families || {}).length) + 1;
-    if (previewIdTextEl) {
-      previewIdTextEl.textContent = generateFamilyId(clinicId, curYr, nextSeqAfterSave);
-    }
-
-    // Refresh the registered families directory list immediately
-    currentPage = 1;
-    renderFamilyList();
-
-    // Redirection according to 'Registration Done By'
-    if (registeredBy === 'Family Member') {
-      if (onAddedFamily) {
-        onAddedFamily(finalFamId, finalPatId);
-      } else if (onSelectPatient) {
-        onSelectPatient(finalFamId, finalPatId);
-      }
-    } else {
-      // Self selected -> Redirect directly to patient record (case) tab
-      if (onSelectPatient) {
-        onSelectPatient(finalFamId, finalPatId);
-      } else if (onAddedFamily) {
-        onAddedFamily(finalFamId, finalPatId);
+    } finally {
+      isSubmittingFamily = false;
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.style.opacity = '1';
       }
     }
   });

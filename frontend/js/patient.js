@@ -404,8 +404,15 @@ export async function renderPatientRegistration(container, presetFamId = null, o
         nameInput.value = e.target.value.replace(/,/g, ' ').replace(/\s+/g, ' ').toUpperCase();
       });
 
+      let isSubmittingMember = false;
       memberForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        if (isSubmittingMember) {
+          showToast('⏳ Member registration in progress, please wait...', 'warning');
+          return;
+        }
+
         const famId = selectedFamId;
         const name = nameInput.value.trim().toUpperCase();
         const relation = relInput.value.trim();
@@ -425,46 +432,76 @@ export async function renderPatientRegistration(container, presetFamId = null, o
           return;
         }
 
-        if (editingPatient) {
-          // Editing existing patient
-          try {
-            await apiFetch('/patients/' + (editingPatient._id || editingPatient.patId || editingPatient.id), {
-              method: 'PUT',
-              body: { name, relation, age, bloodGroup, allergy, society, area, phone }
-            });
-            showToast(`✨ Details for "${name}" updated successfully!`);
-            if (onSelectPatient) {
-              onSelectPatient(famId, editingPatient.patId || editingPatient.id || editingPatient._id);
+        // Prevent registering the same member twice in this family
+        if (!editingPatient) {
+          const selectedFam = cache.find(f => f.famId === famId || f._id === famId);
+          if (selectedFam && Array.isArray(selectedFam.patients)) {
+            const duplicate = selectedFam.patients.find(p => p.name && p.name.trim().toUpperCase() === name && p.relation === relation);
+            if (duplicate) {
+              showToast(`⚠️ Member "${name}" (${relation}) is already registered in this family (Patient ID: ${duplicate.patId || duplicate.id})!`, 'error');
+              nameInput.focus();
+              return;
             }
-          } catch (e) { }
-          return;
+          }
         }
 
-        // New member addition
-        try {
-          const res = await apiFetch('/patients/member', {
-            method: 'POST',
-            body: {
-              familyId: famId,
-              name,
-              relation,
-              age,
-              bloodGroup,
-              allergy,
-              society,
-              area,
-              phone,
-            },
-          });
-          const pat = res.data || {};
-          showToast(`${name} added to Family!`);
-          memberForm.reset();
+        isSubmittingMember = true;
+        const btnSubmit = memberForm.querySelector('#btn-submit-member');
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.style.opacity = '0.7';
+        }
 
-          if (onSelectPatient) {
-            onSelectPatient(famId, pat.patId || pat._id || pat.id);
+        try {
+          if (editingPatient) {
+            // Editing existing patient
+            try {
+              await apiFetch('/patients/' + (editingPatient._id || editingPatient.patId || editingPatient.id), {
+                method: 'PUT',
+                body: { name, relation, age, bloodGroup, allergy, society, area, phone }
+              });
+              showToast(`✨ Details for "${name}" updated successfully!`);
+              if (onSelectPatient) {
+                onSelectPatient(famId, editingPatient.patId || editingPatient.id || editingPatient._id);
+              }
+            } catch (err) {
+              showToast(err.message || 'Error updating member', 'error');
+            }
+            return;
           }
-        } catch (err) {
-          console.warn('Backend API member create error', err);
+
+          // New member addition
+          try {
+            const res = await apiFetch('/patients/member', {
+              method: 'POST',
+              body: {
+                familyId: famId,
+                name,
+                relation,
+                age,
+                bloodGroup,
+                allergy,
+                society,
+                area,
+                phone,
+              },
+            });
+            const pat = res.data || {};
+            showToast(`✅ ${name} added to Family!`);
+            memberForm.reset();
+
+            if (onSelectPatient) {
+              onSelectPatient(famId, pat.patId || pat._id || pat.id);
+            }
+          } catch (err) {
+            showToast(err.message || 'Error adding member', 'error');
+          }
+        } finally {
+          isSubmittingMember = false;
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.style.opacity = '1';
+          }
         }
       });
     }

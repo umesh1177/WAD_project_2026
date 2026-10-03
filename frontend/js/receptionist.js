@@ -369,7 +369,14 @@ function setupReceptionistMemberForm(container) {
 }
 
 // ---- Direct Queue Push (No popup required) ----
+let isPushingQueue = false;
 async function directPushToQueue(familyId, patientId, complaint = 'General OPD Consultation', prefilledData = null) {
+  if (isPushingQueue) {
+    showToast('⏳ Adding to queue, please wait...', 'warning');
+    return;
+  }
+  isPushingQueue = true;
+
   const curSession = getAuthSession();
   const cId = curSession?.profile?.activeClinicId || clinicId || 'demo';
 
@@ -443,7 +450,9 @@ async function directPushToQueue(familyId, patientId, complaint = 'General OPD C
       }
     });
 
-    if (res && res.data?.token) {
+    if (res && res.message && res.message.includes('already in today')) {
+      showToast(`⚠️ ${res.message}`, 'warning');
+    } else if (res && res.data?.token) {
       showToast(`✅ Token ${res.data.token} generated: ${patName} added to Patient Queue!`);
     } else {
       showToast(`✅ ${patName} added to Patient Queue!`);
@@ -451,6 +460,8 @@ async function directPushToQueue(familyId, patientId, complaint = 'General OPD C
   } catch (err) {
     console.error('Backend queue push error:', err);
     showToast(`Failed to add to patient queue: ${err.message || 'Error'}`, 'error');
+  } finally {
+    isPushingQueue = false;
   }
 
   updateQueueBadge();

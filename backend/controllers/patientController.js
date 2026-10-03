@@ -89,6 +89,24 @@ const createPatientMember = async (req, res) => {
 
     let finalFamId = fam ? fam.famId : familyId;
 
+    // Check if member with same name and relation already exists in this family
+    if (!patId && name) {
+      const trimmedName = name.trim().toUpperCase();
+      const duplicateMember = await Patient.findOne({
+        familyId: finalFamId,
+        name: trimmedName,
+        relation: relation || 'Member',
+        ...clinicQuery
+      });
+      if (duplicateMember) {
+        return res.status(409).json({
+          success: false,
+          message: `Member "${trimmedName}" (${relation || 'Member'}) is already registered in this family (Patient ID: ${duplicateMember.patId})`,
+          data: duplicateMember
+        });
+      }
+    }
+
     let finalPatId = patId;
     if (!finalPatId) {
       const count = await Patient.countDocuments({ familyId: finalFamId, ...clinicQuery });
