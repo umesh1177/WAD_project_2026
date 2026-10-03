@@ -584,8 +584,15 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       }
     });
 
+    let isSubmittingApt = false;
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      if (isSubmittingApt) {
+        showToast('⏳ Token generation in progress...', 'warning');
+        return;
+      }
+
       const patientName = nameInput.value.trim().toUpperCase();
       const age = ageInput.value.trim();
       const gender = genderInput.value;
@@ -593,6 +600,27 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
       const bp = modalRoot.querySelector('#walkin-bp').value.trim();
       const pulse = modalRoot.querySelector('#walkin-pulse').value.trim();
       const temp = modalRoot.querySelector('#walkin-temp').value.trim();
+
+      // Check if patient is already in today's active queue
+      const todayDate = todayISO();
+      const alreadyInQueue = (queue || []).find(q =>
+        (q.date === todayDate || q.appointmentDate === todayDate) &&
+        (q.status === 'Waiting' || q.status === 'In-Consultation') &&
+        ((matchedPat && (q.patientId === matchedPat.id || q.patientId === matchedPat.patId || q.patientId === matchedPat._id)) ||
+         (q.name && q.name.trim().toUpperCase() === patientName) ||
+         (q.patientName && q.patientName.trim().toUpperCase() === patientName))
+      );
+      if (alreadyInQueue) {
+        showToast(`⚠️ ${patientName} is already in today's queue (Token ${alreadyInQueue.token})!`, 'warning');
+        return;
+      }
+
+      isSubmittingApt = true;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+      }
 
       const newEntry = {
         token: nextToken,
@@ -617,12 +645,25 @@ export async function renderPatientQueueView(container, onSelectPatientForConsul
           method: 'POST',
           body: newEntry
         });
-        if (res && res.success && res.data) queue.push(res.data);
-        else queue.push(newEntry);
-      } catch (e) { queue.push(newEntry); }
+        if (res && res.success && res.data) {
+          queue.push(res.data);
+          closeModal();
+          showToast(`✅ ${patientName} added to Patient Queue (Token ${res.data.token || nextToken})`);
+        } else {
+          queue.push(newEntry);
+          closeModal();
+          showToast(`✅ Added ${patientName} to Patient Queue (${nextToken})`);
+        }
+      } catch (e) {
+        showToast(e.message || 'Error booking appointment', 'error');
+      } finally {
+        isSubmittingApt = false;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+        }
+      }
 
-      closeModal();
-      showToast(`✅ Added ${patientName} to Patient Queue (${nextToken})`);
       renderView();
     });
   }
